@@ -1,7 +1,23 @@
-# secure-secret-sharer/docker-compose.yml
-version: '3.8' # Specifies the Docker Compose file format version
-
 services:
+# Database Service (PostgreSQL)
+  db:
+    image: postgres:15-alpine # Using PostgreSQL 15 Alpine image
+    container_name: secure_secret_sharer_db # Optional: give a specific container name
+    environment:
+      # These MUST match the credentials and db name in your DATABASE_URL
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Mount a named volume for data persistence
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s # Give PostgreSQL time to initialize
+    restart: unless-stopped # Optional: policy to restart the DB container
+
   # Backend Service (Flask Application)
   backend:
     build:
@@ -18,14 +34,19 @@ services:
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
       FLASK_APP: app.main
       FLASK_DEBUG: 'True'
-      # Add specific CORS allowed origins
-      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DATABASE_URL: ${DATABASE_URL} # Pass the DATABASE_URL from root .env
+      # Ensure the database URL is correctly formatted for PostgreSQL
+      # Example: postgres://secrets_user:yoursecurepassword@db:5432/secrets_db
+      # Note: The db service name is used as the hostname in the URL.
     healthcheck: # Ensure this is uncommented
       test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"] # Using CMD-SHELL for robustness with curl
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s # Give it time to start up
+    depends_on:
+      db: # Backend depends on the db service
+        condition: service_healthy # Waits for db to be healthy
 
   # Frontend Service (Nginx Server for Static Files)
   frontend:
@@ -41,6 +62,7 @@ services:
       backend: # Service name
           condition: service_healthy # Condition to wait for
 
-# Optional: Define named volumes if your services need persistent storage
-# volumes:
-#   my_data_volume:
+# Top-level volumes declaration for data persistence
+volumes:
+  postgres_data: # Defines the named volume used by the db service
+    driver: local

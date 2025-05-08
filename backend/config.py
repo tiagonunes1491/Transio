@@ -28,6 +28,23 @@ class Config:
     MAX_SECRET_LENGTH_KB = int(os.getenv("MAX_SECRET_LENGTH_KB", "100"))
     MAX_SECRET_LENGTH_BYTES = MAX_SECRET_LENGTH_KB * 1024
 
+    # Database Configuration
+    # Example: postgresql://user:password@host:port/dbname
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        print("WARNING: DATABASE_URL not set. Database functionality will be unavailable.")
+        # For local development without Docker, you might want a default SQLite fallback,
+        # but for Docker Compose, DATABASE_URL should always be provided.
+        # Example fallback: DATABASE_URL = "sqlite:///./local_dev.db"
+
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
+    SQLALCHEMY_TRACK_MODIFICATIONS = False # Suppresses a warning
+
+    #Defines time that secret expires in minutes
+    # Default to 60 minutes if not set in .env
+    SECRET_EXPIRY_MINUTES = int(os.getenv("SECRET_EXPIRY_MINUTES", "60")) 
+
+
     if not MASTER_ENCRYPTION_KEY:
         # Fail fast - encryption key is required for this security application
         raise ValueError("MASTER_ENCRYPTION_KEY not set. Please set it in .env file or environment.")

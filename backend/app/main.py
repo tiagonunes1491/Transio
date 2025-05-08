@@ -3,19 +3,25 @@ from flask import Flask, request, jsonify, render_template_string, current_app
 from flask_cors import CORS
 
 # Relative imports for modules within the same package ('app')
+from . import db # ADD THIS LINE - db is now from app/__init__.py
 from .encryption import encrypt_secret, decrypt_secret
 from .storage import store_encrypted_secret, retrieve_and_delete_secret
+from . import models # Import models to register them with SQLAlchemy
 
 # Relative import for config from the parent directory ('backend')
-# This requires 'app' to be treated as a package (which it is, due to __init__.py)
-# and for the application to be run in a context where 'backend' is discoverable.
 from ..config import Config
 
 # Initialize Flask App
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes (for development purposes)
+
 # Load configuration from config.py (which loads .env)
 app.config.from_object(Config)
+db.init_app(app) # Initialize the imported db instance
+
+with app.app_context(): # <-- CREATE TABLES
+    db.create_all() # Use the imported db instance
+    print("Database tables created or already exist.")
 
 # Basic HTML templates for displaying information directly via API calls
 # In a full application, a dedicated frontend would handle presentation.

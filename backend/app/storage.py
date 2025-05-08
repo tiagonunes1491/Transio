@@ -2,101 +2,115 @@
 import uuid
 import logging
 from datetime import datetime, timedelta, timezone
-from config import Config  # Changed from 'from backend.config import Config'
 
-# Initialize logger for this module
+# Use your existing Config import
+from config import Config
+
+# Import the db session and your Secret model
+from .main import db  # Assuming db is initialized in main.py
+from .models import Secret
+
+# Initialize logger for this module, as per your existing style
 logger = logging.getLogger(__name__)
 
-# In-memory store: dictionary to hold secrets
-# Format: {link_id: {"encrypted_secret": data_bytes, "created_at": timestamp}}
-# WARNING: This is for initial local development ONLY. All data is lost when the app restarts.
-_secrets_store = {}
+# Get SECRET_EXPIRY_MINUTES from Config
+# This will now be fetched from the Config class which reads from environment/.env
+_SECRET_EXPIRY_MINUTES = Config.SECRET_EXPIRY_MINUTES
 
-# Get configuration from Config class with a default fallback
-_SECRET_EXPIRY_MINUTES = getattr(Config, 'SECRET_EXPIRY_MINUTES', 60)
 
 def generate_unique_link_id() -> str:
     """Generates a cryptographically strong unique ID for the secret link."""
     return str(uuid.uuid4())
 
-def store_encrypted_secret(encrypted_secret_data: bytes) -> str:
+
+def store_encrypted_secret(encrypted_secret_data: bytes) -> str | None:
     """
-    Stores the encrypted secret data in the in-memory store.
-    Returns a unique link ID for accessing the secret.
+    Stores the encrypted secret data in the PostgreSQL database.
+    Returns a unique link ID for accessing the secret, or None if storage fails.
     """
     if not isinstance(encrypted_secret_data, bytes):
-        # Ensuring that we are indeed storing bytes, as returned by the encryption function.
-        logger.error("Encrypted secret data must be bytes")
+        logger.error("Encrypted secret data must be bytes.")
+        # Consistent with original raising TypeError, but for DB ops, returning None for failure is common.
+        # If you prefer to always raise an exception here, you can.
         raise TypeError("Encrypted secret data must be bytes.")
 
     link_id = generate_unique_link_id()
-    _secrets_store[link_id] = {
-        "encrypted_secret": encrypted_secret_data,
-        "created_at": datetime.now(timezone.utc)  # Store creation time (UTC)
-    }
-    logger.info(f"Stored secret with link_id: {link_id}")
-    return link_id
+    new_secret = Secret(
+        link_id=link_id,
+        encrypted_secret=encrypted_secret_data
+        # created_at is handled by the model's default
+    )
+
+    try:
+        db.session.add(new_secret)
+        db.session.commit()
+        logger.info(f"Stored secret with link_id: {link_id} in database.")
+        return link_id
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of database error
+        logger.error(f"Database error storing secret {link_id}: {e}", exc_info=True)
+        return None  # Indicate failure to store
+
 
 def retrieve_and_delete_secret(link_id: str) -> bytes | None:
     """
-    Retrieves the encrypted secret by its link ID and then immediately deletes it
-    to ensure one-time access.
-    Returns the encrypted secret data (bytes) or None if not found or expired.
+    Retrieves the encrypted secret by its link ID from the database
+    and then immediately deletes it to ensure one-time access.
+    Returns the encrypted secret data (bytes) or None if not found or if an error occurs.
     """
     if not link_id or not isinstance(link_id, str):
         logger.warning(f"Attempt to retrieve secret with invalid link_id type or empty: {link_id}")
         return None
 
     try:
-        secret_entry = _secrets_store.get(link_id)
-        
-        if not secret_entry:
-            logger.info(f"Secret with link_id: {link_id} not found (it may have been already accessed or never existed).")
-            return None
-            
-        # Optional: Check for expiry before retrieval - uncomment to enable
-        # expiry_time = secret_entry["created_at"] + timedelta(minutes=_SECRET_EXPIRY_MINUTES)
-        # if datetime.now(timezone.utc) > expiry_time:
-        #     logger.info(f"Secret {link_id} expired and was not accessed. Deleting.")
-        #     del _secrets_store[link_id]
-        #     return None
+        secret_entry = db.session.query(Secret).filter_by(link_id=link_id).first()
 
-        encrypted_data = secret_entry["encrypted_secret"]
+        if not secret_entry:
+            logger.info(f"Secret with link_id: {link_id} not found in database (it may have been already accessed or never existed).")
+            return None
+
+        encrypted_data = secret_entry.encrypted_secret
+
         # CRITICAL: Delete the secret immediately after retrieval for one-time access.
-        del _secrets_store[link_id]
-        logger.info(f"Retrieved and deleted secret with link_id: {link_id}")
+        db.session.delete(secret_entry)
+        db.session.commit()
+        logger.info(f"Retrieved and deleted secret with link_id: {link_id} from database.")
         return encrypted_data
-        
+
     except Exception as e:
-        logger.error(f"Error retrieving secret with link_id {link_id}: {e}")
+        db.session.rollback()  # Rollback in case of database error
+        logger.error(f"Database error retrieving/deleting secret for link_id {link_id}: {e}", exc_info=True)
         return None
+
 
 def cleanup_expired_secrets() -> int:
     """
-    Periodically cleans up secrets that were stored but never accessed
-    and have passed their expiry time.
+    Periodically cleans up secrets from the database that were stored but never accessed
+    and have passed their expiry time (_SECRET_EXPIRY_MINUTES).
     Returns the number of secrets removed.
     """
+    removed_count = 0
     try:
-        now = datetime.now(timezone.utc)
-        # Use list comprehension to get expired IDs (more pythonic)
-        expired_ids = [
-            link_id for link_id, data in list(_secrets_store.items())
-            if now > data["created_at"] + timedelta(minutes=_SECRET_EXPIRY_MINUTES)
-        ]
+        now_utc = datetime.now(timezone.utc)
+        expiry_threshold = now_utc - timedelta(minutes=_SECRET_EXPIRY_MINUTES)
 
-        if not expired_ids:
-            logger.info("Cleanup found no expired secrets to remove.")
-            return 0
+        # Efficiently delete expired secrets and get the count of deleted rows.
+        # The delete() method on a query returns the number of rows deleted.
+        num_deleted = db.session.query(Secret).filter(Secret.created_at < expiry_threshold).delete(synchronize_session='fetch')
+        # synchronize_session='fetch' or False can be used. 'fetch' tries to update the session.
+        # False is often simpler for bulk deletes if you don't need the session to be aware of specific instances deleted.
+        
+        db.session.commit()
+        removed_count = num_deleted
 
-        # Use a more concise loop to remove expired secrets
-        for link_id in expired_ids:
-            _secrets_store.pop(link_id, None)  # More pythonic than checking and deleting
-            logger.info(f"Cleaned up expired (unaccessed) secret: {link_id}")
-            
-        logger.info(f"Cleanup finished. Removed {len(expired_ids)} items.")
-        return len(expired_ids)
+        if removed_count > 0:
+            logger.info(f"Cleaned up {removed_count} expired (unaccessed) secrets from the database.")
+        else:
+            logger.info("Cleanup_expired_secrets found no expired secrets to remove from the database.")
+        
+        return removed_count
         
     except Exception as e:
-        logger.error(f"Error during cleanup of expired secrets: {e}")
-        return 0
+        db.session.rollback()
+        logger.error(f"Database error during cleanup_expired_secrets: {e}", exc_info=True)
+        return 0 # Return 0 on error, as per original return type expectation
