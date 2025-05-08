@@ -42,10 +42,13 @@ COPY config.py .
 COPY __init__.py /opt/app/
 
 # Install curl for healthcheck
-RUN apt-get update && apt-get install -y curl && apt-get clean
-
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
 # Make sure the application runs with the venv Python
 ENV PATH="/opt/venv/bin:$PATH"
+
+## Create non-root user and group to run the application
+RUN useradd --create-home appuser
+USER appuser
 
 # Expose the port the app runs on (Flask default is 5000)
 EXPOSE 5000
@@ -58,6 +61,9 @@ EXPOSE 5000
 ENV FLASK_APP=app.main
 ENV FLASK_DEBUG=True
 # Example: ENV MASTER_ENCRYPTION_KEY="your_key_here_from_docker_compose_or_env" (but set it at runtime)
+
+# Healthcheck to ensure the application is running
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD curl -f http://localhost:5000/health || exit 1
 
 # The command to run your application.
 # flask run --host=0.0.0.0 makes the server accessible from outside the container.
