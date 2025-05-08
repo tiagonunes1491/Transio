@@ -14,7 +14,6 @@ from ..config import Config
 # Initialize Flask App
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes (for development purposes)
-# CORS is useful for allowing cross-origin requests, especially if the frontend is hosted separately.
 # Load configuration from config.py (which loads .env)
 app.config.from_object(Config)
 

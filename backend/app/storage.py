@@ -2,7 +2,7 @@
 import uuid
 import logging
 from datetime import datetime, timedelta, timezone
-from ..config import Config  # Changed from 'from backend.config import Config'
+from config import Config  # Changed from 'from backend.config import Config'
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)

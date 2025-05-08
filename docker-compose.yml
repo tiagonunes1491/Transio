@@ -1,0 +1,46 @@
+# secure-secret-sharer/docker-compose.yml
+version: '3.8' # Specifies the Docker Compose file format version
+
+services:
+  # Backend Service (Flask Application)
+  backend:
+    build:
+      context: ./backend # Path to the directory containing the backend's Dockerfile
+      dockerfile: Dockerfile # Specifies the Dockerfile name (default is Dockerfile)
+    ports:
+      # Maps port 5000 on the host to port 5000 in the backend container.
+      # This allows you to access the Flask app via http://localhost:5000 on your machine.
+      - "5000:5000"
+    environment:
+      # Environment variables passed to the backend container.
+      # MASTER_ENCRYPTION_KEY will be interpolated by Docker Compose from the .env file
+      # located in the same directory as this docker-compose.yml file.
+      MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
+      FLASK_APP: app.main
+      FLASK_DEBUG: 'True'
+      # Add specific CORS allowed origins
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+    healthcheck: # Ensure this is uncommented
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"] # Using CMD-SHELL for robustness with curl
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s # Give it time to start up
+
+  # Frontend Service (Nginx Server for Static Files)
+  frontend:
+    build:
+      context: ./frontend # Path to the directory containing the frontend's Dockerfile
+      dockerfile: Dockerfile
+    ports:
+      # Maps port 8080 on the host to port 80 in the frontend (Nginx) container.
+      # Access the frontend via http://localhost:8080 on your machine.
+      # Using 8080 to avoid potential conflicts if port 80 is already in use on the host.
+      - "8080:80"
+    depends_on:
+      backend: # Service name
+          condition: service_healthy # Condition to wait for
+
+# Optional: Define named volumes if your services need persistent storage
+# volumes:
+#   my_data_volume:
