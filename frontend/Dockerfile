@@ -1,20 +1,33 @@
 # Use an official Nginx image. 'alpine' variants are lightweight.
 FROM nginx:1.25-alpine
 
-# The Nginx configuration file we created (nginx.conf) will define how Nginx serves our content.
-# We copy it into the standard Nginx configuration directory, naming it default.conf.
-# This will effectively replace or become the default server configuration.
+# Remove any existing pid directive from the main config file
+# This uses sed to delete ('d') lines starting from the beginning ('^') with 'pid '
+# This is important because the default Nginx image uses a PID file in a privileged location.
+
+RUN sed -i '/^pid /d' /etc/nginx/nginx.conf
+
+# Explicitly set the PID file path in the main config by echoing it
+RUN echo "pid /tmp/nginx.pid;" >> /etc/nginx/nginx.conf
+
+# The Nginx configuration file we created...
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Our static frontend files (index.html, style.css, script.js) are in the 'static' subdirectory.
-# We need to copy these into the directory that Nginx is configured to serve files from.
-# In our nginx.conf, we set `root /usr/share/nginx/html;`.
+# Our static frontend files...
 COPY ./static /usr/share/nginx/html
 
-# Expose port 80, which is what Nginx is listening on according to our nginx.conf.
-# When we run this container, we can map this internal port 80 to a port on our host machine.
-EXPOSE 80
+# Give the nginx user ownership of cache directories it needs to write to
+RUN chown -R nginx:nginx /var/cache/nginx
+
+# Expose the new non-privileged port Nginx will listen on.
+EXPOSE 8080
+
+# Add HEALTHCHECK instruction.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD nc -z -w1 localhost 8080 || exit 1
+
+# Switch to the non-root 'nginx' user.
+USER nginx
 
 # The base Nginx image already has a CMD to start Nginx,
-# typically ["nginx", "-g", "daemon off;"]. So, we don't need to specify it here
-# unless we want to override the default behavior.
+CMD ["nginx", "-g", "daemon off;"]
