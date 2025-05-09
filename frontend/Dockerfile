@@ -1,5 +1,5 @@
 # Use an official Nginx image. 'alpine' variants are lightweight.
-FROM nginx:1.25-alpine
+FROM nginx:1.27.5-alpine
 
 # Remove any existing pid directive from the main config file
 # This uses sed to delete ('d') lines starting from the beginning ('^') with 'pid '

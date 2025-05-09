@@ -1,5 +1,5 @@
-# Stage 1: Use an official Python runtime as a parent image
-FROM python:3.11-slim as builder
+# Stage 1: Use a lighter Alpine-based Python image
+FROM python:3.13-alpine3.21 as builder
 
 # Set environment variables to prevent Python from writing .pyc files and to keep output unbuffered
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -8,20 +8,23 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory in the container
 WORKDIR /opt/app
 
-# Install build dependencies if any (sometimes needed for certain packages)
-# RUN apt-get update && apt-get install -y --no-install-recommends gcc
+# Alpine may need different build dependencies
+RUN apk add --no-cache gcc musl-dev
 
 # Copy the requirements file into the container
 COPY requirements.txt .
 
 # Install Python dependencies into a virtual environment within the image
-# Using a virtual environment here is good practice even inside a container
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Explicitly upgrade pip and setuptools within the virtual environment
+RUN /opt/venv/bin/pip install --no-cache-dir --upgrade pip
+RUN /opt/venv/bin/pip install --no-cache-dir --upgrade setuptools
+
 # Stage 2: Build the final, leaner image
-FROM python:3.11-slim as final
+FROM python:3.13-alpine3.21 as final
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE 1
@@ -33,21 +36,22 @@ WORKDIR /opt/app
 # Copy the virtual environment from the builder stage
 COPY --from=builder /opt/venv /opt/venv
 
+# Update packages - Alpine uses apk instead of apt-get
+RUN apk update && apk upgrade
+
 # Copy the application code from your backend directory into the container
-# This includes the 'app' directory and 'config.py'.
-# IMPORTANT: We are NOT copying the .env file. Sensitive configurations like
-# MASTER_ENCRYPTION_KEY will be passed as environment variables when running the container (e.g., via docker-compose).
 COPY ./app ./app
 COPY config.py .
 COPY __init__.py /opt/app/
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Install curl for healthcheck using Alpine's package manager
+RUN apk add --no-cache curl
+
 # Make sure the application runs with the venv Python
 ENV PATH="/opt/venv/bin:$PATH"
 
-## Create non-root user and group to run the application
-RUN useradd --create-home appuser
+## Create non-root user and group using Alpine's syntax
+RUN adduser -D appuser
 USER appuser
 
 # Expose the port the app runs on (Flask default is 5000)
