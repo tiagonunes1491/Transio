@@ -1,0 +1,32 @@
+# templates/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-frontend
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      # The frontend doesn't need a special service account for this MVP
+      # serviceAccountName: {{ include "secret-sharer-app.serviceAccountName" . }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.service.port }} # Nginx typically listens on port 80
+              protocol: TCP
+          # We will add livenessProbe and readinessProbe later
+          # We will add resources (requests/limits) later 

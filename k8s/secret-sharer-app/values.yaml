@@ -1,0 +1,115 @@
+# values.yaml
+
+serviceAccount:
+  create: false  # Or true if you want a default service account created
+  name: ""
+
+replicaCount: 1 # Default replica count for components if not specified
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# --- Database (PostgreSQL) Configuration ---
+database:
+  replicaCount: 1
+  image:
+    repository: postgres
+    pullPolicy: IfNotPresent
+    # tag: "15-alpine" # Or specify your preferred version
+    tag: "15.7-alpine3.20" # Example of a more specific immutable tag
+
+  # Database authentication details
+  # These will be sourced from Azure Key Vault via CSI driver in the future.
+  # The `auth.database` is the database name.
+  # User/password will be handled by secrets mounted by CSI driver.
+  auth:
+    database: "secret_sharer_db"
+    # username: "appuser" # Will be from AKV
+    # password: "yoursecurepassword" # Will be from AKV
+    # existingSecret: "" # To use an existing secret for credentials (not for CSI with SecretProviderClass directly)
+
+  persistence:
+    enabled: true
+    size: 1Gi
+    # storageClass: "default" # Specify if not using the default SC or if you need a specific one
+    # accessMode: ReadWriteOnce # Default for most statefulsets
+
+  # service:
+  #   type: ClusterIP
+  #   port: 5432
+
+  # Resources for the database pod
+  # resources:
+  #   limits:
+  #     cpu: 500m
+  #     memory: 512Mi
+  #   requests:
+  #     cpu: 250m
+  #     memory: 256Mi
+
+# values.yaml
+# ... (previous content for imagePullSecrets, nameOverride, fullnameOverride, database)
+
+# --- Backend Configuration ---
+backend:
+  replicaCount: 1
+  image:
+    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend # Replace with your ACR and image name
+    pullPolicy: IfNotPresent
+    tag: "0.1.0" # Or your specific backend image tag
+
+  service:
+    type: ClusterIP
+    port: 8000 # Port the backend service will listen on, and also the containerPort
+
+  # Configuration for Azure Key Vault and CSI Driver
+  keyVault:
+    name: "kv-secure-secret-sharer" 
+    tenantId: "y6e05f665-11c4-4221-9eea-3065ede81619" 
+    secrets:
+      dbUser: "db-user" # Name of the secret in AKV for database username
+      dbPassword: "db-password" # Name of the secret in AKV for database password
+      appMasterKey: "app-master-encryption-key" # Name of the secret in AKV for app key
+  
+
+  # Placeholder for Workload Identity - we will configure this in a later step
+  # serviceAccount:
+  #   create: true
+  #   name: "backend-sa" # Name of the Kubernetes Service Account
+  #   annotations: {}
+      # Example annotation for workload identity (will be filled later):
+      # azure.workload.identity/client-id: "YOUR_USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID"
+  # workloadIdentity:
+    # clientID: "" # Will be filled when we set up workload identity
+
+  # resources:
+  #   limits:
+  #     cpu: 500m
+  #     memory: 256Mi
+  #   requests:
+  #     cpu: 200m
+  #     memory: 128Mi
+
+# --- Frontend Configuration ---
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend # Replace with your ACR and image name
+    pullPolicy: IfNotPresent
+    tag: "0.1.0" # Or your specific frontend image tag
+
+  service:
+    type: ClusterIP # Will be ClusterIP, exposed via Ingress later
+    port: 80 # Port Nginx listens on and service exposes
+
+  # resources:
+  #   limits:
+  #     cpu: 200m
+  #     memory: 128Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 64Mi
+
+# ... (ingress configuration will be added later)

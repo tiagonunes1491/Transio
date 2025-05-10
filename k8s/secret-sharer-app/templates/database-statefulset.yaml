@@ -1,0 +1,65 @@
+# templates/database-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-db
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  serviceName: {{ include "secret-sharer-app.fullname" . }}-db-headless # Headless service for StatefulSet
+  replicas: {{ .Values.database.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database
+  template:
+    metadata:
+      labels:
+        {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: database
+    spec:
+      terminationGracePeriodSeconds: 10
+      # We will add securityContext for the pod later
+      containers:
+        - name: postgres
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag | default "15-alpine" }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.database.auth.database | quote }}
+            # IMPORTANT: Database user and password will come from Azure Key Vault via CSI Driver
+            # We will create Kubernetes secrets from the CSI-mounted secrets,
+            # and then reference those secrets here using valueFrom.secretKeyRef
+            # For now, this is a placeholder section for where those env vars would go.
+            # We'll fully implement this in a later step (Task 5.1)
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            # Example of how user/password MIGHT be set IF NOT using CSI driver (NOT RECOMMENDED FOR PROD)
+            # - name: POSTGRES_USER
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: {{ include "secret-sharer-app.fullname" . }}-db-credentials
+            #       key: username
+            # - name: POSTGRES_PASSWORD
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: {{ include "secret-sharer-app.fullname" . }}-db-credentials
+            #       key: password
+          volumeMounts:
+            - name: db-data
+              mountPath: /var/lib/postgresql/data
+          # We will add livenessProbe and readinessProbe later
+  volumeClaimTemplates:
+    - metadata:
+        name: db-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.database.persistence.size | default "1Gi" }}
+        # storageClassName: {{ .Values.database.persistence.storageClass | default "default" }} # Uncomment if you need a specific storage class

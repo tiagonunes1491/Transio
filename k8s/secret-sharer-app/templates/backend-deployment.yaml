@@ -1,0 +1,72 @@
+# templates/backend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-backend
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backend
+spec:
+  replicas: {{ .Values.backend.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend
+  template:
+    metadata:
+      labels:
+        {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: backend
+    spec:
+      serviceAccountName: {{ include "secret-sharer-app.serviceAccountName" . }} # Temporary
+      automountServiceAccountToken: true # Required for Workload Identity if SA is specified
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.backend.service.port }} # Assuming backend runs on port 8000 internally
+              protocol: TCP
+          env:
+            # These will be populated from the Kubernetes secret created by the SecretProviderClass
+            - name: MASTER_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
+                  key: appMasterEncryptionKey # Key name within the K8s Secret
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
+                  key: dbUser # Key name within the K8s Secret
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
+                  key: dbPassword # Key name within the K8s Secret
+            - name: DATABASE_NAME
+              value: {{ .Values.database.auth.database | quote }} # From database values
+            - name: DATABASE_HOST
+              # This will be the ClusterIP service name of your database
+              value: {{ include "secret-sharer-app.fullname" . }}-db 
+            - name: DATABASE_PORT
+              value: "5432" # Default PostgreSQL port
+            # Your Python app will need to construct the DATABASE_URL from these individual components
+            # Alternatively, the SecretProviderClass could create a secret with a fully formed DATABASE_URL if preferred.
+
+          # We will add livenessProbe and readinessProbe later
+          # We will add resources (requests/limits) later
+          volumeMounts:
+            - name: secrets-store-inline
+              mountPath: "/mnt/secrets-store" # Secrets will be mounted here as files by CSI driver
+              readOnly: true
+      volumes:
+        - name: secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "secret-sharer-app.fullname" . }}-backend-spc
+            # nodePublishSecretRef: # Only needed if Azure Key Vault firewall is enabled for specific service endpoints
+            #   name: ""

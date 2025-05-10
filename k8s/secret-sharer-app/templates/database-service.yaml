@@ -1,0 +1,39 @@
+# templates/database-service.yaml
+
+# Headless service for StatefulSet DNS resolution
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-db-headless
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+      protocol: TCP
+  clusterIP: None # Makes it a headless service
+  selector:
+    {{- include "secret-sharer-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+---
+# ClusterIP service for applications to connect to
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-db
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: database
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: postgres
+      protocol: TCP
+  selector:
+    {{- include "secret-sharer-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: database
