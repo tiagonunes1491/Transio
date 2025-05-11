@@ -66,7 +66,7 @@ backend:
   # Configuration for Azure Key Vault and CSI Driver
   keyVault:
     name: "kv-secure-secret-sharer" 
-    tenantId: "y6e05f665-11c4-4221-9eea-3065ede81619"
+    tenantId: "6e05f665-11c4-4221-9eea-3065ede81619"
     userAssignedIdentityClientID: "fa376030-252d-443f-a32d-294e3cda90e1"
     secrets:
       dbUser: "db-user" # Name of the secret in AKV for database username
