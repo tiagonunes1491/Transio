@@ -46,6 +46,18 @@ spec:
             timeoutSeconds: {{ .Values.database.probes.liveness.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.database.probes.liveness.failureThreshold | default 3 }}
             successThreshold: {{ .Values.database.probes.liveness.successThreshold | default 1 }}
+          readinessProbe:
+            tcpSocket: # A TCP check is usually sufficient for DB readiness
+              port: postgres # Refers to the containerPort named 'postgres'
+            # Or, an exec probe like the liveness one if preferred:
+            # exec:
+            #   command: ["sh", "-c", "PGPASSWORD=$POSTGRES_PASSWORD psql -h 127.0.0.1 -U $POSTGRES_USER -d $POSTGRES_DB -c 'SELECT 1'"]
+            initialDelaySeconds: {{ .Values.database.probes.readiness.initialDelaySeconds | default 10 }} # Shorter delay for readiness after it's live
+            periodSeconds: {{ .Values.database.probes.readiness.periodSeconds | default 15 }}
+            timeoutSeconds: {{ .Values.database.probes.readiness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.database.probes.readiness.failureThreshold | default 3 }}
+            successThreshold: {{ .Values.database.probes.readiness.successThreshold | default 1 }}
+          # ... env, volumeMounts ...
           env:
             - name: POSTGRES_DB
               value: {{ .Values.database.auth.database | quote }}

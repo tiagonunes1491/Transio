@@ -37,6 +37,15 @@ spec:
             timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold | default 3 }}
             successThreshold: {{ .Values.backend.probes.liveness.successThreshold | default 1 }}
+          readinessProbe:
+            httpGet:
+              path: / # Or your specific health check endpoint e.g., /healthz
+              port: http # Refers to the containerPort named 'http'
+            initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold | default 3 }}
+            successThreshold: {{ .Values.backend.probes.readiness.successThreshold | default 1 }}
           env:
             # These will be populated from the Kubernetes secret created by the SecretProviderClass
             - name: MASTER_ENCRYPTION_KEY

@@ -35,3 +35,12 @@ spec:
             timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold | default 3 }}
             successThreshold: {{ .Values.frontend.probes.liveness.successThreshold | default 1 }}
+          readinessProbe:
+            httpGet:
+              path: / # Root path should return 200 OK for Nginx
+              port: http # Refers to the containerPort named 'http'
+            initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.frontend.probes.readiness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold | default 3 }}
+            successThreshold: {{ .Values.frontend.probes.readiness.successThreshold | default 1 }}
