@@ -21,7 +21,9 @@ backend:
     # This name 'secret-sharer-backend-sa' is used by templates/serviceaccount.yaml
     name: "secret-sharer-backend-sa"
     annotations: {} # Default annotations from template will use backend.keyVault.userAssignedIdentityClientID
-
+  rbac:
+    create: true
+    # serviceAccountName is already defined under backend.serviceAccount.name
   # Configuration for Azure Key Vault access by the Backend pod
   keyVault:
     # !! PHASE 4 TODO !!: Ensure this Key Vault name is correct for your environment.
