@@ -44,3 +44,10 @@ spec:
             timeoutSeconds: {{ .Values.frontend.probes.readiness.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold | default 3 }}
             successThreshold: {{ .Values.frontend.probes.readiness.successThreshold | default 1 }}
+          resources:
+            limits:
+              cpu: {{ .Values.frontend.resources.limits.cpu | default "200m" }} # 0.2 CPU core
+              memory: {{ .Values.frontend.resources.limits.memory | default "128Mi" }}
+            requests:
+              cpu: {{ .Values.frontend.resources.requests.cpu | default "50m" }}  # 0.05 CPU core
+              memory: {{ .Values.frontend.resources.requests.memory | default "64Mi" }}

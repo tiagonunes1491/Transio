@@ -57,6 +57,13 @@ spec:
             timeoutSeconds: {{ .Values.database.probes.readiness.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.database.probes.readiness.failureThreshold | default 3 }}
             successThreshold: {{ .Values.database.probes.readiness.successThreshold | default 1 }}
+          resources:
+            limits:
+              cpu: {{ .Values.database.resources.limits.cpu | default "1000m" }} # 1 CPU core
+              memory: {{ .Values.database.resources.limits.memory | default "1Gi" }} # 1 GiB Memory
+            requests:
+              cpu: {{ .Values.database.resources.requests.cpu | default "250m" }} # 0.25 CPU core
+              memory: {{ .Values.database.resources.requests.memory | default "512Mi" }} # 0.5 GiB Memory
           # ... env, volumeMounts ...
           env:
             - name: POSTGRES_DB

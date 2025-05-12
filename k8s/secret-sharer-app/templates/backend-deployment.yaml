@@ -46,6 +46,13 @@ spec:
             timeoutSeconds: {{ .Values.backend.probes.readiness.timeoutSeconds | default 5 }}
             failureThreshold: {{ .Values.backend.probes.readiness.failureThreshold | default 3 }}
             successThreshold: {{ .Values.backend.probes.readiness.successThreshold | default 1 }}
+          resources:
+            limits:
+              cpu: {{ .Values.backend.resources.limits.cpu | default "500m" }} # 0.5 CPU core
+              memory: {{ .Values.backend.resources.limits.memory | default "256Mi" }}
+            requests:
+              cpu: {{ .Values.backend.resources.requests.cpu | default "100m" }} # 0.1 CPU core
+              memory: {{ .Values.backend.resources.requests.memory | default "128Mi" }}
           env:
             # These will be populated from the Kubernetes secret created by the SecretProviderClass
             - name: MASTER_ENCRYPTION_KEY
