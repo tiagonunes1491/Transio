@@ -1,0 +1,48 @@
+# templates/ingress.yaml
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+  annotations:
+    # Specify AGIC as the Ingress Class
+    kubernetes.io/ingress.class: {{ .Values.ingress.className | default "azure/application-gateway" }}
+
+    # Example: If you enable TLS below and want App Gateway to handle SSL redirection
+    {{- if .Values.ingress.tls }}
+    # appgw.ingress.kubernetes.io/ssl-redirect: "true" # Uncomment if you have TLS configured and want redirect
+    {{- end }}
+
+    # Add other AGIC-specific annotations from .Values.ingress.annotations if needed
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+{{- if .Values.ingress.tls }}
+  tls:
+  {{- range .Values.ingress.tls }}
+    - hosts:
+      {{- range .hosts }}
+        - {{ . | quote }}
+      {{- end }}
+      secretName: {{ .secretName }} # K8s secret containing your TLS cert for the specified hosts
+  {{- end }}
+{{- end }}
+  rules:
+  {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+        {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "secret-sharer-app.fullname" $ }}-frontend # Targets the frontend service
+                port:
+                  number: {{ $.Values.frontend.service.port }} # Port of the frontend service
+        {{- end }}
+  {{- end }}
+{{- end }}
