@@ -32,6 +32,20 @@ spec:
             - name: postgres
               containerPort: 5432
               protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: postgres # Refers to the containerPort named 'postgres' (5432)
+            # Or, for a more thorough check, an exec probe (requires psql in the image):
+            # exec:
+            #   command:
+            #   - sh
+            #   - -c
+            #   - PGPASSWORD=$POSTGRES_PASSWORD psql -h 127.0.0.1 -U $POSTGRES_USER -d $POSTGRES_DB -c 'SELECT 1'
+            initialDelaySeconds: {{ .Values.database.probes.liveness.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.database.probes.liveness.periodSeconds | default 30 }}
+            timeoutSeconds: {{ .Values.database.probes.liveness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.database.probes.liveness.failureThreshold | default 3 }}
+            successThreshold: {{ .Values.database.probes.liveness.successThreshold | default 1 }}
           env:
             - name: POSTGRES_DB
               value: {{ .Values.database.auth.database | quote }}
@@ -67,7 +81,6 @@ spec:
             # These values MUST match the secrets stored in AKV for the backend
             - name: APP_DB_USER
               value: {{ .Values.backend.keyVault.secrets.dbUser | quote }} # Get desired app username from backend's expected AKV secret name
-
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data

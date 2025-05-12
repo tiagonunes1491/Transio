@@ -23,8 +23,15 @@ spec:
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy | default "IfNotPresent" }}
           ports:
-            - name: http
+            - name: http # Name of the port
               containerPort: {{ .Values.frontend.service.port }} # Nginx typically listens on port 80
               protocol: TCP
-          # We will add livenessProbe and readinessProbe later
-          # We will add resources (requests/limits) later 
+          livenessProbe:
+            httpGet:
+              path: / # Root path should return 200 OK for Nginx
+              port: http # Refers to the containerPort named 'http'
+            initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds | default 10 }}
+            periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds | default 15 }}
+            timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold | default 3 }}
+            successThreshold: {{ .Values.frontend.probes.liveness.successThreshold | default 1 }}

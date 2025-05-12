@@ -28,6 +28,15 @@ spec:
             - name: http
               containerPort: {{ .Values.backend.service.port }} # Assuming backend runs on port 8000 internally
               protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health # Or your specific health check endpoint e.g., /healthz
+              port: http # Refers to the containerPort named 'http' (e.g., 8000)
+            initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds | default 15 }}
+            periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds | default 20 }}
+            timeoutSeconds: {{ .Values.backend.probes.liveness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.backend.probes.liveness.failureThreshold | default 3 }}
+            successThreshold: {{ .Values.backend.probes.liveness.successThreshold | default 1 }}
           env:
             # These will be populated from the Kubernetes secret created by the SecretProviderClass
             - name: MASTER_ENCRYPTION_KEY

@@ -36,7 +36,14 @@ backend:
       dbUser: "app-db-user"                # AKV secret name for the application's DB username
       dbPassword: "app-db-password"        # AKV secret name for the application's DB password
       appMasterKey: "app-master-encryption-key" # AKV secret name for the application's master encryption key
-
+  probes:
+    liveness:
+      initialDelaySeconds: 15
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    readiness: {} # We'll add this in the next task
 # --- Database (PostgreSQL) Configuration ---
 database:
   replicaCount: 1
@@ -73,7 +80,15 @@ database:
       # for the initial 'postgres' user (used by db-init-spc).
       # !! PHASE 4 TODO !!: Ensure a secret with this exact name exists in AKV.
       initPassword: "postgres-password"
-
+  probes:
+    liveness:
+      initialDelaySeconds: 30 # DBs can take longer to start
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    readiness: {} # We'll add this in the next task
+    
 # --- Frontend Configuration ---
 frontend:
   replicaCount: 1
@@ -84,6 +99,14 @@ frontend:
     # !! PHASE 6 TODO !!: Use a specific, immutable tag
     tag: "0.1.0"
 
+  probes:
+    liveness:
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+    readiness: {} # We'll add this in the next task
   service:
     type: ClusterIP # Will be ClusterIP, exposed via Ingress later
     port: 80 # Port Nginx listens on and service exposes

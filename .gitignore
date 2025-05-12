@@ -17,3 +17,6 @@ __pycache__/
 .idea/
 *.DS_Store
 Thumbs.db
+k8s/secret-sharer-app/values.yaml
+k8s/secret-sharer-app/template.txt
+k8s/secret-sharer-app/debug.txt
