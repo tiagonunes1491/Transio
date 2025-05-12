@@ -1,15 +1,41 @@
 # values.yaml
 
-serviceAccount:
-  create: true  # Or true if you want a default service account created
-  name: "secret-sharer-backend-sa" # Name of the service account for the backend
-  annotations: {} # Annotations for the service account, e.g., for Azure Workload Identity
+# --- Backend Configuration ---
+backend:
+  replicaCount: 1
+  image:
+    # !! PHASE 6 TODO !!: Update with your actual ACR name if different
+    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend
+    pullPolicy: IfNotPresent
+    # !! PHASE 6 TODO !!: Use a specific, immutable tag for production readiness (e.g., git commit SHA)
+    tag: "0.1.0"
 
-replicaCount: 1 # Default replica count for components if not specified
+  service:
+    type: ClusterIP
+    port: 8000 # Port the backend service will listen on
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+  # Service Account for the Backend (defined in templates/serviceaccount.yaml)
+  # This SA is linked to the UAMI that has permissions for app-db-user, app-db-password, and app-master-encryption-key
+  serviceAccount:
+    create: true # Set to false if you are managing the SA outside this chart
+    # This name 'secret-sharer-backend-sa' is used by templates/serviceaccount.yaml
+    name: "secret-sharer-backend-sa"
+    annotations: {} # Default annotations from template will use backend.keyVault.userAssignedIdentityClientID
+
+  # Configuration for Azure Key Vault access by the Backend pod
+  keyVault:
+    # !! PHASE 4 TODO !!: Ensure this Key Vault name is correct for your environment.
+    name: "kv-secure-secret-sharer"
+    # !! PHASE 4 TODO !!: Ensure this Tenant ID is correct for your environment.
+    tenantId: "6e05f665-11c4-4221-9eea-3065ede81619" # Your Azure Tenant ID
+    # !! PHASE 4 TODO !!: Ensure this Client ID matches your 'id-secret-sharer-backend' UAMI after creation.
+    userAssignedIdentityClientID: "fa376030-252d-443f-a32d-294e3cda90e1" # Client ID for Backend UAMI
+    secrets:
+      # These are the names of the secrets *in Azure Key Vault* that the backend needs.
+      # !! PHASE 4 TODO !!: Ensure secrets with these exact names exist in AKV.
+      dbUser: "app-db-user"                # AKV secret name for the application's DB username
+      dbPassword: "app-db-password"        # AKV secret name for the application's DB password
+      appMasterKey: "app-master-encryption-key" # AKV secret name for the application's master encryption key
 
 # --- Database (PostgreSQL) Configuration ---
 database:
@@ -17,100 +43,71 @@ database:
   image:
     repository: postgres
     pullPolicy: IfNotPresent
-    # tag: "15-alpine" # Or specify your preferred version
-    tag: "15.7-alpine3.20" # Example of a more specific immutable tag
+    tag: "15.7-alpine3.20" # Using a specific immutable tag is good practice
 
-  # Database authentication details
-  # These will be sourced from Azure Key Vault via CSI driver in the future.
-  # The `auth.database` is the database name.
-  # User/password will be handled by secrets mounted by CSI driver.
+  # Database name (used by init script and referred to by backend)
   auth:
     database: "secret_sharer_db"
-    # username: "appuser" # Will be from AKV
-    # password: "yoursecurepassword" # Will be from AKV
-    # existingSecret: "" # To use an existing secret for credentials (not for CSI with SecretProviderClass directly)
+    # Note: Initial admin user ('postgres') and its password, and the application user/password
+    # are handled via SecretProviderClasses and the init script.
 
   persistence:
     enabled: true
     size: 1Gi
-    # storageClass: "default" # Specify if not using the default SC or if you need a specific one
-    # accessMode: ReadWriteOnce # Default for most statefulsets
+    # storageClass: "default" # Uncomment and set if you need a specific StorageClass
 
-  # service:
-  #   type: ClusterIP
-  #   port: 5432
+  # Service Account for the Database (defined in templates/database-serviceaccount.yaml)
+  # This SA is linked to the UAMI that has permissions for 'postgres-password' (for init)
+  # and 'app-db-password' (for the init script to create the app user).
+  serviceAccount:
+    create: true # Set to false if you are managing the SA outside this chart
+    # name: "override-db-sa-name" # Optional: uncomment to override the default generated name from helpers
+    annotations: {} # Default annotations from template will use database.serviceAccount.azureClientId
+    # !! PHASE 4 TODO !!: Fill in the Client ID of the 'id-secret-sharer-db-init' UAMI after creation.
+    azureClientId: "" # Placeholder for Database UAMI Client ID, e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
-  # Resources for the database pod
-  # resources:
-  #   limits:
-  #     cpu: 500m
-  #     memory: 512Mi
-  #   requests:
-  #     cpu: 250m
-  #     memory: 256Mi
-
-# values.yaml
-
-# --- Backend Configuration ---
-backend:
-  replicaCount: 1
-  image:
-    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend # Replace with your ACR and image name
-    pullPolicy: IfNotPresent
-    tag: "0.1.0" # Or your specific backend image tag
-
-  service:
-    type: ClusterIP
-    port: 8000 # Port the backend service will listen on, and also the containerPort
-
-  # Configuration for Azure Key Vault and CSI Driver
-  keyVault:
-    name: "kv-secure-secret-sharer" 
-    tenantId: "6e05f665-11c4-4221-9eea-3065ede81619"
-    userAssignedIdentityClientID: "fa376030-252d-443f-a32d-294e3cda90e1"
+  # Key Vault secrets needed ONLY for database initialization (by db-init-spc)
+  keyVault: # This section is for the database's SecretProviderClass
     secrets:
-      dbUser: "db-user" # Name of the secret in AKV for database username
-      dbPassword: "db-password" # Name of the secret in AKV for database password
-      appMasterKey: "app-master-encryption-key" # Name of the secret in AKV for app key
-  
-
-  # Placeholder for Workload Identity - we will configure this in a later step
-  # serviceAccount:
-  #   create: true
-  #   name: "backend-sa" # Name of the Kubernetes Service Account
-  #   annotations: {}
-      # Example annotation for workload identity (will be filled later):
-      # azure.workload.identity/client-id: "YOUR_USER_ASSIGNED_MANAGED_IDENTITY_CLIENT_ID"
-  # workloadIdentity:
-    # clientID: "" # Will be filled when we set up workload identity
-
-  # resources:
-  #   limits:
-  #     cpu: 500m
-  #     memory: 256Mi
-  #   requests:
-  #     cpu: 200m
-  #     memory: 128Mi
+      # This is the name of the secret *in Azure Key Vault* holding the desired password
+      # for the initial 'postgres' user (used by db-init-spc).
+      # !! PHASE 4 TODO !!: Ensure a secret with this exact name exists in AKV.
+      initPassword: "postgres-password"
 
 # --- Frontend Configuration ---
-
 frontend:
   replicaCount: 1
   image:
-    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend # Replace with your ACR and image name
+    # !! PHASE 6 TODO !!: Update with your actual ACR name if different
+    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend
     pullPolicy: IfNotPresent
-    tag: "0.1.0" # Or your specific frontend image tag
+    # !! PHASE 6 TODO !!: Use a specific, immutable tag
+    tag: "0.1.0"
 
   service:
     type: ClusterIP # Will be ClusterIP, exposed via Ingress later
     port: 80 # Port Nginx listens on and service exposes
 
-  # resources:
-  #   limits:
-  #     cpu: 200m
-  #     memory: 128Mi
-  #   requests:
-  #     cpu: 100m
-  #     memory: 64Mi
+# --- Ingress Configuration (MVP Scope: basic definition, to be enabled in Phase 2/6) ---
+ingress:
+  enabled: false # Set to true in Phase 2 when ready to configure Ingress
+  # className: "" # For Kubernetes v1.18+ with IngressClass resource, if needed
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx # Common annotation for Nginx Ingress Controller
+  hosts:
+    - host: "secretsharer.example.com" # !! PHASE 6 TODO !!: Replace with your actual desired hostname
+      paths:
+        - path: /
+          pathType: Prefix # Or ImplementationSpecific / Exact
+  tls: []
+  # Example TLS configuration (requires a K8s secret with TLS cert and key):
+  #  - secretName: secretsharer-tls
+  #    hosts:
+  #      - secretsharer.example.com
 
-# ... (ingress configuration will be added later)
+# --- Global settings / Overrides (from your original file) ---
+# If you use these globally, ensure your templates support them or define them per-component.
+# replicaCount: 1 # This was global in your file, now defined per-component which is more flexible.
+# imagePullSecrets: []
+# nameOverride: ""
+# fullnameOverride: ""

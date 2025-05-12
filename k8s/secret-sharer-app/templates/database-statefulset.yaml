@@ -19,6 +19,9 @@ spec:
         {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: database
     spec:
+      serviceAccountName: {{ include "secret-sharer-app.databaseServiceAccountName" . }}
+      automountServiceAccountToken: true # Ensure token is mounted for WI/CSI Driver
+      
       terminationGracePeriodSeconds: 10
       # We will add securityContext for the pod later
       containers:
@@ -32,6 +35,16 @@ spec:
           env:
             - name: POSTGRES_DB
               value: {{ .Values.database.auth.database | quote }}
+               # Set the user explicitly, typically 'postgres' for the standard image's init process
+            - name: POSTGRES_USER
+              value: "postgres" # Standard user for initial setup
+            # Fetch the password from the K8s secret created by the db-init-spc
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secret-sharer-app.fullname" . }}-db-init-credentials # K8s Secret synced by db-init-spc
+                  key: POSTGRES_PASSWORD # Key within that K8s Secret
+
             # IMPORTANT: Database user and password will come from Azure Key Vault via CSI Driver
             # We will create Kubernetes secrets from the CSI-mounted secrets,
             # and then reference those secrets here using valueFrom.secretKeyRef
@@ -50,10 +63,39 @@ spec:
             #     secretKeyRef:
             #       name: {{ include "secret-sharer-app.fullname" . }}-db-credentials
             #       key: password
+
+            # These values MUST match the secrets stored in AKV for the backend
+            - name: APP_DB_USER
+              value: {{ .Values.backend.keyVault.secrets.dbUser | quote }} # Get desired app username from backend's expected AKV secret name
+
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data
-          # We will add livenessProbe and readinessProbe later
+            
+            - name: db-secrets-store-inline
+              mountPath: "/mnt/db-secrets-store" # Different mount path from backend
+              readOnly: true
+
+             # Mount the init script from the ConfigMap to create the database user
+            - name: db-init-script-volume # Matches volume name below
+              mountPath: /docker-entrypoint-initdb.d # Standard path for postgres init scripts
+              readOnly: true 
+          
+      # Define the CSI Secrets Store Volume for the DB Init SPC ---
+      volumes:
+        - name: db-secrets-store-inline
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "secret-sharer-app.fullname" . }}-db-init-spc # Reference the DB SPC
+                # Define the volume sourcing from the ConfigMap ---
+        - name: db-init-script-volume
+          configMap:
+            name: {{ include "secret-sharer-app.fullname" . }}-db-init-script 
+            # Make the script executable
+            defaultMode: 0755 # rwxr-xr-x permissions
+
   volumeClaimTemplates:
     - metadata:
         name: db-data

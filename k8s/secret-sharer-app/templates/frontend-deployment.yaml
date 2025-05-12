@@ -18,8 +18,6 @@ spec:
         {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
-      # The frontend doesn't need a special service account for this MVP
-      # serviceAccountName: {{ include "secret-sharer-app.serviceAccountName" . }}
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"

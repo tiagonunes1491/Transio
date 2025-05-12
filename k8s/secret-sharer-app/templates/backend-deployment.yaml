@@ -18,7 +18,7 @@ spec:
         {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
     spec:
-      serviceAccountName: {{ include "secret-sharer-app.serviceAccountName" . }}
+      serviceAccountName: {{ .Values.backend.serviceAccount.name }}
       automountServiceAccountToken: true # Required for Workload Identity if SA is specified
       containers:
         - name: backend
