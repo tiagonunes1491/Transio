@@ -164,6 +164,9 @@ ingress:
   #    hosts:
   #      - secretsharer.example.com
 
+networkPolicies:
+  create: true # Set to false to disable creation of all network policies defined in the chart
+
 # --- Global settings / Overrides (from your original file) ---
 # If you use these globally, ensure your templates support them or define them per-component.
 # replicaCount: 1 # This was global in your file, now defined per-component which is more flexible.

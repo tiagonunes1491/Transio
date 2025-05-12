@@ -1,0 +1,121 @@
+# templates/networkpolicies.yaml
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-default-deny-all
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  # Apply this policy to all pods in the namespace
+  # by selecting no specific pods (empty podSelector).
+  podSelector: {} # An empty podSelector selects all pods in the namespace
+  policyTypes:
+    - Ingress # Apply to incoming traffic
+    - Egress  # Apply to outgoing traffic
+  # No ingress rules defined means all ingress traffic is denied by default.
+  # No egress rules defined means all egress traffic is denied by default.
+  # ingress: [] # Explicitly showing empty, usually omitted for default deny
+  # egress: []  # Explicitly showing empty, usually omitted for default deny
+{{- end }}
+---
+# Allow traffic from Frontend pods to Backend pods on the backend's service port
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-frontend-to-backend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  # This policy applies to Backend pods
+  podSelector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend # Selects the backend pods
+  policyTypes:
+    - Ingress # This policy is about allowing INCOMING traffic to the backend
+  ingress:
+    - from:
+        # Allow traffic FROM pods that have these labels (i.e., Frontend pods)
+        - podSelector:
+            matchLabels:
+              {{- include "secret-sharer-app.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: frontend # Selects the frontend pods
+      ports:
+        # Allow traffic TO this port on the Backend pods
+        - protocol: TCP
+          port: {{ .Values.backend.service.port }} # Port the backend listens on (e.g., 8000)
+{{- end }}
+---
+# Allow traffic from Backend pods to Database pods on the database's service port
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-backend-to-database
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  # This policy applies to Database pods
+  podSelector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: database # Selects the database pods
+  policyTypes:
+    - Ingress # This policy is about allowing INCOMING traffic to the database
+  ingress:
+    - from:
+        # Allow traffic FROM pods that have these labels (i.e., Backend pods)
+        - podSelector:
+            matchLabels:
+              {{- include "secret-sharer-app.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: backend # Selects the backend pods
+      ports:
+        # Allow traffic TO this port on the Database pods
+        - protocol: TCP
+          port: 5432 # Standard PostgreSQL port, ensure this matches your DB containerPort
+{{- end }}
+---
+# Allow Ingress traffic to Frontend pods (e.g., from an Ingress Controller)
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-ingress-to-frontend
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  # This policy applies to Frontend pods
+  podSelector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend # Selects the frontend pods
+  policyTypes:
+    - Ingress # This policy is about allowing INCOMING traffic to the frontend
+  ingress:
+    - from:
+        # This is a general approach. For AGIC, traffic originates from the Application Gateway.
+        # A more precise rule would use an ipBlock for the App Gateway's subnet.
+        # For MVP, allowing from common Ingress controller namespaces or all within the cluster (if no other from specified)
+        # after default deny is a starting point.
+        # Let's allow from any pod in the 'kube-system' namespace (where AGIC controller runs)
+        # AND from any pod within the same namespace (for potential same-namespace routing/forwarding)
+        # This may need to be adjusted based on the actual Ingress controller behavior and network setup.
+        # If your Ingress controller (like Nginx) runs in a different specific namespace, adjust accordingly.
+        - namespaceSelector:
+            matchLabels:
+              # This label is common on the kube-system namespace.
+              # You might need to verify/adjust for your specific AKS setup or Ingress controller namespace.
+              kubernetes.io/metadata.name: kube-system 
+        # If you have an Ingress controller in the same namespace as your app (not typical for AGIC addon):
+        # - podSelector: {} # Allows from any pod in the same namespace (if that's where your Ingress controller proxies from)
+      ports:
+        # Allow traffic TO this port on the Frontend pods
+        - protocol: TCP
+          port: {{ .Values.frontend.service.port }} # Port the frontend (Nginx) listens on (e.g., 80)
+{{- end }}
