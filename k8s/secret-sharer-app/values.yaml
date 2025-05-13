@@ -140,7 +140,7 @@ frontend:
       successThreshold: 1
   service:
     type: ClusterIP # Will be ClusterIP, exposed via Ingress later
-    port: 80 # Port Nginx listens on and service exposes
+    port: 8080 # Port Nginx listens on and service exposes
   resources:
     limits:
       cpu: "200m"
