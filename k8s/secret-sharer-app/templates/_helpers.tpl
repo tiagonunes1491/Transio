@@ -60,13 +60,3 @@ Create the name of the service account for the backend
     {{- default "default" .Values.serviceAccount.name -}}
 {{- end -}}
 {{- end -}}
-{{/*
-Create the name of the service account for the database
-*/}}
-{{- define "secret-sharer-app.databaseServiceAccountName" -}}
-{{- if .Values.database.serviceAccount.create -}}
-    {{- default (printf "%s-db-sa" (include "secret-sharer-app.fullname" .)) .Values.database.serviceAccount.name -}}
-{{- else -}}
-    {{- default "default" .Values.database.serviceAccount.name -}}
-{{- end -}}
-{{- end -}}

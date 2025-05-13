@@ -19,7 +19,7 @@ spec:
         {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: database
     spec:
-      serviceAccountName: {{ include "secret-sharer-app.databaseServiceAccountName" . }}
+      serviceAccountName: {{ .Values.database.serviceAccount.name}}
       automountServiceAccountToken: true # Ensure token is mounted for WI/CSI Driver
       
       terminationGracePeriodSeconds: 10

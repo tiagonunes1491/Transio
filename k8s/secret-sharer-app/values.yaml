@@ -85,7 +85,8 @@ database:
     # name: "override-db-sa-name" # Optional: uncomment to override the default generated name from helpers
     annotations: {} # Default annotations from template will use database.serviceAccount.azureClientId
     # !! PHASE 4 TODO !!: Fill in the Client ID of the 'id-secret-sharer-db-init' UAMI after creation.
-    azureClientId: "" # Placeholder for Database UAMI Client ID, e.g., "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    azureClientId: "ef9e4258-98dc-49a8-804b-dfe502309386" 
+    name: secret-sharer-db-init-sa # This is the name of the ServiceAccount for the database init script
 
   # Key Vault secrets needed ONLY for database initialization (by db-init-spc)
   keyVault: # This section is for the database's SecretProviderClass
