@@ -123,7 +123,7 @@ frontend:
     repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend
     pullPolicy: IfNotPresent
     # !! PHASE 6 TODO !!: Use a specific, immutable tag
-    tag: "0.1.0"
+    tag: "0.2.0"
 
   probes:
     liveness:
