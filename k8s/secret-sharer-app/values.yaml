@@ -12,7 +12,7 @@ backend:
 
   service:
     type: ClusterIP
-    port: 8000 # Port the backend service will listen on
+    port: 5000 # Port the backend service will listen on
 
   # Service Account for the Backend (defined in templates/serviceaccount.yaml)
   # This SA is linked to the UAMI that has permissions for app-db-user, app-db-password, and app-master-encryption-key

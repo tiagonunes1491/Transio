@@ -26,7 +26,7 @@ spec:
           imagePullPolicy: {{ .Values.backend.image.pullPolicy | default "IfNotPresent" }}
           ports:
             - name: http
-              containerPort: {{ .Values.backend.service.port }} # Assuming backend runs on port 8000 internally
+              containerPort: {{ .Values.backend.service.port }} # Assuming backend runs on port 5000 internally
               protocol: TCP
           livenessProbe:
             httpGet:
@@ -39,7 +39,7 @@ spec:
             successThreshold: {{ .Values.backend.probes.liveness.successThreshold | default 1 }}
           readinessProbe:
             httpGet:
-              path: / # Or your specific health check endpoint e.g., /healthz
+              path: /health # Or your specific health check endpoint e.g., /healthz
               port: http # Refers to the containerPort named 'http'
             initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds | default 5 }}
             periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds | default 10 }}
@@ -73,8 +73,7 @@ spec:
             - name: DATABASE_NAME
               value: {{ .Values.database.auth.database | quote }} # From database values
             - name: DATABASE_HOST
-              # This will be the ClusterIP service name of your database
-              value: {{ include "secret-sharer-app.fullname" . }}-db 
+              value: {{ include "secret-sharer-app.fullname" . }}-db-headless
             - name: DATABASE_PORT
               value: "5432" # Default PostgreSQL port
             # Your Python app will need to construct the DATABASE_URL from these individual components
