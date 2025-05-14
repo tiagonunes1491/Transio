@@ -68,38 +68,24 @@ spec:
           env:
             - name: POSTGRES_DB
               value: {{ .Values.database.auth.database | quote }}
-               # Set the user explicitly, typically 'postgres' for the standard image's init process
+            # The following env vars point to the secrets mounted from the Key Vault
+            # These will be used to create the database user and password
             - name: POSTGRES_USER
               value: "postgres" # Standard user for initial setup
-            # Fetch the password from the K8s secret created by the db-init-spc
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "secret-sharer-app.fullname" . }}-db-init-credentials # K8s Secret synced by db-init-spc
-                  key: POSTGRES_PASSWORD # Key within that K8s Secret
-
-            # IMPORTANT: Database user and password will come from Azure Key Vault via CSI Driver
-            # We will create Kubernetes secrets from the CSI-mounted secrets,
-            # and then reference those secrets here using valueFrom.secretKeyRef
-            # For now, this is a placeholder section for where those env vars would go.
-            # We'll fully implement this in a later step (Task 5.1)
+            - name: POSTGRES_PASSWORD_FILE          
+              value: /mnt/db-secrets-store/{{ .Values.database.keyVault.secrets.initPassword }} # postgres-password
+              
+            - name: APP_DB_USER_FILE
+              value: /mnt/db-secrets-store/{{ .Values.backend.keyVault.secrets.dbUser }} # app-db-user
+              
+            - name: APP_DB_PASSWORD_FILE
+              value: /mnt/db-secrets-store/{{ .Values.backend.keyVault.secrets.dbPassword }}      # app-db-password
+              
+            # The following env var is used to set the PGDATA path
+            # This is where Postgres stores its data files
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
-            # Example of how user/password MIGHT be set IF NOT using CSI driver (NOT RECOMMENDED FOR PROD)
-            # - name: POSTGRES_USER
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: {{ include "secret-sharer-app.fullname" . }}-db-credentials
-            #       key: username
-            # - name: POSTGRES_PASSWORD
-            #   valueFrom:
-            #     secretKeyRef:
-            #       name: {{ include "secret-sharer-app.fullname" . }}-db-credentials
-            #       key: password
-
-            # These values MUST match the secrets stored in AKV for the backend
-            - name: APP_DB_USER
-              value: {{ .Values.backend.keyVault.secrets.dbUser | quote }} # Get desired app username from backend's expected AKV secret name
+            
           volumeMounts:
             - name: db-data
               mountPath: /var/lib/postgresql/data
