@@ -29,32 +29,45 @@ class Config:
     MAX_SECRET_LENGTH_BYTES = MAX_SECRET_LENGTH_KB * 1024
 
     # --- Database Configuration ---
-    DB_USER = os.getenv('DATABASE_USER')
-    DB_PASSWORD = os.getenv('DATABASE_PASSWORD')
-    DB_HOST = os.getenv('DATABASE_HOST')
-    DB_PORT = os.getenv('DATABASE_PORT')
-    DB_NAME = os.getenv('DATABASE_NAME')
+    # 1) Prefer a fully-formed DATABASE_URL if provided (e.g. by docker-compose).
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 
-    if DB_USER and DB_PASSWORD and DB_HOST and DB_PORT and DB_NAME:
-        SQLALCHEMY_DATABASE_URI = \
-            f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-        logging.info(f"Database URI constructed: postgresql://{DB_USER}:<PASSWORD_HIDDEN>@{DB_HOST}:{DB_PORT}/{DB_NAME}")
-    else:
-        missing_vars = [var for var_name, var in [
-            ("DATABASE_USER", DB_USER),
-            ("DATABASE_PASSWORD", DB_PASSWORD), # Password won't be logged directly
-            ("DATABASE_HOST", DB_HOST),
-            ("DATABASE_PORT", DB_PORT),
-            ("DATABASE_NAME", DB_NAME)
-        ] if not var]
-        logging.error(f"CRITICAL: Database URI could not be constructed. Missing environment variables: {', '.join(var_name for var_name, _ in missing_vars)}. Database functionality will be unavailable.")
-        # Set to None or raise an error to prevent app from starting with a broken DB config
-        SQLALCHEMY_DATABASE_URI = None 
-        # If you raise an error here, the pod will crash, which might be desirable
-        # raise ValueError(f"Missing database configuration: {', '.join(var_name for var_name, _ in missing_vars)}")
+    if not SQLALCHEMY_DATABASE_URI:
+        # 2) Otherwise build it from individual parts.
+        DB_USER = os.getenv("DATABASE_USER")
+        DB_PASSWORD = os.getenv("DATABASE_PASSWORD")
+        DB_HOST = os.getenv("DATABASE_HOST")
+        DB_PORT = os.getenv("DATABASE_PORT")
+        DB_NAME = os.getenv("DATABASE_NAME")
 
+        if all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+            SQLALCHEMY_DATABASE_URI = (
+                f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+            )
+            logging.info(
+                "Database URI constructed: "
+                f"postgresql://{DB_USER}:<PASSWORD_HIDDEN>@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+            )
+        else:
+            # 3) Log which pieces are missing (no unpacking bug).
+            missing = [
+                name
+                for name, value in {
+                    "DATABASE_USER": DB_USER,
+                    "DATABASE_PASSWORD": DB_PASSWORD,
+                    "DATABASE_HOST": DB_HOST,
+                    "DATABASE_PORT": DB_PORT,
+                    "DATABASE_NAME": DB_NAME,
+                }.items()
+                if not value
+            ]
+            logging.error(
+                "CRITICAL: Database URI could not be constructed. "
+                f"Missing environment variables: {', '.join(missing)}."
+            )
+            SQLALCHEMY_DATABASE_URI = None  # will make the app exit later
 
-    SQLALCHEMY_TRACK_MODIFICATIONS = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False').lower() in ('true', '1', 't')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
     #Defines time that secret expires in minutes
