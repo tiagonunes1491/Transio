@@ -41,7 +41,7 @@ spec:
               service:
                 name: {{ include "secret-sharer-app.fullname" $ }}-frontend
                 port:
-                  number: {{ $.Values.frontend.service.port }}
+                  name: http
           # --- Backend API Path ---
           # Accesses .paths.backend directly from the current host object
           - path: {{ .paths.backend.path | default "/api" }}
