@@ -28,17 +28,34 @@ class Config:
     MAX_SECRET_LENGTH_KB = int(os.getenv("MAX_SECRET_LENGTH_KB", "100"))
     MAX_SECRET_LENGTH_BYTES = MAX_SECRET_LENGTH_KB * 1024
 
-    # Database Configuration
-    # Example: postgresql://user:password@host:port/dbname
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if not DATABASE_URL:
-        print("WARNING: DATABASE_URL not set. Database functionality will be unavailable.")
-        # For local development without Docker, you might want a default SQLite fallback,
-        # but for Docker Compose, DATABASE_URL should always be provided.
-        # Example fallback: DATABASE_URL = "sqlite:///./local_dev.db"
+    # --- Database Configuration ---
+    DB_USER = os.getenv('DATABASE_USER')
+    DB_PASSWORD = os.getenv('DATABASE_PASSWORD')
+    DB_HOST = os.getenv('DATABASE_HOST')
+    DB_PORT = os.getenv('DATABASE_PORT')
+    DB_NAME = os.getenv('DATABASE_NAME')
 
-    SQLALCHEMY_DATABASE_URI = DATABASE_URL
-    SQLALCHEMY_TRACK_MODIFICATIONS = False # Suppresses a warning
+    if DB_USER and DB_PASSWORD and DB_HOST and DB_PORT and DB_NAME:
+        SQLALCHEMY_DATABASE_URI = \
+            f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        logging.info(f"Database URI constructed: postgresql://{DB_USER}:<PASSWORD_HIDDEN>@{DB_HOST}:{DB_PORT}/{DB_NAME}")
+    else:
+        missing_vars = [var for var_name, var in [
+            ("DATABASE_USER", DB_USER),
+            ("DATABASE_PASSWORD", DB_PASSWORD), # Password won't be logged directly
+            ("DATABASE_HOST", DB_HOST),
+            ("DATABASE_PORT", DB_PORT),
+            ("DATABASE_NAME", DB_NAME)
+        ] if not var]
+        logging.error(f"CRITICAL: Database URI could not be constructed. Missing environment variables: {', '.join(var_name for var_name, _ in missing_vars)}. Database functionality will be unavailable.")
+        # Set to None or raise an error to prevent app from starting with a broken DB config
+        SQLALCHEMY_DATABASE_URI = None 
+        # If you raise an error here, the pod will crash, which might be desirable
+        # raise ValueError(f"Missing database configuration: {', '.join(var_name for var_name, _ in missing_vars)}")
+
+
+    SQLALCHEMY_TRACK_MODIFICATIONS = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False').lower() in ('true', '1', 't')
+
 
     #Defines time that secret expires in minutes
     # Default to 60 minutes if not set in .env
