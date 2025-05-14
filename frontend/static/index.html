@@ -25,12 +25,20 @@
                     <textarea id="secretInput" placeholder="Type your secret here..."></textarea>
                     <p class="info-text">Message will be encrypted and accessible only once via a secure link</p>
                 </div>
-                
-                <button id="shareSecretButton" class="btn-primary">
+                  <button id="shareSecretButton" class="btn-primary">
                     <i class="fas fa-share-alt"></i> Share Secret
                 </button>
                 
                 <div id="resultArea"></div>
+                
+                <!-- History section for previously generated links -->
+                <div id="historySection" class="history-section">
+                    <h3 class="history-title"><i class="fas fa-history"></i> Previously Generated Links</h3>
+                    <div id="linksHistory" class="links-history">
+                        <!-- Links history will be added here dynamically -->
+                        <p class="empty-history-message">No links generated yet</p>
+                    </div>
+                </div>
             </div>
             
             <div class="card-footer">
