@@ -1,21 +1,19 @@
-# templates/ingress.yaml
-{{if .Values.ingress.enabled -}}
+{{- if .Values.ingress.enabled -}}
+# This Ingress resource exposes the frontend service and backend API.
+# It is configured for Azure Application Gateway Ingress Controller (AGIC).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ include "secret-sharer-app.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "secret-sharer-app.labels" . | nindent 4 }}
   annotations:
-    # Specify AGIC as the Ingress Class
     kubernetes.io/ingress.class: {{ .Values.ingress.className | default "azure/application-gateway" }}
-
-    # Example: If you enable TLS below and want App Gateway to handle SSL redirection
     {{- if .Values.ingress.tls }}
-    # appgw.ingress.kubernetes.io/ssl-redirect: "true" # Uncomment if you have TLS configured and want redirect
+    # Example AGIC annotation if TLS is used and SSL redirect is desired.
+    # appgw.ingress.kubernetes.io/ssl-redirect: "true"
     {{- end }}
-
-    # Add other AGIC-specific annotations from .Values.ingress.annotations if needed
     {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -27,29 +25,31 @@ spec:
       {{- range .hosts }}
         - {{ . | quote }}
       {{- end }}
-      secretName: {{ .secretName }} # K8s secret containing your TLS cert for the specified hosts
+      secretName: {{ .secretName }}
   {{- end }}
 {{- end }}
   rules:
-  {{- range .Values.ingress.hosts }}
+  {{- range .Values.ingress.hosts }} # Outer loop: . is a host object from values.yaml
     - host: {{ .host | quote }}
       http:
         paths:
-        {{- range .paths }}
-          - path: {{ .path }}
-             pathType: {{ .paths.frontend.pathType | default "Prefix" }}
-                backend:
-                  service:
-                    name: {{ include "secret-sharer-app.fullname" $ }}-frontend
-                    port:
-                      number: {{ $.Values.frontend.service.port }}
-          - path: {{ .paths.backend.path | default "/api" }} # Path prefix for backend API calls
-                pathType: {{ .paths.backend.pathType | default "Prefix" }}
-                backend:
-                  service:
-                    name: {{ include "secret-sharer-app.fullname" $ }}-backend
-                    port:
-                      number: {{ $.Values.backend.service.port }} # Port your backend service listens on
-        {{- end }}
-  {{- end }}
+          # --- Frontend Path ---
+          # Accesses .paths.frontend directly from the current host object
+          - path: {{ .paths.frontend.path | default "/" }}
+            pathType: {{ .paths.frontend.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "secret-sharer-app.fullname" $ }}-frontend
+                port:
+                  number: {{ $.Values.frontend.service.port }}
+          # --- Backend API Path ---
+          # Accesses .paths.backend directly from the current host object
+          - path: {{ .paths.backend.path | default "/api" }}
+            pathType: {{ .paths.backend.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "secret-sharer-app.fullname" $ }}-backend
+                port:
+                  number: {{ $.Values.backend.service.port }}
+  {{- end }} # End of outer loop
 {{- end }}
