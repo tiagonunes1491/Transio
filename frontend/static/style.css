@@ -1,102 +1,336 @@
-body {
-    font-family: Arial, sans-serif;
-    background-color: #f4f4f4;
-    color: #333;
+:root {
+    --primary-color: #4361ee;
+    --primary-hover: #3a56d4;
+    --success-color: #38b000;
+    --error-color: #e63946;
+    --text-dark: #2b2d42;
+    --text-light: #586069;
+    --background-color: #f8f9fa;
+    --card-bg: #ffffff;
+    --border-color: #e1e4e8;
+    --shadow-color: rgba(0, 0, 0, 0.08);
+}
+
+* {
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background-color: var(--background-color);
+    background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    color: var(--text-dark);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align to top for longer content */
-    min-height: 100vh;
+    align-items: center;
 }
 
-.container {
-    background-color: #fff;
-    padding: 25px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+.app-container {
     width: 100%;
-    max-width: 600px;
-    text-align: center;
+    max-width: 680px;
+    padding: 20px;
 }
 
-h1 {
-    color: #0056b3; /* A nice blue */
+.card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px var(--shadow-color);
+    overflow: hidden;
+}
+
+.card-header {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 30px;
+    text-align: center;
+    position: relative;
+}
+
+.logo {
     margin-bottom: 15px;
 }
 
-p {
-    font-size: 0.95em;
-    color: #555;
-    margin-bottom: 20px;
-    line-height: 1.6;
+.logo i {
+    font-size: 48px;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.card-header h1 {
+    font-size: 26px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: white;
+}
+
+.subtitle {
+    font-size: 15px;
+    opacity: 0.85;
+}
+
+.card-body {
+    padding: 30px;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-dark);
+}
+
+.info-text {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-top: 8px;
 }
 
 textarea#secretInput {
-    width: calc(100% - 22px); /* Full width minus padding and border */
-    min-height: 100px;
-    padding: 10px;
-    margin-bottom: 20px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 1em;
-    resize: vertical; /* Allow vertical resize */
+    width: 100%;
+    min-height: 120px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 15px;
+    transition: border 0.3s, box-shadow 0.3s;
+    resize: vertical;
 }
 
-button#shareSecretButton {
-    background-color: #28a745; /* Green */
+textarea#secretInput:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
     color: white;
-    padding: 12px 20px;
     border: none;
-    border-radius: 4px;
+    border-radius: 8px;
+    padding: 14px 24px;
+    font-size: 16px;
+    font-weight: 500;
     cursor: pointer;
-    font-size: 1em;
-    transition: background-color 0.3s ease;
+    transition: background-color 0.3s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-button#shareSecretButton:hover {
-    background-color: #218838; /* Darker green */
+.btn-primary i {
+    margin-right: 8px;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 #resultArea {
     margin-top: 25px;
-    padding: 15px;
-    background-color: #e9ecef;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    word-wrap: break-word; /* Ensure long links wrap */
-    min-height: 50px; /* So it's visible even when empty */
-    text-align: left; /* For link display */
+    border-radius: 8px;
+    min-height: 20px;
+    word-wrap: break-word;
+    transition: all 0.3s ease;
+}
+
+/* Success message container */
+#resultArea p {
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+/* Success result styling */
+.success-result {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.success-icon {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: rgba(56, 176, 0, 0.1);
+    margin-bottom: 16px;
+}
+
+.success-icon i {
+    font-size: 28px;
+    color: var(--success-color);
+}
+
+.success-message {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 20px;
+}
+
+/* Link container */
+#linkContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 15px auto;
+    max-width: 85%;
+}
+
+.link-box {
+    display: flex;
+    align-items: center;
+    background-color: rgba(67, 97, 238, 0.08);
+    border: 1px solid rgba(67, 97, 238, 0.2);
+    border-radius: 20px;
+    padding: 10px 18px;
+    margin-right: 8px;
+    flex-grow: 1;
 }
 
 #resultArea a {
-    color: #007bff;
+    color: var(--primary-color);
     text-decoration: none;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#resultArea a i {
+    font-size: 14px;
 }
 
 #resultArea a:hover {
-    text-decoration: underline;
+    opacity: 0.85;
+}
+
+/* Copy button styles */
+.copy-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(67, 97, 238, 0.25);
+}
+
+.copy-btn:hover {
+    background-color: var(--primary-hover);
+    transform: scale(1.05);
+    box-shadow: 0 3px 10px rgba(67, 97, 238, 0.35);
+}
+
+.copy-btn.copied {
+    background-color: var(--success-color);
+}
+
+/* Hide the hidden link field */
+#hiddenLink {
+    position: absolute;
+    left: -9999px;
+}
+
+.warning-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.warning-message i {
+    color: #f59f00;
+    margin-right: 8px;
+    font-size: 16px;
+}
+
+#linkContainer button:hover {
+    background-color: #f0f3f9;
+    border-color: var(--primary-color);
 }
 
 .error-message {
-    color: #dc3545; /* Red for errors */
-    font-weight: bold;
+    color: var(--error-color);
+    background-color: rgba(230, 57, 70, 0.1);
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-weight: 500;
+    border-left: 3px solid var(--error-color);
+}
+
+.card-footer {
+    border-top: 1px solid var(--border-color);
+    padding: 20px 30px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-light);
+    background-color: rgba(0, 0, 0, 0.02);
 }
 
 /* Spinner styles */
 .spinner {
-  width: 24px;
-  height: 24px;
-  margin-left: 10px;
-  border: 3px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top: 3px solid #3498db;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-  vertical-align: middle;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 2px solid white;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 550px) {
+    .card-header {
+        padding: 25px 20px;
+    }
+    
+    .card-body, .card-footer {
+        padding: 20px;
+    }
+    
+    .logo i {
+        font-size: 36px;
+    }
+    
+    .card-header h1 {
+        font-size: 22px;
+    }
+    
+    .btn-primary {
+        width: 100%;
+    }
 }

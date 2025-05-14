@@ -28,20 +28,97 @@ with app.app_context(): # <-- CREATE TABLES
 SECRET_DISPLAY_HTML = """
 <!DOCTYPE html>
 <html>
-<head><title>Your Secret</title>
-<style>
-    body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-    .container { background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    h1 { color: #0056b3; }
-    .secret-box { background-color: #e9ecef; border: 1px solid #ced4da; padding: 15px; margin-top: 15px; word-wrap: break-word; white-space: pre-wrap; }
-    p { margin-top: 15px; }
-</style>
+<head>
+    <title>Your Secret</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --success-color: #38b000;
+            --error-color: #e63946;
+            --text-dark: #2b2d42;
+            --text-light: #586069;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 680px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 25px 30px;
+        }
+        
+        h1 {
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .card-body {
+            padding: 30px;
+        }
+        
+        .secret-box { 
+            background-color: #f8f9fa; 
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 20px; 
+            margin: 15px 0;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .info-message {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            color: var(--text-light);
+            font-size: 14px;
+        }
+        
+        .info-message i {
+            color: var(--error-color);
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Your One-Time Secret:</h1>
-        <div class="secret-box"><pre>{{secret}}</pre></div>
-        <p>This secret has now been deleted and cannot be accessed again.</p>
+    <div class="card">
+        <div class="card-header">
+            <h1>Your One-Time Secret</h1>
+        </div>
+        <div class="card-body">
+            <div class="secret-box">{{secret}}</div>
+            <div class="info-message">
+                <i class="fas fa-info-circle"></i>
+                <span>This secret has now been deleted and cannot be accessed again.</span>
+            </div>
+        </div>
     </div>
 </body></html>
 """
@@ -49,18 +126,83 @@ SECRET_DISPLAY_HTML = """
 NOT_FOUND_HTML = """
 <!DOCTYPE html>
 <html>
-<head><title>Secret Not Found</title>
-<style>
-    body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-    .container { background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    h1 { color: #d9534f; }
-    p { margin-top: 15px; }
-</style>
+<head>
+    <title>Secret Not Found</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --error-color: #e63946;
+            --text-dark: #2b2d42;
+            --text-light: #586069;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background-image: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 680px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            background-color: var(--error-color);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 26px;
+            font-weight: 600;
+        }
+        
+        .card-body {
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .error-icon {
+            font-size: 48px;
+            color: var(--error-color);
+            margin-bottom: 20px;
+        }
+        
+        p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: var(--text-dark);
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Secret Not Found</h1>
-        <p>The secret link is invalid, has expired, or has already been viewed. It cannot be retrieved.</p>
+    <div class="card">
+        <div class="card-header">
+            <h1>Secret Not Found</h1>
+        </div>
+        <div class="card-body">
+            <div class="error-icon">
+                <i class="fas fa-link-slash"></i>
+            </div>
+            <p>The secret link is invalid, has expired, or has already been viewed.</p>
+            <p style="margin-top: 15px; color: var(--text-light);">For security reasons, secrets can only be accessed once.</p>
+        </div>
     </div>
 </body></html>
 """
