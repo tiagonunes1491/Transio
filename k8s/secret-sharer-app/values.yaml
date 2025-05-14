@@ -151,25 +151,15 @@ frontend:
 ingress:
   enabled: true # Set to true in Phase 2 when ready to configure Ingress
   className: "azure/application-gateway" # For Kubernetes v1.18+ with IngressClass resource, if needed
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx # Common annotation for Nginx Ingress Controller
   hosts:
-    - host: "secretsharer.example.com" # !! PHASE 6 TODO !!: Replace with your actual desired hostname
+    - host: "secretsharer.example.com" # !
       paths:
-        - path: /
-          pathType: Prefix # Or ImplementationSpecific / Exact
-  tls: []
-  # Example TLS configuration (requires a K8s secret with TLS cert and key):
-  #  - secretName: secretsharer-tls
-  #    hosts:
-  #      - secretsharer.example.com
+        frontend: # Configures the first path rule in ingress.yaml
+          path: "/"
+          pathType: Prefix
+        backend:  # Configures the second path rule in ingress.yaml
+          path: "/api" # External path for your API
+          pathType: Prefix
 
 networkPolicies:
   create: true # Set to false to disable creation of all network policies defined in the chart
-
-# --- Global settings / Overrides (from your original file) ---
-# If you use these globally, ensure your templates support them or define them per-component.
-# replicaCount: 1 # This was global in your file, now defined per-component which is more flexible.
-# imagePullSecrets: []
-# nameOverride: ""
-# fullnameOverride: ""

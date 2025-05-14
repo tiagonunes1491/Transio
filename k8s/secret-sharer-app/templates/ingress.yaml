@@ -37,12 +37,19 @@ spec:
         paths:
         {{- range .paths }}
           - path: {{ .path }}
-            pathType: {{ .pathType | default "Prefix" }}
-            backend:
-              service:
-                name: {{ include "secret-sharer-app.fullname" $ }}-frontend # Targets the frontend service
-                port:
-                  number: {{ $.Values.frontend.service.port }} # Port of the frontend service
+             pathType: {{ .paths.frontend.pathType | default "Prefix" }}
+                backend:
+                  service:
+                    name: {{ include "secret-sharer-app.fullname" $ }}-frontend
+                    port:
+                      number: {{ $.Values.frontend.service.port }}
+          - path: {{ .paths.backend.path | default "/api" }} # Path prefix for backend API calls
+                pathType: {{ .paths.backend.pathType | default "Prefix" }}
+                backend:
+                  service:
+                    name: {{ include "secret-sharer-app.fullname" $ }}-backend
+                    port:
+                      number: {{ $.Values.backend.service.port }} # Port your backend service listens on
         {{- end }}
   {{- end }}
 {{- end }}
