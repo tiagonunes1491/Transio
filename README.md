@@ -12,7 +12,7 @@ This project focuses on implementing a secure, multi-container version of this a
 
 ## Architecture
 
-[Architecture Diagram](docs/architecture-diagram.png)
+![Architecture Diagram](docs/architecture-diagram.png)
 
 The application consists of the following security-hardened tiers:
 
@@ -75,12 +75,6 @@ This project significantly deepened my expertise in:
 ## Roadmap
 
 Planned enhancements: CI/CD automation, IaC (Bicep/Terraform), cert-manager, Sentinel, kube-bench, Azure Policy. Full list in [DEPLOYMENT.md](DEPLOYMENT.md#8-future-enhancements).
-
-## Keywords
-
-Azure, Kubernetes, AKS, Cloud Security, Container Security, DevSecOps, RBAC, Network Policies, Key Vault, 
-Application Gateway, Workload Identity, CSI Driver, Helm, Docker, PostgreSQL, Python, Flask, Trivy, Zero Trust,
-Defense-in-Depth, Encryption, Secrets Management, Infrastructure as Code, Vulnerability Management
 
 ## Technical Details
 
