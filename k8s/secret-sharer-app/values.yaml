@@ -8,7 +8,7 @@ backend:
     repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend
     pullPolicy: IfNotPresent
     # !! PHASE 6 TODO !!: Use a specific, immutable tag for production readiness (e.g., git commit SHA)
-    tag: "0.2.0"
+    tag: "0.3.0"
 
   service:
     type: ClusterIP
@@ -122,7 +122,7 @@ frontend:
     repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend
     pullPolicy: IfNotPresent
     # !! PHASE 6 TODO !!: Use a specific, immutable tag
-    tag: "0.2.0"
+    tag: "0.3.0"
 
   probes:
     liveness:

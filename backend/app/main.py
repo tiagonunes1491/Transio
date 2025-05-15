@@ -1,11 +1,11 @@
 # backend/app/main.py
-from flask import Flask, request, jsonify, render_template_string, current_app
+from flask import Flask, request, jsonify, current_app
 from flask_cors import CORS
 
 # Relative imports for modules within the same package ('app')
 from . import db # ADD THIS LINE - db is now from app/__init__.py
 from .encryption import encrypt_secret, decrypt_secret
-from .storage import store_encrypted_secret, retrieve_and_delete_secret
+from .storage import store_encrypted_secret, retrieve_and_delete_secret, check_secret_exists
 from . import models # Import models to register them with SQLAlchemy
 
 # Relative import for config from the parent directory ('backend')
@@ -22,67 +22,6 @@ db.init_app(app) # Initialize the imported db instance
 with app.app_context(): # <-- CREATE TABLES
     db.create_all() # Use the imported db instance
     print("Database tables created or already exist.")
-
-# Basic HTML templates for displaying information directly via API calls
-# In a full application, a dedicated frontend would handle presentation.
-SECRET_DISPLAY_HTML = """
-<!DOCTYPE html>
-<html>
-<head><title>Your Secret</title>
-<style>
-    body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-    .container { background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    h1 { color: #0056b3; }
-    .secret-box { background-color: #e9ecef; border: 1px solid #ced4da; padding: 15px; margin-top: 15px; word-wrap: break-word; white-space: pre-wrap; }
-    p { margin-top: 15px; }
-</style>
-</head>
-<body>
-    <div class="container">
-        <h1>Your One-Time Secret:</h1>
-        <div class="secret-box"><pre>{{secret}}</pre></div>
-        <p>This secret has now been deleted and cannot be accessed again.</p>
-    </div>
-</body></html>
-"""
-
-NOT_FOUND_HTML = """
-<!DOCTYPE html>
-<html>
-<head><title>Secret Not Found</title>
-<style>
-    body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-    .container { background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    h1 { color: #d9534f; }
-    p { margin-top: 15px; }
-</style>
-</head>
-<body>
-    <div class="container">
-        <h1>Secret Not Found</h1>
-        <p>The secret link is invalid, has expired, or has already been viewed. It cannot be retrieved.</p>
-    </div>
-</body></html>
-"""
-
-ERROR_PAGE_HTML = """
-<!DOCTYPE html>
-<html>
-<head><title>Error</title>
-<style>
-    body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
-    .container { background-color: #fff; border: 1px solid #ddd; padding: 20px; margin-top: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    h1 { color: #d9534f; }
-    p { margin-top: 15px; }
-</style>
-</head>
-<body>
-    <div class="container">
-        <h1>An Error Occurred</h1>
-        <p>{{error_message}}</p>
-    </div>
-</body></html>
-"""
 
 @app.route("/share", methods=["POST"])
 def share_secret_api():
@@ -124,34 +63,40 @@ def share_secret_api():
         # Return a generic error message to the client.
         return jsonify({"error": "Failed to store secret due to an internal server error."}), 500
 
-@app.route("/secret/<link_id>", methods=["GET"])
+@app.route("/secret/<link_id>", methods=["GET", "HEAD"])
 def retrieve_secret_api(link_id):
     """API endpoint to retrieve (and delete) a secret."""
     if not link_id: # Should be caught by routing rules, but defensive check.
         current_app.logger.warning("Attempt to retrieve secret with empty link_id.")
-        return render_template_string(NOT_FOUND_HTML), 404
+        return jsonify({"error": "Secret ID is required"}), 404    # For HEAD requests, we only check if the secret exists without retrieving/deleting it
+    if request.method == "HEAD":
+        exists = check_secret_exists(link_id)
+        if exists:
+            return "", 200
+        else:
+            return "", 404
 
     encrypted_data = retrieve_and_delete_secret(link_id)
 
     if encrypted_data:
         decrypted_secret = decrypt_secret(encrypted_data)
         if decrypted_secret is not None:
-            # Secret successfully decrypted. Display it once.
+            # Secret successfully decrypted. Return it as JSON once.
             # Data is already deleted from the store by retrieve_and_delete_secret.
-            current_app.logger.info(f"Secret {link_id} retrieved and displayed.")
-            return render_template_string(SECRET_DISPLAY_HTML, secret=decrypted_secret), 200
+            current_app.logger.info(f"Secret {link_id} retrieved and returned as JSON.")
+            return jsonify({"secret": decrypted_secret}), 200
         else:
             # This case means decryption failed (e.g., key mismatch, corrupted data, or InvalidToken).
             # This should be a rare and serious issue if the key hasn't changed and data was intact.
             # storage.py or encryption.py would have logged details.
             current_app.logger.error(f"Failed to decrypt secret for link_id: {link_id}. Data may be corrupt, key mismatch, or token was invalid.")
             # For security, don't reveal too much.
-            return render_template_string(ERROR_PAGE_HTML, error_message="Could not decrypt the secret. It may be corrupted or the link is invalid."), 500
+            return jsonify({"error": "Could not decrypt the secret. It may be corrupted or the link is invalid."}), 500
     else:
         # Secret not found (already viewed, expired, or invalid link_id).
         # storage.py would have logged details if it was an attempted retrieval of a non-existent ID.
         current_app.logger.info(f"Secret {link_id} not found for retrieval (already viewed, expired, or invalid).")
-        return render_template_string(NOT_FOUND_HTML), 404
+        return jsonify({"error": "Secret not found. It may have been already viewed, expired, or the link is invalid."}), 404
 
 @app.route("/health", methods=["GET"])
 def health_check():

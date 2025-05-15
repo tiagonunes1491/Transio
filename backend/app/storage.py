@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from config import Config
 
 # Import the db session and your Secret model
-from .main import db  # Assuming db is initialized in main.py
+from . import db  # Import from the package, not from main
 from .models import Secret
 
 # Initialize logger for this module, as per your existing style
@@ -114,3 +114,31 @@ def cleanup_expired_secrets() -> int:
         db.session.rollback()
         logger.error(f"Database error during cleanup_expired_secrets: {e}", exc_info=True)
         return 0 # Return 0 on error, as per original return type expectation
+
+
+def check_secret_exists(link_id: str) -> bool:
+    """
+    Checks if a secret with the provided link_id exists in the database.
+    Returns True if found, False otherwise.
+    This method does not delete the secret, it's only for checking existence.
+    """
+    if not link_id:
+        logger.warning("Attempt to check existence of a secret with empty link_id")
+        return False
+    
+    try:
+        # Check if there's an unexpired secret with this link_id
+        current_time = datetime.now(timezone.utc)
+        expiry_time = current_time - timedelta(minutes=_SECRET_EXPIRY_MINUTES)
+        
+        # Query for unexpired secret with matching link_id
+        secret = Secret.query.filter(
+            Secret.link_id == link_id,
+            Secret.created_at > expiry_time
+        ).first()
+        
+        return secret is not None
+    
+    except Exception as e:
+        logger.error(f"Error checking for existence of secret with link_id {link_id}: {e}", exc_info=True)
+        return False

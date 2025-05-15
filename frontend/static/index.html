@@ -7,15 +7,42 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Share a Secret Securely</h1>
-        <p>Enter your secret below. It will be encrypted, and you'll receive a one-time access link.</p>
-
-        <textarea id="secretInput" placeholder="Type your secret here..."></textarea>
-        <button id="shareSecretButton">Share Secret</button>
-
-        <div id="resultArea">
+    <div class="app-container">
+        <div class="card">
+            <div class="card-header">
+                <div class="logo">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h1>Secure Secret Sharer</h1>
+                <p class="subtitle">Share sensitive information with end-to-end encryption</p>
             </div>
+            
+            <div class="card-body">
+                <div class="form-group">
+                    <label for="secretInput">Your Secret Message</label>
+                    <textarea id="secretInput" placeholder="Type your secret here..."></textarea>
+                    <p class="info-text">Message will be encrypted and accessible only once via a secure link</p>
+                </div>
+                  <button id="shareSecretButton" class="btn-primary">
+                    <i class="fas fa-share-alt"></i> Share Secret
+                </button>
+                
+                <div id="resultArea"></div>
+                
+                <!-- History section for previously generated links -->
+                <div id="historySection" class="history-section">
+                    <h3 class="history-title"><i class="fas fa-history"></i> Previously Generated Links</h3>
+                    <div id="linksHistory" class="links-history">
+                        <!-- Links history will be added here dynamically -->
+                        <p class="empty-history-message">No links generated yet</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-footer">
+                <p>Your secrets are encrypted and automatically deleted after being viewed</p>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
