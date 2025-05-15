@@ -6,10 +6,10 @@ type: application
 #Version of the Helm Chart. This version number should be incremented each time you make changes
 # to the Helm Chart. Versions are not expected to follow Semantic Versioning. They should reflect
 # the version the Helm Chart is using. It is recommended to use it with quotes.
-version: "0.2.0"
+version: "0.2.1"
 
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.
 # It is recommended to use it with quotes.
-appVersion: "0.2.0"
+appVersion: "0.3.0"
