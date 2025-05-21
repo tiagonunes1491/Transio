@@ -40,6 +40,8 @@ param userNodePoolMaxCount int = 3
 @description('AKS subnet ID for the AKS cluster')
 param aksSubnetId string
 
+@description('AKS Admin group object IDs for the AKS cluster')
+param aksAdminGroupObjectIds array = []
 
 resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   name: aksName
@@ -49,6 +51,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   }
   properties: {
     disableLocalAccounts: true
+    aadProfile: {
+      managed: true
+      enableAzureRBAC: true     // Use Azure RBAC for Kubernetes authorization
+      adminGroupObjectIDs: aksAdminGroupObjectIds   // Optional: Add AAD admin group IDs if needed
+    }
     oidcIssuerProfile: {
       enabled: true
     }

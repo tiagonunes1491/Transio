@@ -159,11 +159,15 @@ param userNodePoolMinCount int = 1
 @description('User node pool maximum number of nodes for the AKS cluster')
 param userNodePoolMaxCount int = 3
 
+@description('AKS Admin Group object IDs for the AKS cluster')
+param aksAdminGroupObjectIds array = []
+
 module aks 'modules/aks.bicep' = {
   name: 'aks'
   scope: rg
   params: {
     location: resourceLocation
+    aksAdminGroupObjectIds: aksAdminGroupObjectIds
     aksName: aksName
     dnsPrefix: dnsPrefix
     kubernetesVersion: kubernetesVersion
