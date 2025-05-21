@@ -1,3 +1,5 @@
+@minLength(3)
+@maxLength(24)
 @description('Name of the keyvault')
 param keyvaultName string = 'keyvault'
 
@@ -34,19 +36,19 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   name: keyvaultName
   location: location
   tags: tags
-  sku: {
-    family: 'A'
-    name: sku
-  }
   properties: {
     tenantId: tenantId
     enableRbacAuthorization: enableRbac
     enableSoftDelete: enableSoftDelete
     enablePurgeProtection: enablePurgeProtection
+    sku: {
+      family: 'A'
+      name: sku
+    }
   }
 }
 
-resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2024-11-01' = [
+resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = [
   for secret in items(secretsToSet): {
   parent: akv
   name: secret.key

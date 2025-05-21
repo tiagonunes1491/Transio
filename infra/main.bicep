@@ -80,8 +80,10 @@ module acr 'modules/acr.bicep' = {
 
 // Deployment for AKV
 
+@minLength(3)
+@maxLength(24)
 @description('Name of the keyvault')
-param akvName string = 'kv-secure-secret-sharer'
+param akvName string = 'kv-sec-secret-sharer'
 
 @description('SKU for the keyvault')
 @allowed([
