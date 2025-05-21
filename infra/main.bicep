@@ -95,9 +95,6 @@ param akvSku string = 'standard'
 @description('Enable rbac for the keyvault')
 param akvRbac bool = true
 
-@description('Enable soft delete for the keyvault')
-param akvSoftDelete bool = true
-
 @description('Enable purge protection for the keyvault')
 param akvPurgeProtection bool = true
 
@@ -115,8 +112,71 @@ module akv 'modules/keyvault.bicep' = {
     sku: akvSku
     tenantId: tenantId
     enableRbac: akvRbac
-    enableSoftDelete: akvSoftDelete
     enablePurgeProtection: akvPurgeProtection
     secretsToSet: akvSecrets
+  }
+}
+
+// Deployment for AKS
+
+@description('Name of the AKS cluster')
+param aksName string = 'aks-securesharer-mvp'
+
+@description('DNS prefix for the AKS cluster')
+param dnsPrefix string = uniqueString(rgName, aksName)
+
+@description('Kubernetes version for the AKS cluster')
+param kubernetesVersion string = '1.28.5'
+
+@description('System node pool name for the AKS cluster')
+param systemNodePoolName string = 'systempool'
+
+@description('System node pool VM size for the AKS cluster')
+param systemNodePoolVmSize string = 'Standard_DS2_v2'
+
+@description('System node pool minimum number of nodes for the AKS cluster')
+param systemNodePoolMinCount int = 1
+
+@description('System node pool maximum number of nodes for the AKS cluster')
+param systemNodePoolMaxCount int = 3
+
+@description('User node pool name for the AKS cluster')
+param userNodePoolName string = 'userpool'
+
+@description('User node pool VM size for the AKS cluster')
+param userNodePoolVmSize string = 'Standard_DS2_v2'
+
+@description('User node pool OS type for the AKS cluster')
+param userNodePoolOsType string = 'Linux'
+
+@description('User node pool minimum number of nodes for the AKS cluster')
+param userNodePoolMinCount int = 1
+
+@description('User node pool maximum number of nodes for the AKS cluster')
+param userNodePoolMaxCount int = 3
+
+@description('AKS Admin Group object IDs for the AKS cluster')
+param aksAdminGroupObjectIds array = []
+
+module aks 'modules/aks.bicep' = {
+  name: 'aks'
+  scope: rg
+  params: {
+    location: resourceLocation
+    tags: tags
+    aksAdminGroupObjectIds: aksAdminGroupObjectIds
+    aksName: aksName
+    dnsPrefix: dnsPrefix
+    kubernetesVersion: kubernetesVersion
+    systemNodePoolName: systemNodePoolName
+    systemNodePoolVmSize: systemNodePoolVmSize
+    systemNodePoolMinCount: systemNodePoolMinCount
+    systemNodePoolMaxCount: systemNodePoolMaxCount
+    userNodePoolName: userNodePoolName
+    userNodePoolVmSize: userNodePoolVmSize
+    userNodePoolOsType: userNodePoolOsType
+    userNodePoolMinCount: userNodePoolMinCount
+    userNodePoolMaxCount: userNodePoolMaxCount
+    aksSubnetId: network.outputs.subnetIds[0]
   }
 }
