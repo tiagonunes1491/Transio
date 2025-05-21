@@ -22,8 +22,6 @@ param tenantId string = subscription().tenantId
 @description('Enable rbac for the keyvault')
 param enableRbac bool = true
 
-@description('Enable soft delete for the keyvault')
-param enableSoftDelete bool = true
 
 @description('Enable purge protection for the keyvault')
 param enablePurgeProtection bool = true
@@ -39,7 +37,6 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   properties: {
     tenantId: tenantId
     enableRbacAuthorization: enableRbac
-    ...enableSoftDelete ? {enableSoftDelete: true} : {}
     ...enablePurgeProtection ? { enablePurgeProtection: true } : {}
     sku: {
       family: 'A'

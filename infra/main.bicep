@@ -95,9 +95,6 @@ param akvSku string = 'standard'
 @description('Enable rbac for the keyvault')
 param akvRbac bool = true
 
-@description('Enable soft delete for the keyvault')
-param akvSoftDelete bool = true
-
 @description('Enable purge protection for the keyvault')
 param akvPurgeProtection bool = true
 
@@ -115,7 +112,6 @@ module akv 'modules/keyvault.bicep' = {
     sku: akvSku
     tenantId: tenantId
     enableRbac: akvRbac
-    enableSoftDelete: akvSoftDelete
     enablePurgeProtection: akvPurgeProtection
     secretsToSet: akvSecrets
   }
