@@ -180,3 +180,20 @@ module aks 'modules/aks.bicep' = {
     aksSubnetId: network.outputs.subnetIds[0]
   }
 }
+
+// Deployment for UAMI
+@description('UAMI names to create')
+param uamiNames array = [
+  'uami-securesharer-backend'
+  'uami-securesharer-db'
+]
+
+module uami 'modules/uami.bicep' = {
+  name: 'uami'
+  scope: rg
+  params: {
+    uamiLocation: resourceLocation
+    uamiNames: uamiNames
+    tags: tags
+  }
+}
