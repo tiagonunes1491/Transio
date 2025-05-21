@@ -99,7 +99,7 @@ param akvRbac bool = true
 param akvSoftDelete bool = true
 
 @description('Enable purge protection for the keyvault')
-param akvPurgeProtection bool = true
+param akvPurgeProtection bool = false
 
 @description('Secure object for secrets')
 @secure()
@@ -167,6 +167,7 @@ module aks 'modules/aks.bicep' = {
   scope: rg
   params: {
     location: resourceLocation
+    tags: tags
     aksAdminGroupObjectIds: aksAdminGroupObjectIds
     aksName: aksName
     dnsPrefix: dnsPrefix

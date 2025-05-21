@@ -43,7 +43,11 @@ param aksSubnetId string
 @description('AKS Admin group object IDs for the AKS cluster')
 param aksAdminGroupObjectIds array = []
 
+@description('Tags for the AKS cluster')
+param tags object = {}
+
 resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
+  tags: tags
   name: aksName
   location: location
   identity: {
@@ -51,10 +55,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   }
   properties: {
     disableLocalAccounts: true
+    enableRBAC: true
     aadProfile: {
       managed: true
-      enableAzureRBAC: true     // Use Azure RBAC for Kubernetes authorization
-      adminGroupObjectIDs: aksAdminGroupObjectIds   // Optional: Add AAD admin group IDs if needed
+      enableAzureRBAC: false
+      adminGroupObjectIDs: aksAdminGroupObjectIds
     }
     oidcIssuerProfile: {
       enabled: true
@@ -85,12 +90,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
     ]
     dnsPrefix: dnsPrefix
     kubernetesVersion: kubernetesVersion
-    enableRBAC: true
     networkProfile: {
       networkPlugin: 'azure'
       networkPluginMode: 'overlay'
       networkPolicy: 'azure'     
-      loadBalancerSku: 'standard'
+      loadBalancerSku: 'Standard'
       serviceCidr: '10.1.0.0/16'
       dnsServiceIP: '10.1.0.10'
     }
@@ -109,4 +113,3 @@ output aksId string = aks.id
 output aksName string = aks.name
 output controlPlaneIdentityId string = aks.identity.principalId
 output oidcIssuerUrl string = aks.properties.oidcIssuerProfile.issuerURL
-
