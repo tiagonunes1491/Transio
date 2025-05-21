@@ -11,7 +11,7 @@ param tags  = {
 }
 
 // Parameters for the vnet
-param vnetName = 'vnet-secureSecretSharer'
+param vnetName = 'vnet-secureSecretSharer-dev'
 
 param addressSpace  = [
   '10.0.0.0/16'
@@ -26,7 +26,18 @@ param subnets  = [
 
 // Parameters for the ACR
 param acrName = 'acrsecuresecretsharerdev'
-
 param acrSku = 'Standard'
-
 param acrEnableAdminUser = false
+
+// Parameters for the AKV
+param akvName = 'kv-secure-secret-sharer-dev'
+param akvSku = 'standard'
+param akvRbac = true
+param akvSoftDelete = true
+param akvPurgeProtection = true
+param akvSecrets = {
+  'app-db-user': '<app-username-here>'
+  'app-db-password': '<strong-password-here>'
+  'app-master-encryption-key': '<base64-encoded-encryption-key-here>'
+  'postgres-password': '<strong-postgres-password-here>'
+}
