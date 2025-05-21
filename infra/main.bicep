@@ -1,5 +1,8 @@
 targetScope = 'subscription'
 
+@description('The Azure AD tenant ID that should be used for authenticating requests to the key vault. Defaults to the current subscription tenant ID.')
+param tenantId string = subscription().tenantId
+
 @description('Location for the resources')
 param resourceLocation string = 'spaincentral'
 
@@ -72,5 +75,46 @@ module acr 'modules/acr.bicep' = {
     location: resourceLocation
     sku: acrSku
     enableAdminUser: acrEnableAdminUser
+  }
+}
+
+// Deployment for AKV
+
+@description('Name of the keyvault')
+param akvName string = 'kv-secure-secret-sharer'
+
+@description('SKU for the keyvault')
+@allowed([
+  'standard'
+  'premium'
+])
+param akvSku string = 'standard'
+
+@description('Enable rbac for the keyvault')
+param akvRbac bool = true
+
+@description('Enable soft delete for the keyvault')
+param akvSoftDelete bool = true
+
+@description('Enable purge protection for the keyvault')
+param akvPurgeProtection bool = true
+
+@description('Secure object for secrets')
+@secure()
+param akvSecrets object
+
+module akv 'modules/keyvault.bicep' = {
+  name: 'keyvault'
+  scope: rg
+  params: {
+    keyvaultName: akvName
+    location: resourceLocation
+    tags: tags
+    sku: akvSku
+    tenantId: tenantId
+    enableRbac: akvRbac
+    enableSoftDelete: akvSoftDelete
+    enablePurgeProtection: akvPurgeProtection
+    secretsToSet: akvSecrets
   }
 }
