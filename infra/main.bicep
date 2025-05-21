@@ -127,7 +127,7 @@ module akv 'modules/keyvault.bicep' = {
 param aksName string = 'aks-securesharer-mvp'
 
 @description('DNS prefix for the AKS cluster')
-param dnsPrefix string = uniqueString(rg.name, aksName)
+param dnsPrefix string = uniqueString(rgName, aksName)
 
 @description('Kubernetes version for the AKS cluster')
 param kubernetesVersion string = '1.28.5'
