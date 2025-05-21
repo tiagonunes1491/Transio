@@ -21,3 +21,4 @@ k8s/secret-sharer-app/values.yaml
 k8s/secret-sharer-app/template.txt
 k8s/secret-sharer-app/debug.txt
 start_azure_resources.sh
+teardown_dev.ps1
