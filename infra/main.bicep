@@ -19,6 +19,8 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
   tags: tags
 }
 
+// Deployment for VNET
+
 @description('Name of the virtual network')
 param vnetName string = 'vnet-secureSecretSharer'
 
@@ -43,5 +45,32 @@ module network 'modules/network.bicep' = {
     location: resourceLocation
     addressSpace: addressSpace
     subnets: subnets
+  }
+}
+
+// Deployment for ACR
+
+@description('Azure Container Registry name')
+param acrName string
+
+@description('SKU for the ACR')
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param acrSku string = 'Standard'
+
+@description('Enable admin user for the ACR')
+param acrEnableAdminUser bool = false
+
+module acr 'modules/acr.bicep' = {
+  name: 'acr'
+  scope: rg
+  params: {
+    acrName: acrName
+    location: resourceLocation
+    sku: acrSku
+    enableAdminUser: acrEnableAdminUser
   }
 }

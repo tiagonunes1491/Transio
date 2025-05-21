@@ -1,5 +1,7 @@
+// This file is used to deploy the main.bicep file in the dev environment
 using 'main.bicep'
 
+// Parameters for deployment scope
 param resourceLocation  = 'spaincentral'
 param rgName = 'rg-secure-secret-sharer-dev'
 param tags  = {
@@ -7,6 +9,8 @@ param tags  = {
   project: 'secure-secret-sharer'
   owner: 'Tiago'
 }
+
+// Parameters for the vnet
 param vnetName = 'vnet-secureSecretSharer'
 
 param addressSpace  = [
@@ -19,3 +23,10 @@ param subnets  = [
     addressPrefix: '10.0.1.0/24'
   }
 ]
+
+// Parameters for the ACR
+param acrName = 'acrsecuresecretsharerdev'
+
+param acrSku = 'Standard'
+
+param acrEnableAdminUser = false
