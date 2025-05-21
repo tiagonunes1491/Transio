@@ -120,3 +120,62 @@ module akv 'modules/keyvault.bicep' = {
     secretsToSet: akvSecrets
   }
 }
+
+// Deployment for AKS
+
+@description('Name of the AKS cluster')
+param aksName string = 'aks-securesharer-mvp'
+
+@description('DNS prefix for the AKS cluster')
+param dnsPrefix string = uniqueString(rg.name, aksName)
+
+@description('Kubernetes version for the AKS cluster')
+param kubernetesVersion string = '1.28.5'
+
+@description('System node pool name for the AKS cluster')
+param systemNodePoolName string = 'systempool'
+
+@description('System node pool VM size for the AKS cluster')
+param systemNodePoolVmSize string = 'Standard_DS2_v2'
+
+@description('System node pool minimum number of nodes for the AKS cluster')
+param systemNodePoolMinCount int = 1
+
+@description('System node pool maximum number of nodes for the AKS cluster')
+param systemNodePoolMaxCount int = 3
+
+@description('User node pool name for the AKS cluster')
+param userNodePoolName string = 'userpool'
+
+@description('User node pool VM size for the AKS cluster')
+param userNodePoolVmSize string = 'Standard_DS2_v2'
+
+@description('User node pool OS type for the AKS cluster')
+param userNodePoolOsType string = 'Linux'
+
+@description('User node pool minimum number of nodes for the AKS cluster')
+param userNodePoolMinCount int = 1
+
+@description('User node pool maximum number of nodes for the AKS cluster')
+param userNodePoolMaxCount int = 3
+
+module aks 'modules/aks.bicep' = {
+  name: 'aks'
+  scope: rg
+  params: {
+    location: resourceLocation
+    aksName: aksName
+    dnsPrefix: dnsPrefix
+    kubernetesVersion: kubernetesVersion
+    systemNodePoolName: systemNodePoolName
+    systemNodePoolVmSize: systemNodePoolVmSize
+    systemNodePoolMinCount: systemNodePoolMinCount
+    systemNodePoolMaxCount: systemNodePoolMaxCount
+    userNodePoolName: userNodePoolName
+    userNodePoolVmSize: userNodePoolVmSize
+    userNodePoolOsType: userNodePoolOsType
+    userNodePoolMinCount: userNodePoolMinCount
+    userNodePoolMaxCount: userNodePoolMaxCount
+    aksSubnetId: network.outputs.subnetIds[0]
+  }
+}
