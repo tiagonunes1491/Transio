@@ -22,3 +22,5 @@ k8s/secret-sharer-app/template.txt
 k8s/secret-sharer-app/debug.txt
 start_azure_resources.sh
 teardown_dev.ps1
+infra/build_dev.ps1
+infra/main.dev.bicepparam
