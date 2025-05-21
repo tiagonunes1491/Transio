@@ -99,7 +99,7 @@ param akvRbac bool = true
 param akvSoftDelete bool = true
 
 @description('Enable purge protection for the keyvault')
-param akvPurgeProtection bool = false
+param akvPurgeProtection bool = true
 
 @description('Secure object for secrets')
 @secure()

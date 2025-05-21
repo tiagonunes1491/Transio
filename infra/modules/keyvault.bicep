@@ -26,7 +26,7 @@ param enableRbac bool = true
 param enableSoftDelete bool = true
 
 @description('Enable purge protection for the keyvault')
-param enablePurgeProtection bool = false
+param enablePurgeProtection bool = true
 
 @description('Secure object for secrets')
 @secure()
@@ -39,7 +39,7 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   properties: {
     tenantId: tenantId
     enableRbacAuthorization: enableRbac
-    enableSoftDelete: enableSoftDelete
+    ...enableSoftDelete ? {enableSoftDelete: true} : {}
     ...enablePurgeProtection ? { enablePurgeProtection: true } : {}
     sku: {
       family: 'A'
