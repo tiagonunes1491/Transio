@@ -40,18 +40,83 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
   tags: tags
 }
 
+// NSG
+
+@description('Name of the Network Security Group')
+param appGwNsgName string = 'nsg-securesharer-mvp'
+
+@description('Allow rules for the Network Security Group')
+param appGwNsgAllowRules array = [
+  {
+    name: 'AllowGatewayManagerInbound' // Top-level name
+    properties: {                     // Nested properties
+      priority: 100
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourcePortRange: '*'
+      sourceAddressPrefix: 'GatewayManager'
+      destinationPortRange: '65200-65535'
+      destinationAddressPrefix: '*'
+    }
+  }
+  {
+    name: 'AllowAzureLoadBalancerInbound'
+    properties: {
+      priority: 110
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: '*' 
+      sourcePortRange: '*'
+      sourceAddressPrefix: 'AzureLoadBalancer'
+      destinationPortRange: '*'
+      destinationAddressPrefix: '*'
+    }
+  }
+  {
+    name: 'AllowHttpFromInternetInbound'
+    properties: {
+      priority: 200
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourcePortRange: '*'
+      sourceAddressPrefix: 'Internet'
+      destinationPortRange: '80'
+      destinationAddressPrefix: '*'
+    }
+  }
+]
+
+@description('Deny rules for the Network Security Group')
+param appGwNsgDenyRules array = []
+
+
+module appGwNsg 'modules/nsg.bicep' = {
+  name: appGwNsgName
+  scope: rg
+  params: {
+    nsgName: appGwNsgName
+    tags: tags
+    allowRules: appGwNsgAllowRules
+    denyRules: appGwNsgDenyRules
+    location: resourceLocation
+  }
+}
+
+
 // Deployment for VNET
 
 @description('Name of the virtual network')
 param vnetName string = 'vnet-secureSecretSharer'
 
 @description('Address space for the virtual network')
-param addressSpace array = [
+var addressSpace  = [
   '10.0.0.0/16'
 ]
 
 @description('Subnets for the virtual network')
-param subnets array = [
+var subnets  = [
   {
     name: 'snet-aks'
     addressPrefix: '10.0.1.0/24'
@@ -69,7 +134,13 @@ module network 'modules/network.bicep' = {
     vnetName: vnetName
     location: resourceLocation
     addressSpace: addressSpace
-    subnets: subnets
+    subnets: [
+      for subnet in subnets: {
+        name: subnet.name
+        addressPrefix: subnet.addressPrefix
+        networkSecurityGroupId: subnet.name == 'snet-agw'  ? appGwNsg.outputs.nsgId : null
+      }
+    ]
   }
 }
 
@@ -240,70 +311,5 @@ module rbac 'modules/rbac.bicep' = {
     acrId: acr.outputs.acrId
     uamiIds: uami.outputs.uamiIds
     aksId: aks.outputs.aksId
-  }
-}
-
-// Secure networking 
-
-@description('Name of the Network Security Group')
-param appGwNsgName string = 'nsg-securesharer-mvp'
-
-@description('Allow rules for the Network Security Group')
-param appGwNsgAllowRules array = [
-  {
-    name: 'AllowGatewayManagerInbound' // Top-level name
-    properties: {                     // Nested properties
-      priority: 100
-      direction: 'Inbound'
-      access: 'Allow'
-      protocol: 'Tcp'
-      sourcePortRange: '*'
-      sourceAddressPrefix: 'GatewayManager'
-      destinationPortRange: '65200-65535'
-      destinationAddressPrefix: '*'
-    }
-  }
-  {
-    name: 'AllowAzureLoadBalancerInbound'
-    properties: {
-      priority: 110
-      direction: 'Inbound'
-      access: 'Allow'
-      protocol: '*' 
-      sourcePortRange: '*'
-      sourceAddressPrefix: 'AzureLoadBalancer'
-      destinationPortRange: '*'
-      destinationAddressPrefix: '*'
-    }
-  }
-  {
-    name: 'AllowHttpFromInternetInbound'
-    properties: {
-      priority: 200
-      direction: 'Inbound'
-      access: 'Allow'
-      protocol: 'Tcp'
-      sourcePortRange: '*'
-      sourceAddressPrefix: 'Internet'
-      destinationPortRange: '80'
-      destinationAddressPrefix: '*'
-    }
-  }
-]
-
-@description('Deny rules for the Network Security Group')
-param appGwNsgDenyRules array = []
-
-// Create NSG
-
-module appGwNsg 'modules/nsg.bicep' = {
-  name: appGwNsgName
-  scope: rg
-  params: {
-    nsgName: appGwNsgName
-    tags: tags
-    allowRules: appGwNsgAllowRules
-    denyRules: appGwNsgDenyRules
-    location: resourceLocation
   }
 }
