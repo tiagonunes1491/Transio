@@ -16,6 +16,24 @@ param tags object = {
   owner: 'Tiago'
 }
 
+// Creates a configuration map for the Federated Identity Credential
+// This will define what UAMIs need to be created for the federated identity credentials
+// and what Kubernetes Service Account and Namespace they will be linked to
+
+@description('Array of configurations for federated identity credentials. Each object links a UAMI to a specific Kubernetes Service Account and Namespace.')
+param federationConfigs array = [
+  {
+    uamiTargetName: 'uami-securesharer-backend' 
+    k8sServiceAccountName: 'secret-sharer-backend-sa'
+    k8sNamespace: 'default' 
+  }
+  {
+    uamiTargetName: 'uami-securesharer-db' 
+    k8sServiceAccountName: 'secret-sharer-db-init-sa'
+    k8sNamespace: 'default' 
+  }
+]
+
 resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
   name: rgName
   location: resourceLocation
@@ -181,12 +199,11 @@ module aks 'modules/aks.bicep' = {
   }
 }
 
-// Deployment for UAMI
-@description('UAMI names to create')
-param uamiNames array = [
-  'uami-securesharer-backend'
-  'uami-securesharer-db'
-]
+// Creation of the UAMI and Federated Identity Credentials
+// These modules creates the UAMIs and the Federated Identity Credentials
+
+// Retrieves the names of the UAMIs from the federationConfigs parameter
+var uamiNames = [for config in federationConfigs: config.uamiTargetName]
 
 module uami 'modules/uami.bicep' = {
   name: 'uami'
@@ -198,6 +215,16 @@ module uami 'modules/uami.bicep' = {
   }
 }
 
+module federation 'modules/federation.bicep' = [for config in federationConfigs: {
+  name: 'fed-${take(uniqueString(config.uamiTargetName, config.k8sServiceAccountName), 13)}'
+  scope: rg
+  params: {
+    parentUserAssignedIdentityName: config.uamiTargetName
+    serviceAccountName: config.k8sServiceAccountName
+    serviceAccountNamespace: config.k8sNamespace
+    oidcIssuerUrl: aks.outputs.oidcIssuerUrl
+  }
+}]
 
 // Role Assignmeents for RBAC
 
@@ -211,3 +238,4 @@ module rbac 'modules/rbac.bicep' = {
     aksId: aks.outputs.aksId
   }
 }
+
