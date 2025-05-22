@@ -30,8 +30,8 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         name: subnet.name
         properties: {
           addressPrefix: subnet.addressPrefix
-          networkSecurityGroup: subnet.?networkSecurityGroupId != null ? {
-            id: subnet.networkSecurityGroupId
+          networkSecurityGroup: !empty(subnet.?networkSecurityGroupId) ? { 
+            id: subnet.networkSecurityGroupId 
           } : null
         }
       }
