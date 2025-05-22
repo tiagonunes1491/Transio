@@ -14,6 +14,7 @@ param subnets array = [
   {
     name: 'subnet1'
     addressPrefix: '10.0.1.0/24'
+    networkSecurityGroupId: null
   }
 ]
 
@@ -29,6 +30,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
         name: subnet.name
         properties: {
           addressPrefix: subnet.addressPrefix
+          networkSecurityGroup: subnet.?networkSecurityGroupId != null ? {
+            id: subnet.networkSecurityGroupId
+          } : null
         }
       }
     ]
