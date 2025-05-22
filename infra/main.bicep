@@ -197,3 +197,17 @@ module uami 'modules/uami.bicep' = {
     tags: tags
   }
 }
+
+
+// Role Assignmeents for RBAC
+
+module rbac 'modules/rbac.bicep' = {
+  name: 'rbac'
+  scope: rg
+  params: {
+    keyVaultId: akv.outputs.keyvaultId
+    acrId: acr.outputs.acrId
+    uamiIds: uami.outputs.uamiIds
+    aksId: aks.outputs.aksId
+  }
+}

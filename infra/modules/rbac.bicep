@@ -46,9 +46,6 @@ resource kvRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 ] 
 
-@description('Error handling if ACR is not found')
-output acrExists bool = !empty(acr.id)
-
 // Assigns AcrPull role to AKS managed identity for pulling container images
 resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     scope: acr
