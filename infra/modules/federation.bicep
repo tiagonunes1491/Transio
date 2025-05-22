@@ -6,11 +6,6 @@ param serviceAccountName string
 
 @description('Name of the namespace where the service account is located')
 param serviceAccountNamespace string
-
-@description('Name of the federated credential')
-param federatedCredentialName string
-
-
 @description('OIDC Issuer URL for the AKS cluster')
 param oidcIssuerUrl string
 
@@ -23,13 +18,18 @@ param oidcAudience array = [
 // Format follows Kubernetes convention: system:serviceaccount:{namespace}:{name}
 var subject = 'system:serviceaccount:${serviceAccountNamespace}:${serviceAccountName}'
 
+// Generates a name for the federated credential
+// Format: fic-{serviceAccountName}
+var generatedFicName = 'fic-${serviceAccountName}' 
+
+
 resource parentIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: parentUserAssignedIdentityName
 }
 
 
 resource oidcFederatedCredential 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = {
-  name: federatedCredentialName
+  name: generatedFicName
   parent: parentIdentity
   properties: {
     issuer: oidcIssuerUrl
