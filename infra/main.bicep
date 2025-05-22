@@ -56,6 +56,10 @@ param subnets array = [
     name: 'snet-aks'
     addressPrefix: '10.0.1.0/24'
   }
+    {
+    name: 'snet-agw'
+    addressPrefix: '10.0.2.0/24'
+  }
 ]
 
 module network 'modules/network.bicep' = {
@@ -239,3 +243,67 @@ module rbac 'modules/rbac.bicep' = {
   }
 }
 
+// Secure networking 
+
+@description('Name of the Network Security Group')
+param appGwNsgName string = 'nsg-securesharer-mvp'
+
+@description('Allow rules for the Network Security Group')
+param appGwNsgAllowRules array = [
+  {
+    name: 'AllowGatewayManagerInbound' // Top-level name
+    properties: {                     // Nested properties
+      priority: 100
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourcePortRange: '*'
+      sourceAddressPrefix: 'GatewayManager'
+      destinationPortRange: '65200-65535'
+      destinationAddressPrefix: '*'
+    }
+  }
+  {
+    name: 'AllowAzureLoadBalancerInbound'
+    properties: {
+      priority: 110
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: '*' 
+      sourcePortRange: '*'
+      sourceAddressPrefix: 'AzureLoadBalancer'
+      destinationPortRange: '*'
+      destinationAddressPrefix: '*'
+    }
+  }
+  {
+    name: 'AllowHttpFromInternetInbound'
+    properties: {
+      priority: 200
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourcePortRange: '*'
+      sourceAddressPrefix: 'Internet'
+      destinationPortRange: '80'
+      destinationAddressPrefix: '*'
+    }
+  }
+]
+
+@description('Deny rules for the Network Security Group')
+param appGwNsgDenyRules array = []
+
+// Create NSG
+
+module appGwNsg 'modules/nsg.bicep' = {
+  name: appGwNsgName
+  scope: rg
+  params: {
+    nsgName: appGwNsgName
+    tags: tags
+    allowRules: appGwNsgAllowRules
+    denyRules: appGwNsgDenyRules
+    location: resourceLocation
+  }
+}
