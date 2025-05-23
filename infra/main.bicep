@@ -329,6 +329,7 @@ param appGwName string = 'appgw-securesharer-mvp'
 ])
 param appGwsku string ='WAF_v2'
 
+
 @description('Public IP address name for the Application Gateway')
 param appGwPublicIpName string = 'appgw-public-ip'
 
