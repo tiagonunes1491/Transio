@@ -16,7 +16,7 @@ param tags object = {
   owner: 'Tiago'
 }
 
-// Creates a configuration map for the Federated Identity Credential
+// Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
 
@@ -273,6 +273,7 @@ module aks 'modules/aks.bicep' = {
     userNodePoolMinCount: userNodePoolMinCount
     userNodePoolMaxCount: userNodePoolMaxCount
     aksSubnetId: network.outputs.subnetIds[0]
+    applicationGatewayIdForAgic: appGw.outputs.appGwId 
   }
 }
 
@@ -326,7 +327,8 @@ param appGwName string = 'appgw-securesharer-mvp'
   'Standard_v2'
   'WAF_v2'
 ])
-param appGwsku string ='Standard_v2'
+param appGwsku string ='WAF_v2'
+
 
 @description('Public IP address name for the Application Gateway')
 param appGwPublicIpName string = 'appgw-public-ip'

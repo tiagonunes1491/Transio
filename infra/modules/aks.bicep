@@ -46,6 +46,9 @@ param aksAdminGroupObjectIds array = []
 @description('Tags for the AKS cluster')
 param tags object = {}
 
+@description('Application Gateeway ID for AGIC integration')
+param applicationGatewayIdForAgic string = ''
+
 resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
   tags: tags
   name: aksName
@@ -104,6 +107,13 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
         config: {
           enableSecretRotation: 'false'
         }
+      }
+      ingressApplicationGateway: {
+        enabled: !empty(applicationGatewayIdForAgic)
+        config: !empty(applicationGatewayIdForAgic) ? {
+          applicationGatewayId: applicationGatewayIdForAgic
+          watchNamespace: 'kube-system'
+        } : {}
       }
     }
   }
