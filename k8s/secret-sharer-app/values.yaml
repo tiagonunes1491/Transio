@@ -12,10 +12,8 @@ azure:
 backend:
   replicaCount: 1
   image:
-    # !! PHASE 6 TODO !!: Update with your actual ACR name if different
-    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend
+    name: "secure-secret-sharer-backend"
     pullPolicy: IfNotPresent
-    # !! PHASE 6 TODO !!: Use a specific, immutable tag for production readiness (e.g., git commit SHA)
     tag: "0.3.0"
 
   service:
@@ -27,22 +25,18 @@ backend:
   serviceAccount:
     create: true # Set to false if you are managing the SA outside this chart
     # This name 'secret-sharer-backend-sa' is used by templates/serviceaccount.yaml
-    name: "secret-sharer-backend-sa"
+    name: "placeholder-backend-sa"
     annotations: {} # Default annotations from template will use backend.keyVault.userAssignedIdentityClientID
   rbac:
     create: true
     # serviceAccountName is already defined under backend.serviceAccount.name
   # Configuration for Azure Key Vault access by the Backend pod
   keyVault:
-    # !! PHASE 4 TODO !!: Ensure this Key Vault name is correct for your environment.
-    name: "kv-secure-secret-sharer"
-    # !! PHASE 4 TODO !!: Ensure this Tenant ID is correct for your environment.
-    tenantId: "6e05f665-11c4-4221-9eea-3065ede81619" # Your Azure Tenant ID
-    # !! PHASE 4 TODO !!: Ensure this Client ID matches your 'id-secret-sharer-backend' UAMI after creation.
-    userAssignedIdentityClientID: "fa376030-252d-443f-a32d-294e3cda90e1" # Client ID for Backend UAMI
+    name: "{{ .Values.azure.keyVaultName }}"
+    tenantId: "{{ .Values.azure.tenantId }}"
+    userAssignedIdentityClientID: "{{ .Values.azure.backendUamiClientId }}" # Client ID for Backend UAMI
     secrets:
       # These are the names of the secrets *in Azure Key Vault* that the backend needs.
-      # !! PHASE 4 TODO !!: Ensure secrets with these exact names exist in AKV.
       dbUser: "app-db-user"                # AKV secret name for the application's DB username
       dbPassword: "app-db-password"        # AKV secret name for the application's DB password
       appMasterKey: "app-master-encryption-key" # AKV secret name for the application's master encryption key
@@ -92,9 +86,8 @@ database:
     create: true # Set to false if you are managing the SA outside this chart
     # name: "override-db-sa-name" # Optional: uncomment to override the default generated name from helpers
     annotations: {} # Default annotations from template will use database.serviceAccount.azureClientId
-    # !! PHASE 4 TODO !!: Fill in the Client ID of the 'id-secret-sharer-db-init' UAMI after creation.
-    azureClientId: "ef9e4258-98dc-49a8-804b-dfe502309386" 
-    name: secret-sharer-db-init-sa # This is the name of the ServiceAccount for the database init script
+    azureClientId: "{{ .Values.azure.databaseUamiClientId }}" # Client ID for Database UAMI
+    name: "placeholder-sa" # This is the name of the ServiceAccount for the database init script
 
   # Key Vault secrets needed ONLY for database initialization (by db-init-spc)
   keyVault: # This section is for the database's SecretProviderClass
@@ -126,10 +119,8 @@ database:
 frontend:
   replicaCount: 1
   image:
-    # !! PHASE 6 TODO !!: Update with your actual ACR name if different
-    repository: acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend
+    name: "secure-secret-sharer-frontend"
     pullPolicy: IfNotPresent
-    # !! PHASE 6 TODO !!: Use a specific, immutable tag
     tag: "0.3.0"
 
   probes:
@@ -139,7 +130,7 @@ frontend:
       timeoutSeconds: 5
       failureThreshold: 3
       successThreshold: 1
-    readiness: # New values
+    readiness: 
       initialDelaySeconds: 5
       periodSeconds: 10
       timeoutSeconds: 5
@@ -157,7 +148,7 @@ frontend:
       memory: "64Mi"
 # --- Ingress Configuration (MVP Scope: basic definition, to be enabled in Phase 2/6) ---
 ingress:
-  enabled: true # Set to true in Phase 2 when ready to configure Ingress
+  enabled: true 
   className: "azure/application-gateway" # For Kubernetes v1.18+ with IngressClass resource, if needed
   annotations:
     # This annotation tells AGIC to rewrite the path for the backend.

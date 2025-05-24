@@ -22,7 +22,7 @@ spec:
       automountServiceAccountToken: true # Required for Workload Identity if SA is specified
       containers:
         - name: backend
-          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.azure.acrLoginServer }}/{{ .Values.backend.image.name }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy | default "IfNotPresent" }}
           ports:
             - name: http

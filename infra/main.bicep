@@ -390,11 +390,13 @@ module appGw 'modules/appgw.bicep' = {
 // Final outputs for main.bicep
 
 output acrLoginServer string = acr.outputs.acrLoginServer
-output acrName string = acr.outputs.acrName  // Need just the name for login command
+output acrName string = acr.outputs.acrName  
 output aksName string = aks.outputs.aksName
+output backendK8sServiceAccountName string = federationConfigs[0].k8sServiceAccountName
+output databaseInitK8sServiceAccountName string = federationConfigs[1].k8sServiceAccountName
 output resourceGroupName string = rg.name
 output keyvaultName string = akv.outputs.keyvaultName
 output appGwPublicIp string = appGw.outputs.publicIpAddress
-output backendUamiClientId string = uami.outputs.uamiClientIds[0] // Backend UAMI
-output dbInitUamiClientId string = uami.outputs.uamiClientIds[1]  // DB Init UAMI
+output backendUamiClientId string = uami.outputs.uamiClientIds[0] 
+output dbInitUamiClientId string = uami.outputs.uamiClientIds[1]
 output tenantId string = tenantId
