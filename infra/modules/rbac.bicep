@@ -6,7 +6,7 @@ param keyVaultId string
 @minLength(1)
 param acrId string
 
-@description('UAMI array to give access to Key Vault as secret user')
+@description('UAMI Principal IDs array to give access to Key Vault as secret user')
 param uamiIds array = []
 
 @description('ID of the Azure Kubernetes Service')
