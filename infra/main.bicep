@@ -396,5 +396,5 @@ output resourceGroupName string = rg.name
 output keyvaultName string = akv.outputs.keyvaultName
 output appGwPublicIp string = appGw.outputs.publicIpAddress
 output backendUamiClientId string = uami.outputs.uamiClientIds[0] // Backend UAMI
-output dbInitUamiClientId string = uami.outputs.uamiClientIds[0]  // DB Init UAMI
+output dbInitUamiClientId string = uami.outputs.uamiClientIds[1]  // DB Init UAMI
 output tenantId string = tenantId
