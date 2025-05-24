@@ -1,5 +1,13 @@
 # values.yaml
 
+# --- Azure Infrastructure Configuration (Injected from Bicepp deployment) ---
+azure:
+  tenantId: "PLACEHOLDER_TENANT_ID"
+  keyVaultName: "PLACEHOLDER_KEYVAULT_NAME"
+  acrLoginServer: "PLACEHOLDER_ACR_LOGIN_SERVER"
+  backendUamiClientId: "PLACEHOLDER_BACKEND_UAMI_CLIENT_ID"
+  databaseUamiClientId: "PLACEHOLDER_DATABASE_UAMI_CLIENT_ID"
+  
 # --- Backend Configuration ---
 backend:
   replicaCount: 1
