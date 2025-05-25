@@ -49,7 +49,7 @@ param tags object = {}
 @description('Application Gateeway ID for AGIC integration')
 param applicationGatewayIdForAgic string = ''
 
-resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
+resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
   tags: tags
   name: aksName
   location: location
@@ -66,6 +66,9 @@ resource aks 'Microsoft.ContainerService/managedClusters@2023-10-01' = {
     }
     oidcIssuerProfile: {
       enabled: true
+    }
+    servicePrincipalProfile: {
+      clientId: 'msi'
     }
     agentPoolProfiles: [
       {
