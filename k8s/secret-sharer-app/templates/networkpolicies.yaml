@@ -125,3 +125,31 @@ spec:
         - protocol: TCP
           port: {{ .Values.backend.service.port }} # Port the backend service/container listens on (e.g., 5000)
 {{- end }}
+---
+# Allow cluster DNS egress (UDP/TCP port 53) to kube-dns in kube-system namespace
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-dns
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: kube-system
+        podSelector:
+          matchLabels:
+            k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}
