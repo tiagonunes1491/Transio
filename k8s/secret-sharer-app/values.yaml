@@ -1,13 +1,6 @@
 # values.yaml
-
-# --- Azure Infrastructure Configuration (Injected from Bicepp deployment) ---
-azure:
-  tenantId: "PLACEHOLDER_TENANT_ID"
-  keyVaultName: "PLACEHOLDER_KEYVAULT_NAME"
-  acrLoginServer: "PLACEHOLDER_ACR_LOGIN_SERVER"
-  backendUamiClientId: "PLACEHOLDER_BACKEND_UAMI_CLIENT_ID"
-  databaseUamiClientId: "PLACEHOLDER_DATABASE_UAMI_CLIENT_ID"
   
+acrLoginServer : "PLACEHOLDER_ACR_LOGIN_SERVER" # Replace with your Azure Container Registry login server URL
 # --- Backend Configuration ---
 backend:
   replicaCount: 1
@@ -32,9 +25,9 @@ backend:
     # serviceAccountName is already defined under backend.serviceAccount.name
   # Configuration for Azure Key Vault access by the Backend pod
   keyVault:
-    name: "{{ .Values.azure.keyVaultName }}"
-    tenantId: "{{ .Values.azure.tenantId }}"
-    userAssignedIdentityClientID: "{{ .Values.azure.backendUamiClientId }}" # Client ID for Backend UAMI
+    name: "PLACEHOLDER_KEYVAULT_NAME"
+    tenantId: PLACEHOLDER_TENANT_ID
+    userAssignedIdentityClientID: "PLACEHOLDER_BACKEND_UAMI_CLIENT_ID" # Client ID for Backend UAMI
     secrets:
       # These are the names of the secrets *in Azure Key Vault* that the backend needs.
       dbUser: "app-db-user"                # AKV secret name for the application's DB username
@@ -86,7 +79,7 @@ database:
     create: true # Set to false if you are managing the SA outside this chart
     # name: "override-db-sa-name" # Optional: uncomment to override the default generated name from helpers
     annotations: {} # Default annotations from template will use database.serviceAccount.azureClientId
-    azureClientId: "{{ .Values.azure.databaseUamiClientId }}" # Client ID for Database UAMI
+    azureClientId: "PLACEHOLDER_DATABASE_UAMI_CLIENT_ID" # Client ID for Database UAMI
     name: "placeholder-sa" # This is the name of the ServiceAccount for the database init script
 
   # Key Vault secrets needed ONLY for database initialization (by db-init-spc)
