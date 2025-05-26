@@ -9,7 +9,6 @@ metadata:
   labels:
     {{- include "secret-sharer-app.labels" . | nindent 4 }}
   annotations:
-    kubernetes.io/ingress.class: {{ .Values.ingress.className | default "azure/application-gateway" }}
     {{- if .Values.ingress.tls }}
     # Example AGIC annotation if TLS is used and SSL redirect is desired.
     # appgw.ingress.kubernetes.io/ssl-redirect: "true"
@@ -18,6 +17,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  ingressClassName: {{ .Values.ingress.className | default "azure-application-gateway" }}
 {{- if .Values.ingress.tls }}
   tls:
   {{- range .Values.ingress.tls }}
