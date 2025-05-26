@@ -142,7 +142,7 @@ frontend:
 # --- Ingress Configuration (MVP Scope: basic definition, to be enabled in Phase 2/6) ---
 ingress:
   enabled: true 
-  className: "azure/application-gateway" # For Kubernetes v1.18+ with IngressClass resource, if needed
+  className: "azure-application-gateway" # For Kubernetes v1.18+ with IngressClass resource, if needed
   annotations:
     # This annotation tells AGIC to rewrite the path for the backend.
     # For requests going to the backend service via paths defined in this Ingress,
@@ -152,7 +152,7 @@ ingress:
     # by AGIC to the backend HTTP settings for that path).
     appgw.ingress.kubernetes.io/backend-path-prefix: "/" 
   hosts:
-    - host: "secretsharer.example.com" # !
+    - host: "secretsharer.local" 
       paths:
         frontend: # Configures the first path rule in ingress.yaml
           path: "/"
