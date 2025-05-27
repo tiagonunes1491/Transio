@@ -312,7 +312,7 @@ module rbac 'modules/rbac.bicep' = {
   params: {
     keyVaultId: akv.outputs.keyvaultId
     acrId: acr.outputs.acrId
-    uamiIds: uami.outputs.uamiIds
+    uamiIds: uami.outputs.uamiPrincipalIds 
     aksId: aks.outputs.aksId
   }
 }
@@ -386,3 +386,17 @@ module appGw 'modules/appgw.bicep' = {
     appGwSubnetId: network.outputs.subnetIds[1]
   }
 }
+
+// Final outputs for main.bicep
+
+output acrLoginServer string = acr.outputs.acrLoginServer
+output acrName string = acr.outputs.acrName  
+output aksName string = aks.outputs.aksName
+output backendK8sServiceAccountName string = federationConfigs[0].k8sServiceAccountName
+output databaseInitK8sServiceAccountName string = federationConfigs[1].k8sServiceAccountName
+output resourceGroupName string = rg.name
+output keyvaultName string = akv.outputs.keyvaultName
+output appGwPublicIp string = appGw.outputs.publicIpAddress
+output backendUamiClientId string = uami.outputs.uamiClientIds[0] 
+output dbInitUamiClientId string = uami.outputs.uamiClientIds[1]  // DB Init UAMI
+output tenantId string = tenantId

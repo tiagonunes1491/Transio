@@ -6,7 +6,7 @@ param keyVaultId string
 @minLength(1)
 param acrId string
 
-@description('UAMI array to give access to Key Vault as secret user')
+@description('UAMI Principal IDs array to give access to Key Vault as secret user')
 param uamiIds array = []
 
 @description('ID of the Azure Kubernetes Service')
@@ -52,7 +52,7 @@ resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
     name: guid(acr.id, aks.id, 'AcrPull')
     properties: {
       roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
-      principalId: aks.identity.principalId
+      principalId: aks.properties.identityProfile.kubeletidentity.objectId
       principalType: 'ServicePrincipal'
   }
 }

@@ -125,3 +125,61 @@ spec:
         - protocol: TCP
           port: {{ .Values.backend.service.port }} # Port the backend service/container listens on (e.g., 5000)
 {{- end }}
+---
+# Allow cluster DNS egress (UDP/TCP port 53) to kube-dns in kube-system namespace
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-dns
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}
+---
+# Allow Backend pods to connect TO Database pods (egress rule)
+{{- if .Values.networkPolicies.create }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-backend-egress-to-database
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+spec:
+  # This policy applies to Backend pods
+  podSelector:
+    matchLabels:
+      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backend # Selects the backend pods
+  policyTypes:
+    - Egress # This policy is about allowing OUTGOING traffic from the backend
+  egress:
+    - to:
+        # Allow traffic TO pods that have these labels (i.e., Database pods)
+        - podSelector:
+            matchLabels:
+              {{- include "secret-sharer-app.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: database # Selects the database pods
+      ports:
+        # Allow traffic TO this port on the Database pods
+        - protocol: TCP
+          port: 5432 # PostgreSQL port
+{{- end }}
