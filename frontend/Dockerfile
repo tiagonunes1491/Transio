@@ -14,7 +14,7 @@ RUN echo "pid /tmp/nginx.pid;" >> /etc/nginx/nginx.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Our static frontend files...
-COPY ./static /usr/share/nginx/html
+COPY ./staticv2 /usr/share/nginx/html
 
 # Give the nginx user ownership of cache directories it needs to write to
 RUN chown -R nginx:nginx /var/cache/nginx

@@ -1,0 +1,438 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+                 <ul class="text-[#90aecb] space-y-1">
+                <li>• Someone shared a secret with you via this link</li>
+                <li>• Click "Reveal Secret" to view the message</li>
+                <li>• The secret will be shown once and then deleted</li>
+                <li>• The link becomes invalid after viewing</li>
+              </ul>="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Manrope%3Awght%40400%3B500%3B700%3B800&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900"
+    />
+
+    <title>Stitch Design</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-[#101a23] dark group/design-root overflow-x-hidden" style='font-family: Manrope, "Noto Sans", sans-serif;'>
+      <div class="layout-container flex h-full grow flex-col">        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#223649] px-10 py-3">          <div class="flex items-center gap-4 text-white">
+            <img src="logo.png" alt="SecretShare Logo" class="h-8 w-auto">
+            <h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">SecureSharer</h2>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
+            <div class="flex items-center gap-9"><a class="text-white text-sm font-medium leading-normal" href="index.html">New Secret</a></div>            <button
+              id="helpButton"
+              class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#223649] hover:bg-[#314d68] text-white gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 transition-colors"
+              title="Help & Information"
+            >
+              <div class="text-white" data-icon="Question" data-size="20px" data-weight="regular">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                  <path
+                    d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"
+                  ></path>
+                </svg>
+              </div>
+            </button>
+            <div
+              class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDU-j0wNyUKuIvcmTMleDvWmlVk_RErBSesvnYVgcCCMv9spYcDLUFZFA37GOa6YERCEzl5awdwEeWs21DMtrGPF8uDYTv5J9CC-lsqMzeu00oNqrbELqmA74QAVOiTkBLEAZtsKBfmLyHz3mYzRBafeMsrIXJQgwa3g8C5NznSILXM_v0J8Bxq2fd1O1s6ETK1jl4LL0m876r46_Dekf42eO26CiE0H_ZG5SrBwhjrfI0XL_eZaZxZZEKwRhZRI2a3tVmhQsRYdyg");'
+            ></div>
+          </div>
+        </header>
+        <div class="px-40 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">            <h2 id="headerTitle" class="text-white tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5">Checking...</h2>
+            
+            <!-- Initial message shown when secret exists but not yet revealed -->
+            <div id="initialMessage" class="hidden">
+              <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4 text-center">Your secret is available and ready to view.</p>
+              <p class="text-[#90aecb] text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center">
+                <strong>Important:</strong> For security reasons, this secret can only be viewed once. After viewing, it will be permanently deleted.
+              </p>
+              <div class="flex px-4 py-3 justify-center">
+                <button
+                  id="revealButton"
+                  class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#0b80ee] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+                >
+                  <span class="truncate">Reveal Secret</span>
+                </button>
+              </div>
+            </div>
+            
+            <!-- Loading state -->
+            <div id="loadingContainer" class="hidden">
+              <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4 text-center">Loading your secret...</p>
+              <div class="flex justify-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+              </div>
+            </div>
+            
+            <!-- Secret content area -->
+            <div id="secretContent" class="hidden">
+              <!-- This will be populated when secret is fetched -->
+            </div>
+            
+            <!-- Error/not found content area -->
+            <div id="errorContent" class="hidden">
+              <!-- This will be populated for errors -->
+            </div>          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-[#182734] border border-[#314d68] rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-white text-lg font-bold">How SecretShare Works</h3>
+            <button id="closeHelpModal" class="text-[#90aecb] hover:text-white transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="space-y-4 text-sm">
+            <div class="bg-[#101a23] border border-[#314d68] rounded-lg p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#0b80ee" viewBox="0 0 256 256">
+                  <path d="M225.86,102.82c-3.77-3.94-7.67-8-9.14-11.57-1.36-3.27-1.44-8.69-1.52-13.94-.15-9.76-.31-20.82-8-28.51s-18.75-7.85-28.51-8c-5.25-.08-10.67-.16-13.94-1.52-3.56-1.47-7.63-5.37-11.57-9.14C146.28,23.51,138.44,16,128,16s-18.27,7.51-25.18,14.14c-3.94,3.77-8,7.67-11.57,9.14C88,40.64,82.56,40.72,77.31,40.8c-9.76.15-20.82.31-28.51,8S41,67.55,40.8,77.31c-.08,5.25-.16,10.67-1.52,13.94-1.47,3.56-5.37,7.63-9.14,11.57C23.51,109.72,16,117.56,16,128s7.51,18.27,14.14,25.18c3.77,3.94,7.67,8,9.14,11.57,1.36,3.27,1.44,8.69,1.52,13.94.15,9.76.31,20.82,8,28.51s18.75,7.85,28.51,8c5.25.08,10.67.16,13.94,1.52,3.56,1.47,7.63,5.37,11.57,9.14C109.72,232.49,117.56,240,128,240s18.27-7.51,25.18-14.14c3.94-3.77,8-7.67,11.57-9.14,3.27-1.36,8.69-1.44,13.94-1.52,9.76-.15,20.82-.31,28.51-8s7.85-18.75,8-28.51c.08-5.25.16-10.67,1.52-13.94,1.47-3.56,5.37-7.63,9.14-11.57C232.49,146.28,240,138.44,240,128S232.49,109.73,225.86,102.82Zm-52.2,6.84-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"></path>
+                </svg>
+                <span class="text-white font-medium">Security First</span>
+              </div>
+              <p class="text-[#90aecb]">Your secret is encrypted and can only be viewed once. After viewing, it's permanently deleted from our servers.</p>
+            </div>
+            
+            <div class="bg-[#101a23] border border-[#314d68] rounded-lg p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#28a745" viewBox="0 0 256 256">
+                  <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+                </svg>
+                <span class="text-white font-medium">How It Works</span>
+              </div>
+              <ul class="text-[#90aecb] space-y-1">
+                <li>• Someone shared a secret with you via this link</li>
+                <li>• Click "Reveal Secret" to view the message</li>
+                <li>• The secret will be shown once and then deleted</li>
+                <li>• The link becomes invalid after viewing</li>
+              </ul>
+            </div>
+            
+            <div class="bg-[#101a23] border border-[#314d68] rounded-lg p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#f39c12" viewBox="0 0 256 256">
+                  <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+                </svg>
+                <span class="text-white font-medium">Important</span>
+              </div>
+              <p class="text-[#90aecb]">Make sure you're ready to view the secret before clicking "Reveal" - you won't get a second chance!</p>
+            </div>
+          </div>
+          
+          <div class="mt-6 flex justify-center">
+            <button id="closeHelpModalButton" class="px-4 py-2 bg-[#0b80ee] hover:bg-[#0969d3] text-white text-sm font-medium rounded-lg transition-colors">
+              Got it!
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body><script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Extract the link ID from the URL hash
+      const hash = window.location.hash.substring(1); // Remove the # character
+      const linkId = hash;
+      
+      console.log('URL hash:', window.location.hash);
+      console.log('Extracted link ID:', linkId);
+        // Get DOM elements
+      const headerTitle = document.getElementById('headerTitle');
+      const initialMessage = document.getElementById('initialMessage');
+      const loadingContainer = document.getElementById('loadingContainer');
+      const secretContent = document.getElementById('secretContent');
+      const errorContent = document.getElementById('errorContent');
+      
+      // Help modal elements
+      const helpButton = document.getElementById('helpButton');
+      const helpModal = document.getElementById('helpModal');
+      const closeHelpModal = document.getElementById('closeHelpModal');
+      const closeHelpModalButton = document.getElementById('closeHelpModalButton');
+      
+      // Function to reset all UI states
+      function resetUI() {
+        initialMessage.classList.add('hidden');
+        loadingContainer.classList.add('hidden');
+        secretContent.classList.add('hidden');
+        errorContent.classList.add('hidden');
+      }
+      
+      if (!linkId) {
+        showError('Invalid link. No secret ID was provided.');
+        return;
+      }
+      
+      // Initially show loading and check if secret exists
+      resetUI();
+      loadingContainer.classList.remove('hidden');
+      headerTitle.textContent = 'Checking...';
+      
+      checkSecretExists(linkId);
+      
+      // Function to check if the secret exists without revealing it
+      async function checkSecretExists(linkId) {
+        try {
+          // Determine API endpoint based on environment
+          const isDevelopment = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1' ||
+                               window.location.protocol === 'file:';
+          const apiEndpoint = isDevelopment 
+            ? `http://127.0.0.1:5000/secret/${linkId}` // Local dev
+            : `/api/secret/${linkId}`; // Deployed
+          
+          // Just check if the secret exists without revealing it
+          console.log('Checking if secret exists at endpoint:', apiEndpoint);
+          const response = await fetch(apiEndpoint, {
+            method: 'HEAD', // Only check headers, don't retrieve content
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          console.log('API HEAD response status:', response.status);
+          
+          // Always hide loading state when response comes back
+          resetUI();
+          
+          if (response.status === 404) {
+            // Secret doesn't exist, show not found message immediately
+            showNotFound();
+            return;
+          }
+          
+          if (!response.ok) {
+            // Some other error, show generic error message
+            showError(`Server returned error: ${response.status}`);
+            return;
+          }
+          
+          // Secret exists but we don't reveal it yet, just update the UI to indicate it's ready
+          headerTitle.textContent = 'Secret Available';
+          initialMessage.classList.remove('hidden');
+          
+          // Add click event listener to the reveal button
+          const revealButton = document.getElementById('revealButton');
+          if (revealButton) {
+            revealButton.addEventListener('click', async () => {
+              resetUI();
+              loadingContainer.classList.remove('hidden');
+              headerTitle.textContent = 'Loading...';
+              
+              console.log('Reveal button clicked, retrieving secret with ID:', linkId);
+              await fetchSecret(linkId);
+            });
+          }
+          
+        } catch (error) {
+          console.error('Error checking secret existence:', error);
+          // Always hide loading state on error
+          resetUI();
+          showError(`Failed to check if the secret exists: ${error.message}`);
+        }
+      }
+      
+      // Function to fetch the secret from the API
+      async function fetchSecret(linkId) {
+        try {
+          // Determine API endpoint based on environment
+          const isDevelopment = window.location.hostname === 'localhost' || 
+                               window.location.hostname === '127.0.0.1' ||
+                               window.location.protocol === 'file:';
+          const apiEndpoint = isDevelopment 
+            ? `http://127.0.0.1:5000/secret/${linkId}` // Local dev
+            : `/api/secret/${linkId}`; // Deployed
+          
+          // Fetch the secret
+          console.log('Fetching from API endpoint:', apiEndpoint);
+          const response = await fetch(apiEndpoint, {
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          console.log('API response status:', response.status);
+          
+          // Always hide loading state
+          resetUI();
+          
+          if (response.status === 404) {
+            showNotFound();
+            return;
+          }
+          
+          if (!response.ok) {
+            try {
+              const errorData = await response.json();
+              throw new Error(errorData.error || `Server returned error: ${response.status}`);
+            } catch (jsonError) {
+              throw new Error(`Server returned error: ${response.status}`);
+            }
+          }
+          
+          try {
+            // Handle successful response
+            const data = await response.json();
+            console.log('Parsed response data:', data);
+            
+            if (data.error) {
+              showError(data.error);
+            } else if (data.secret) {
+              showSecret(data.secret);
+            } else {
+              showError('Received unexpected data format from server.');
+            }
+          } catch (jsonParseError) {
+            showError(`Failed to parse response: ${jsonParseError.message}`);
+          }
+        } catch (error) {
+          console.error('Error retrieving secret:', error);
+          showError(`Failed to retrieve the secret: ${error.message}`);
+        }
+      }
+      
+      // Function to display the secret
+      function showSecret(secretText) {
+        resetUI();
+        headerTitle.textContent = 'Your One-Time Secret';
+        secretContent.innerHTML = `
+          <div class="bg-[#182734] border border-[#314d68] rounded-lg p-4 mx-4 mb-4">
+            <div class="flex items-center gap-2 mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#28a745" viewBox="0 0 256 256">
+                <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
+              </svg>
+              <span class="text-[#28a745] text-sm font-medium">Your secret has been successfully revealed!</span>
+            </div>
+          </div>
+          <div class="bg-[#101a23] border border-[#314d68] rounded-lg p-4 mx-4 mb-4">
+            <div class="text-white text-base font-normal leading-relaxed whitespace-pre-wrap">${escapeHTML(secretText)}</div>
+          </div>
+          <div class="flex items-center gap-2 mx-4 mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#0b80ee" viewBox="0 0 256 256">
+              <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+            </svg>
+            <span class="text-[#90aecb] text-sm">This secret has now been deleted and cannot be accessed again.</span>
+          </div>
+          <div class="flex px-4 py-3 justify-center">
+            <button
+              onclick="window.location.href = 'index.html'"
+              class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#0b80ee] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+            >
+              <span class="truncate">Create New Secret</span>
+            </button>
+          </div>
+        `;
+        secretContent.classList.remove('hidden');
+      }
+      
+      // Function to show "not found" message
+      function showNotFound() {
+        resetUI();
+        headerTitle.textContent = 'Secret Not Found';        errorContent.innerHTML = `
+          <div class="text-center">
+            <div class="text-6xl mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#90aecb" viewBox="0 0 256 256" class="mx-auto">
+                <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216ZM80,108A12,12,0,1,1,92,96,12,12,0,0,1,80,108Zm88,0a12,12,0,1,1-12-12A12,12,0,0,1,168,108Zm-12,60c-17.74,0-32-11.45-32-25.61a8,8,0,1,1,16,0c0,5.23,8.22,9.61,16,9.61s16-4.38,16-9.61a8,8,0,1,1,16,0C188,156.55,173.74,168,156,168Z"></path>
+              </svg>
+            </div>
+            <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4">The secret link is invalid, has expired, or has already been viewed.</p>
+            <p class="text-[#90aecb] text-sm font-normal leading-normal pb-3 pt-1 px-4">For security reasons, secrets can only be accessed once.</p>
+            <div class="flex px-4 py-3 justify-center">
+              <button
+                onclick="window.location.href = 'index.html'"
+                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#0b80ee] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+              >
+                <span class="truncate">Create New Secret</span>
+              </button>
+            </div>
+          </div>
+        `;
+        errorContent.classList.remove('hidden');
+      }
+      
+      // Function to show error message
+      function showError(message) {
+        resetUI();
+        headerTitle.textContent = 'An Error Occurred';        errorContent.innerHTML = `
+          <div class="text-center">
+            <div class="text-6xl mb-4">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="#0b80ee" viewBox="0 0 256 256" class="mx-auto">
+                <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+              </svg>
+            </div>
+            <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4">${escapeHTML(message)}</p>
+            <div class="flex px-4 py-3 justify-center">
+              <button
+                onclick="window.location.href = 'index.html'"
+                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#0b80ee] text-white text-sm font-bold leading-normal tracking-[0.015em]"
+              >
+                <span class="truncate">Create New Secret</span>
+              </button>
+            </div>
+          </div>
+        `;
+        errorContent.classList.remove('hidden');
+      }
+        // Helper function to escape HTML
+      function escapeHTML(str) {
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+      
+      // Help modal functionality
+      function showHelpModal() {
+        helpModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+      }
+      
+      function hideHelpModal() {
+        helpModal.classList.add('hidden');
+        document.body.style.overflow = ''; // Restore scrolling
+      }
+      
+      // Help button click handler
+      if (helpButton) {
+        helpButton.addEventListener('click', showHelpModal);
+      }
+      
+      // Close modal handlers
+      if (closeHelpModal) {
+        closeHelpModal.addEventListener('click', hideHelpModal);
+      }
+      
+      if (closeHelpModalButton) {
+        closeHelpModalButton.addEventListener('click', hideHelpModal);
+      }
+      
+      // Close modal when clicking outside of it
+      if (helpModal) {
+        helpModal.addEventListener('click', (e) => {
+          if (e.target === helpModal) {
+            hideHelpModal();
+          }
+        });
+      }
+      
+      // Close modal with Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !helpModal.classList.contains('hidden')) {
+          hideHelpModal();
+        }
+      });
+    });
+  </script>
+</html>
