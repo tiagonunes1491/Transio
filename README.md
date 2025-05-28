@@ -25,9 +25,8 @@ The application follows a tiered architecture:
     * **Azure Key Vault (AKV)**: Securely stores all sensitive application data, including the master encryption key and database credentials. Access is controlled via Azure RBAC and User Assigned Managed Identities.
     * **Azure Container Registry (ACR)**: Stores hardened Docker images, scanned for vulnerabilities.
     * **Azure Application Gateway (AppGW)**: Provides secure L7 load balancing and ingress control for the application, managed by the Application Gateway Ingress Controller (AGIC).
-
-**(Placeholder for Architecture Diagram - Consider adding the existing `docs/architecture-diagram.png` here)**
-`![Architecture Diagram](docs/architecture-diagram.png)`
+      
+![Architecture Diagram](docs/architecture-diagram.jpg)
 
 ## ✨ Core Features
 
