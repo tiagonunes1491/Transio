@@ -1,43 +1,86 @@
-<html>
-  <head>
+<html>  <head>
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
     <link
       rel="stylesheet"
       as="style"
       onload="this.rel='stylesheet'"
-      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Manrope%3Awght%40400%3B500%3B700%3B800&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900"
-    />
-
-    <title>SecretShare - Error</title>
-    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+      href="https://fonts.googleapis.com/css2?display=swap&family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700"
+    />    <title>SecretShare - Error</title>
+    <link rel="icon" type="image/png" href="logo.png" />
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  </head>
-  <body>
-    <div class="relative flex size-full min-h-screen flex-col bg-[#101a23] dark group/design-root overflow-x-hidden" style='font-family: Inter, "Noto Sans", sans-serif;'>
-      <div class="layout-container flex h-full grow flex-col">
-        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#223649] px-10 py-3">          <div class="flex items-center gap-4 text-white">
-            <img src="logo.png" alt="SecretShare Logo" class="h-8 w-auto">
-            <h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">SecureSharer</h2>
-          </div><div class="flex flex-1 justify-end gap-8">
+      <style>
+      :root {
+        --primary-color: #36454F;       /* Sophisticated Charcoal Grey */
+        --secondary-color: #206a5d;     /* Calming Teal */
+        --accent-color: #ffffff;        /* Clean White */
+        --accent-color-light-grey: #ecf0f1; /* Light Grey */
+        --background-light: #f8fafc;    /* Very Light Grey */
+        --surface-color: #ffffff;       /* Pure White */
+        --text-primary: #1a202c;        /* Dark Grey */
+        --text-secondary: #4a5568;      /* Medium Grey */
+        --text-light: #718096;          /* Light Grey */
+        --text-color-light: #FFFFFF;    /* White for text on dark backgrounds */
+        --border-color: #e2e8f0;        /* Light Border */
+        --shadow-light: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        --shadow-medium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
+      
+      .font-heading { font-family: 'Montserrat', sans-serif; }
+      .font-body { font-family: 'Open Sans', sans-serif; }
+
+      /* Header styling to match main page */
+      .header-custom {
+        background-color: var(--primary-color); /* Charcoal Grey */
+        border-bottom: 2px solid var(--secondary-color); /* Teal accent border */
+      }
+      .header-custom h2, .header-custom a {
+        color: var(--text-color-light);
+      }
+      .header-custom a:hover {
+        color: var(--accent-color-light-grey);
+      }
+
+      /* Modern button glow effects */
+      .btn-glow {
+        box-shadow: 0 4px 14px 0 rgba(32, 106, 93, 0.3);
+        transition: all 0.3s ease;
+      }
+      .btn-glow:hover {
+        box-shadow: 0 6px 20px 0 rgba(32, 106, 93, 0.5);
+        transform: translateY(-2px);
+      }
+      .btn-glow:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px 0 rgba(32, 106, 93, 0.4);
+      }
+    </style>
+  </head>  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-white font-body group/design-root overflow-x-hidden">
+      <div class="layout-container flex h-full grow flex-col">        <header class="header-custom flex items-center justify-between whitespace-nowrap px-10 py-3 shadow-lg">
+          <div class="flex items-center gap-4">
+            <img src="logo.png" alt="SecretShare Logo" class="h-8 w-auto drop-shadow-lg">
+            <h2 class="text-lg font-bold leading-tight tracking-[-0.015em] font-heading drop-shadow-md" style="color: var(--text-color-light);">SecureSharer</h2>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
             <div class="flex items-center gap-9">
-              <a class="text-white text-sm font-medium leading-normal" href="index.html">New Secret</a>
-              <a class="text-white text-sm font-medium leading-normal" href="index.html#how-it-works">How it works</a>
-            </div>
-            <div
+              <a class="text-sm font-medium leading-normal font-body hover:text-white transition-colors" style="color: var(--text-color-light);" href="index.html">New Secret</a>
+              <a class="text-sm font-medium leading-normal font-body hover:text-white transition-colors" style="color: var(--text-color-light);" href="index.html#how-it-works">How it works</a>
+            </div>            <div
               class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
               style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCYAGP5ydG4lxpXaRM-NnBgf9qv3Z-uARceAUVRawDbljQW8dyT3j67c8rq43xrh4gJ2A1xEFeP2nzuj4gJWy4LVEf4J4k9LJeegYNV6oJ0ePPjss3VTFMsRxGrNDPflGrwUQmXtRPHBB2flsuifvurTIAG2QxqzC98VoWg_x8eOqT7shL8JeQPhDdZJ3kzRTFHFR-cUVLaykzqDEStKlUdjpJvAyO_iaUQMcFhOfthaC6ekXA_GCk7fLczBcnekdVcsKFn2ApmloI");'
+              title="Profile - Stay tuned!"
             ></div>
           </div>
-        </header>
-        <div class="px-40 flex flex-1 justify-center py-5">
+        </header>        <div class="px-40 flex flex-1 justify-center py-5">
           <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
-            <h2 class="text-white tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5">Oops! Something went wrong.</h2>
-            <p class="text-white text-base font-normal leading-normal pb-3 pt-1 px-4 text-center">
+            <h2 class="tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5 font-heading" style="color: var(--primary-color);">Oops! Something went wrong.</h2>
+            <p class="text-base font-normal leading-normal pb-3 pt-1 px-4 text-center font-body" style="color: var(--text-secondary);">
               The link you are looking for is not valid or may have expired. Please check the link or return to the homepage.
-            </p>
-            <div class="flex px-4 py-3 justify-center">              <button
-                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 bg-[#223649] hover:bg-[#314d68] text-white text-sm font-bold leading-normal tracking-[0.015em] transition-colors"
+            </p>            <div class="flex px-4 py-3 justify-center">
+              <button
+                class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] font-body btn-glow"
+                style="background-color: var(--secondary-color); color: var(--accent-color);"
                 onclick="window.location.href='index.html'"
               >
                 <span class="truncate">Back to Home</span>
