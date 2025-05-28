@@ -37,7 +37,7 @@ The application follows a tiered architecture:
     * **Azure Container Registry (ACR)**: Stores hardened Docker images, scanned for vulnerabilities.
     * **Azure Application Gateway (AppGW)**: Provides secure L7 load balancing and ingress control for the application, managed by the Application Gateway Ingress Controller (AGIC).
       
-![Architecture Diagram](docs/architecture-diagram.jpg)
+![Architecture Diagram](docs/diagram-securesharer.drawio.png)
 
 ## ✨ Core Features
 
