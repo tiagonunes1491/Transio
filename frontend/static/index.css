@@ -1,0 +1,103 @@
+/* index.css - Styles specific to index.html */
+
+.hero-title-custom {
+  font-family: var(--font-heading);
+  color: var(--primary-color);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Softer shadow */
+}
+.hero-subtitle-custom {
+  font-family: var(--font-body);
+  color: var(--text-color-subtle);
+}
+
+.create-section-custom {
+  background-color: var(--accent-color-light-grey);
+  border: 1px solid #cccccc; /* Lighter border */
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  border-radius: 8px;
+}
+.create-section-custom h3 {
+  color: var(--secondary-color); /* Teal for section sub-headings */
+}
+.create-section-custom label svg {
+  color: var(--secondary-color); /* Icon color */
+}
+
+.create-section-custom input[type="text"] {
+  background-color: var(--accent-color-white);
+  color: var(--text-color-dark);
+  border: 1px solid #bdc3c7; /* Match container border for seamless integration */
+  border-left: none; /* Remove left border - handled by icon container */
+  border-right: none; /* Remove right border - handled by button container */
+}
+.create-section-custom input[type="text"]:focus {
+  border: 1px solid #bdc3c7; /* Keep matching border on focus */
+  border-left: none; /* Remove left border - handled by icon container */
+  border-right: none; /* Remove right border - handled by button container */
+  box-shadow: none; /* Remove blue focus ring */
+  outline: none; /* Remove default outline */
+}
+
+/* Styling for the main secret input field */
+.create-section-custom input#secretMessageInput {
+  background-color: var(--accent-color-white);
+  color: var(--text-color-dark);
+  border: 1px solid #bdc3c7; /* Match container border for seamless integration */
+  border-left: none; /* Remove left border - handled by icon container */
+  border-right: none; /* Remove right border - handled by button container */
+}
+.create-section-custom input#secretMessageInput:focus {
+  border: 1px solid #bdc3c7; /* Keep matching border on focus */
+  border-left: none; /* Remove left border - handled by icon container */
+  border-right: none; /* Remove right border - handled by button container */
+  box-shadow: none; /* Remove ugly blue focus ring */
+  outline: none; /* Remove default outline */
+}
+
+.create-section-custom .main-create-button-custom { /* Button in create section */
+  background-color: var(--secondary-color);
+  color: var(--text-color-light);
+}
+.create-section-custom .main-create-button-custom:hover {
+  background-color: #1a574a;
+}
+
+.result-area-custom {
+  background-color: var(--accent-color-white);
+  border: 1px solid var(--secondary-color);
+}
+
+.feature-card-custom {
+  background-color: var(--accent-color-white);
+  border: 1px solid #e0e0e0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.feature-card-custom:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  border-color: var(--secondary-color);
+}
+.feature-card-custom .icon-bg-custom {
+  background-color: var(--secondary-color); /* Circle bg for icons */
+  color: var(--text-color-light); /* Icon color itself */
+}
+.feature-card-custom h3 {
+  color: var(--primary-color);
+}
+
+.footer-custom {
+  background-color: var(--primary-color);
+  color: var(--text-color-light);
+}
+.footer-custom a {
+  color: var(--accent-color-light-grey);
+}
+.footer-custom a:hover {
+  color: var(--accent-color-white);
+}
+.footer-custom .social-icon-custom svg {
+  color: var(--accent-color-light-grey); /* Initial color */
+}
+.footer-custom .social-icon-custom:hover svg {
+   color: var(--accent-color-white); /* Hover color for social icons */
+}
