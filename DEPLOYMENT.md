@@ -1,441 +1,195 @@
-# Secure Secret Sharer - Detailed Deployment Guide
+# Secure Secret Sharer - Deployment Guide
 
-This document provides comprehensive technical instructions for setting up and deploying the "Secure Secret Sharer" application on Azure Kubernetes Service (AKS).
+This document provides detailed instructions for deploying the "Secure Secret Sharer" application to Azure Kubernetes Service (AKS) using the provided automation scripts and Bicep for infrastructure provisioning.
 
-## Prerequisites
+## 1. Prerequisites
 
-Before you begin, ensure you have the following installed and configured:
+Before you begin, ensure you have the following:
 
-* Azure CLI: Logged in (`az login`) and set to the correct subscription (`az account set --subscription "<Your-Subscription>"`).
-* `kubectl`: Configured to interact with Kubernetes clusters.
-* Helm (v3+): For deploying the application chart.
-* Docker Desktop (or Docker CLI): For building and pushing container images.
-* A local copy of this project repository.
-* Sufficient permissions in your Azure subscription to create and manage resources (Resource Groups, ACR, AKV, UAMIs, AKS, Application Gateway, Role Assignments).
+* **Azure Subscription**: An active Azure subscription where you have permissions to create and manage resources (Resource Groups, AKS, ACR, Key Vault, Application Gateway, Managed Identities, Role Assignments).
+* **Azure CLI**: Installed and configured. Log in using `az login` and set your active subscription using `az account set --subscription "<Your-Subscription-ID>"`.
+* **Docker**: Docker Desktop (Windows/Mac) or Docker Engine (Linux) installed and running for building container images.
+* **kubectl**: Kubernetes command-line tool, installed.
+* **Helm**: Helm v3+, the Kubernetes package manager, installed.
+* **Bicep CLI**: Automatically installed by Azure CLI when a Bicep deployment is first triggered, or can be installed manually.
+* **Git**: For cloning the project repository.
+* **Project Repository**: Clone this project repository to your local machine.
+    ```bash
+    git clone <repository-url>
+    cd secure-secret-sharer
+    ```
+* **(For Windows Users) WSL & Ubuntu**:
+    * Ensure Windows Subsystem for Linux (WSL) is enabled and an Ubuntu distribution is installed. Run the `scripts/install_wsl_prereqs.ps1` script in an elevated PowerShell console.
+    * Once WSL and Ubuntu are set up, open your Ubuntu terminal.
+* **Development Tools in Ubuntu/WSL**:
+    * Inside your Ubuntu (or other Linux/macOS) environment, run the `scripts/install_prereqs.sh` script to install Azure CLI (within WSL/Linux), Docker (within WSL/Linux, if not using Docker Desktop mapped to WSL2), kubectl, and Helm.
+        ```bash
+        cd scripts
+        chmod +x install_prereqs.sh
+        ./install_prereqs.sh
+        cd ..
+        ```
+    * Ensure you close and reopen your Ubuntu shell after running `install_prereqs.sh` for Docker group membership changes to apply.
 
-## 1. Azure Resource Provisioning
+## 2. Automated Deployment with `build_dev.sh`
 
-Create all resources in the same Azure region (e.g., `Spain Central`) for optimal performance and to simplify networking.
+The `build_dev.sh` script, located in the root of the project, automates the majority of the deployment process.
 
-### a. Resource Group
+### 2.1. Overview
 
-* Create a new resource group to hold all project resources.
-  * **Name:** `rg-secure-secret-sharer-mvp`
-  * **Region:** e.g., `Spain Central`
+The script performs the following actions:
+1.  **(Optional) Full Rebuild**: If specified, tears down the existing Azure resource group and purges the Key Vault.
+2.  **Azure Infrastructure Provisioning**: Deploys Azure resources (AKS, ACR, Key Vault, Application Gateway, Managed Identities, etc.) using Bicep templates located in the `infra/` directory (`main.bicep` and `main.dev.bicepparam`).
+3.  **Retrieve Bicep Outputs**: Fetches necessary output values from the Bicep deployment (e.g., ACR login server, Key Vault name, UAMI client IDs).
+4.  **(Optional) Build & Push Container Images**: Builds Docker images for the frontend and backend services and pushes them to the newly created Azure Container Registry (ACR).
+5.  **Connect to AKS**: Configures `kubectl` to connect to the deployed AKS cluster.
+6.  **Deploy Application**: Deploys the Secure Secret Sharer application to AKS using the Helm chart located in `k8s/secret-sharer-app/`. It dynamically sets values in the Helm chart based on the Bicep deployment outputs.
 
-### b. Azure Container Registry (ACR)
+### 2.2. Configuration
 
-* Create an ACR instance to store your Docker images.
-  * **Name:** `acrsecuresecsharer` (globally unique)
-  * **Resource Group:** `rg-secure-secret-sharer-mvp`
-  * **SKU:** Basic (sufficient for MVP)
-  * **Admin user:** Can be left disabled.
+* **Bicep Parameters**: Review and modify `infra/main.dev.bicepparam` if you need to change default resource names, locations (though the script uses a default location), or other infrastructure parameters *before* running the script.
+* **Image Tags**: Default image tags for frontend and backend are defined at the top of `build_dev.sh`. You can modify these if needed.
+    ```bash
+    BACKEND_TAG="0.3.0"
+    FRONTEND_TAG="0.3.0"
+    ```
+* **Key Vault Secrets**: The Bicep template provisions Azure Key Vault. However, the secrets themselves (`postgres-password`, `app-db-user`, `app-db-password`, `app-master-encryption-key`) **must be created manually in the Azure Key Vault** after the Key Vault is provisioned by the Bicep step in `build_dev.sh` but *before* the Helm deployment step is executed by the script.
 
-### c. Azure Key Vault (AKV)
+    **Action Required: Create Secrets in Azure Key Vault**
+    After the Bicep deployment part of `build_dev.sh` completes and your Key Vault (e.g., `kv-securesharer-dev` as per the Bicep variables, or the value outputted by the script) is created:
+    1.  Navigate to your Key Vault in the Azure portal.
+    2.  Go to **Secrets** and click **+ Generate/Import**.
+    3.  Create the following secrets with appropriate values:
+        * `postgres-password`: A strong password for the PostgreSQL initial admin user. (This name is referenced in `values.yaml` as `database.keyVault.secrets.initPassword`)
+        * `app-db-user`: The username for the application's database user (e.g., `secret_sharer_app_user`). (This name is referenced in `values.yaml` as `backend.keyVault.secrets.dbUser`)
+        * `app-db-password`: A strong password for the `app-db-user`. (This name is referenced in `values.yaml` as `backend.keyVault.secrets.dbPassword`)
+        * `app-master-encryption-key`: A Fernet key. Generate one using:
+            ```python
+            python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+            ```
+            (This name is referenced in `values.yaml` as `backend.keyVault.secrets.appMasterKey`)
+    These secret names are referenced in the Helm chart's `values.yaml` and are used by the Secrets Store CSI Driver.
 
-* Create a Key Vault to store secrets.
-  * **Name:** `kv-secure-secret-sharer` (globally unique)
-  * **Resource Group:** `rg-secure-secret-sharer-mvp`
-  * **Region:** Same as above.
-  * **Pricing tier:** Standard.
-  * **Recovery options:** Enable "Soft delete" (default) and **"Purge protection"**.
-  * **Access configuration:** Select permission model: **"Azure role-based access control"**.
-* **Create Secrets in AKV:**
-  Navigate to your Key Vault -> Secrets -> "+ Generate/Import". Create the following secrets:
-  1. **Name:** `postgres-password`
-     * **Value:** A strong, generated password for the PostgreSQL initial admin user.
-  2. **Name:** `app-db-user`
-     * **Value:** The actual username string for your application's database user (e.g., `secret_sharer_app_user`).
-  3. **Name:** `app-db-password`
-     * **Value:** A strong, generated password for the `app-db-user`.
-  4. **Name:** `app-master-encryption-key`
-     * **Value:** A Fernet key (generate using `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`).
+### 2.3. Running the Script
 
-### d. User Assigned Managed Identities (UAMIs)
+Navigate to the root of the project directory in your terminal (Ubuntu/WSL recommended).
 
-Create two UAMIs in your resource group (`rg-secure-secret-sharer-mvp`):
-
-1. **Backend UAMI:**
-   * **Name:** `id-secretsharer-backend`
-   * **Note down its Client ID and Principal ID.** (Example Client ID: `fa376030-252d-443f-a32d-294e3cda90e1`)
-2. **Database Initialization UAMI:**
-   * **Name:** `id-secret-sharer-db-init`
-   * **Note down its Client ID and Principal ID.** (Example Client ID: `ef9e4258-98dc-49a8-804b-dfe502309386`)
-
-### e. Granting UAMI Permissions to AKV
-
-For your Key Vault (`kv-secure-secret-sharer`):
-
-1. Go to "Access control (IAM)".
-2. Add role assignment:
-   * **Role:** "Key Vault Secrets User"
-   * **Assign access to:** Managed identity
-   * **Members:** Select `id-secretsharer-backend`.
-3. Repeat "Add role assignment":
-   * **Role:** "Key Vault Secrets User"
-   * **Assign access to:** Managed identity
-   * **Members:** Select `id-secret-sharer-db-init`.
-
-### f. Azure Kubernetes Service (AKS) Cluster
-
-* Create an AKS cluster.
-  * **Resource Group:** `rg-secure-secret-sharer-mvp`
-  * **Cluster name:** `aks-securesharer-mvp`
-  * **Region:** `Spain Central`
-  * **Kubernetes version:** A recent stable version (e.g., 1.28+).
-  * **Node pools:** A single pool with 1-2 nodes of a general-purpose size (e.g., `Standard_DS2_v2`) is fine for MVP.
-  * **Networking:**
-      * Network configuration: **Azure CNI**.
-      * Network policy: **Azure**.
-  * **Integrations:**
-      * Enable **Azure Key Vault Secrets Provider** (Secrets Store CSI Driver add-on).
-  * **Advanced / Security / Identity:**
-      * Ensure **OIDC Issuer** is **Enabled**.
-      * Ensure **Workload Identity** is **Enabled**.
-* **Get AKS OIDC Issuer URL:** After creation, go to AKS Cluster -> Settings -> Properties. Note down the **"OIDC issuer URL"**.
-  * (Example: `https://<region>.oic.prod-aks.azure.com/<YOUR_TENANT_ID>/<YOUR_AKS_OIDC_ID>/`)
-
-### g. Azure Application Gateway (AppGW)
-
-* Create an Azure Application Gateway.
-  * **Resource Group:** `rg-secure-secret-sharer-mvp`
-  * **Application gateway name:** `appgw-secretsharer`
-  * **Region:** `Spain Central`
-  * **Tier:** **Standard V2** (or WAF V2).
-  * **Enable autoscaling:** Yes (e.g., Min 1, Max 2 instances).
-  * **HTTP2:** Enabled.
-  * **Virtual network:** Select the VNet used by your AKS cluster (typically in the `MC_...` resource group, e.g., `aks-vnet-...`).
-  * **Subnet:** Create a **new, dedicated subnet** for the Application Gateway within the AKS VNet (e.g., `snet-appgateway` with an address range like `10.225.0.0/24` that doesn't overlap with AKS node subnets).
-  * **Frontends:** Create a new **Public** Frontend IP configuration with a new static Public IP address (e.g., `pip-appgw-secretsharer`). Note this IP.
-  * **Backends:** Add a dummy backend pool (e.g., `dummy-initial-backendpool`, add without targets).
-  * **Configuration (Routing Rule):** Add an initial routing rule (`initial-http-rule`) with a listener (`initial-http-listener`) for HTTP on port 80 using the public frontend IP, targeting the dummy backend pool with a basic HTTP setting (port 80). AGIC will manage these dynamically later.
-  * Create the Application Gateway (this can take 15-30+ minutes).
-
-### h. Enabling AGIC Add-on in AKS
-
-1. Register the `AppGatewayWithOverlayPreview` feature flag if using Azure CNI Overlay:
-   ```bash
-   az feature register --namespace Microsoft.ContainerService --name AppGatewayWithOverlayPreview
-   # Wait for it to become "Registered"
-   az feature show --namespace Microsoft.ContainerService --name AppGatewayWithOverlayPreview --query "properties.state"
-   az provider register --namespace Microsoft.ContainerService
-   ```
-2. Enable the AGIC add-on using Azure CLI:
-   ```bash
-   APP_GW_ID=$(az network application-gateway show --name appgw-secretsharer --resource-group rg-secure-secret-sharer-mvp --query id --output tsv)
-   az aks enable-addons \
-       --addons ingress-appgw \
-       --name aks-securesharer-mvp \
-       --resource-group rg-secure-secret-sharer-mvp \
-       --appgw-id "${APP_GW_ID}"
-   ```
-3. Verify AGIC pods are running in `kube-system`: `kubectl get pods -n kube-system -l app=ingress-appgw`
-
-### i. Configuring Federated Identity Credentials on UAMIs
-
-For each UAMI, add a federated credential in the Azure Portal (Managed Identity -> Select UAMI -> Federated credentials -> + Add credential):
-
-* **Scenario:** Kubernetes accessing Azure resources.
-* **1. For `id-secretsharer-backend` UAMI:**
-    * **Cluster Issuer URL:** Your AKS OIDC Issuer URL.
-    * **Namespace:** `default` (or your target deployment namespace).
-    * **Service account name:** `secret-sharer-backend-sa`.
-    * **Credential name:** e.g., `aks-backend-sa-federation`.
-* **2. For `id-secret-sharer-db-init` UAMI:**
-    * **Cluster Issuer URL:** Your AKS OIDC Issuer URL.
-    * **Namespace:** `default` (or your target deployment namespace).
-    * **Service account name:** `secret-sharer-db-init-sa`.
-    * **Credential name:** e.g., `aks-dbinit-sa-federation`.
-
-## 2. Preparing Application Images
-
-### Security Hardening for Container Images
-
-1. **Ensure Dockerfiles are Secure:**
-   * Use multi-stage builds.
-   * Run containers as non-root users.
-   * Minimize layers and use minimal base images (e.g., Alpine).
-
-2. **Build Docker Images:**
-   Navigate to your `frontend` and `backend` code directories and build the images.
-   ```bash
-   # In frontend directory (replace with your actual tag)
-   docker build -t acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:0.3.0 . 
-   # In backend directory (replace with your actual tag)
-   docker build -t acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:0.3.0 .
-   ```
-   *(Adjust tags to match your latest working versions.)*
-
-3. **Push Images to ACR:**
-   ```bash
-   az acr login --name acrsecuresecsharer
-   docker push acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:<your-tag>
-   docker push acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:<your-tag>
-   ```
-
-4. **Ensure AKS can pull from ACR:**
-   ```bash
-   az aks update --name aks-securesharer-mvp --resource-group rg-secure-secret-sharer-mvp --attach-acr acrsecuresecsharer
-   ```
-
-### Container Security Scanning with Trivy
-
-Implement comprehensive vulnerability scanning using Trivy as part of your container security strategy:
-
-1. **Install Trivy:**
-   ```bash
-   # For Windows with PowerShell (using Chocolatey):
-   choco install trivy -y
-   
-   # For Linux:
-   curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-   ```
-
-2. **Scan Images:**
-   ```bash
-   # Set to fail on HIGH and CRITICAL vulnerabilities
-   trivy image --severity HIGH,CRITICAL acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:0.3.0
-   trivy image --severity HIGH,CRITICAL acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:0.3.0
-   ```
-
-3. **Generate Comprehensive Reports:**
-   ```bash
-   # Generate detailed HTML reports for documentation/audit
-   trivy image --format template --template "@html.tpl" -o frontend-scan.html acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:0.3.0
-   trivy image --format template --template "@html.tpl" -o backend-scan.html acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:0.3.0
-   
-   # Generate JSON reports for pipeline integration
-   trivy image --format json -o frontend-scan.json acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:0.3.0
-   trivy image --format json -o backend-scan.json acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:0.3.0
-   ```
-
-4. **Scan Results Summary (as of May 15, 2025):**
-   * **Frontend Image (`acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:0.3.0`):** 
-     * 2 HIGH vulnerabilities in `libxml2` (CVE-2025-32414, CVE-2025-32415), fixed in `2.13.4-r6`.
-   * **Backend Image (`acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:0.3.0`):** 
-     * No HIGH or CRITICAL vulnerabilities identified.
-
-5. **Remediation Strategy:**
-   * For the frontend image, update the base image or specifically update the `libxml2` package:
-     ```dockerfile
-     # In the Dockerfile, add:
-     RUN apk update && apk upgrade libxml2>=2.13.4-r6
-     ```
-   * Rebuild and rescan the image to verify the vulnerabilities are resolved.
-
-## 3. Helm Chart Deployment
-
-1. **Navigate to Helm Chart Directory:**
-   Ensure you are in the directory containing `Chart.yaml` (e.g., `k8s/secret-sharer-app/`).
-
-2. **Update `values.yaml`:**
-   Edit `values.yaml` to reflect your Azure environment and image tags:
-   * `backend.image.repository` and `frontend.image.repository`.
-   * `backend.image.tag` and `frontend.image.tag` (e.g., `"0.3.0"`).
-   * `backend.keyVault.name`: `"kv-secure-secret-sharer"`.
-   * `backend.keyVault.tenantId`: Your Azure Tenant ID.
-   * `backend.keyVault.userAssignedIdentityClientID`: Client ID of `id-secretsharer-backend`.
-   * `database.serviceAccount.azureClientId`: Client ID of `id-secret-sharer-db-init`.
-   * `ingress.enabled`: `true`.
-   * `ingress.className`: `"azure/application-gateway"`.
-   * `ingress.hosts[0].host`: Your desired public hostname (e.g., `secretsharer.example.com`).
-   * Ensure other values (ports, AKV secret names for `dbUser`, `dbPassword`, `appMasterKey`, `initPassword`) are correct.
-
-3. **Deploying the Chart:**
-   ```bash
-   az aks get-credentials --resource-group rg-secure-secret-sharer-mvp --name aks-securesharer-mvp --overwrite-existing
-   helm upgrade <release-name> . --namespace <namespace> --install --create-namespace
-   # Example:
-   helm upgrade ss-mvp . --namespace default --install
-   ```
-
-## 4. Post-Deployment Verification
-
-1. **Check Pod Statuses:**
-   ```bash
-   kubectl get pods --namespace default -w 
-   ```
-   Ensure frontend, backend, and database pods are `Running` and `READY 1/1`.
-
-2. **Check Logs and Functionality:**
-   * Review `kubectl describe pod <pod-name>` for events, especially for CSI volume mounts.
-   * Check database pod logs for successful `init-db.sh` execution.
-   * Check backend pod logs for successful DB connection and key initialization.
-
-3. **Accessing via Ingress:**
-   * Modify your local `hosts` file: `<App_Gateway_Public_IP> your.ingress.hostname` (e.g., `68.221.226.217 secretsharer.example.com`).
-   * Navigate to `http://your.ingress.hostname` in your browser.
-   * The frontend UI should load.
-
-4. **Test Application:**
-   * Submit a secret.
-   * Verify the generated link (e.g., `http://your.ingress.hostname/api/reveal/...`).
-   * Click the link to reveal; verify one-time access.
-   * Test the "Copy Link" button.
-
-## 5. Implementing CI/CD with Security Gates (Future Enhancement)
-
-For future iterations, implement an automated CI/CD pipeline with integrated security scanning:
-
-### Example GitHub Actions Workflow
-
-```yaml
-name: Build, Scan and Deploy
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build_and_scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Login to ACR
-        uses: azure/docker-login@v1
-        with:
-          login-server: acrsecuresecsharer.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
-      
-      - name: Build frontend image
-        run: |
-          docker build -t acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:${{ github.sha }} ./frontend
-      
-      - name: Build backend image
-        run: |
-          docker build -t acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:${{ github.sha }} ./backend
-      
-      - name: Install Trivy
-        run: |
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-      
-      - name: Scan frontend image
-        run: |
-          trivy image --exit-code 1 --severity HIGH,CRITICAL acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:${{ github.sha }}
-      
-      - name: Scan backend image
-        run: |
-          trivy image --exit-code 1 --severity HIGH,CRITICAL acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:${{ github.sha }}
-      
-      - name: Push frontend image if scans pass
-        run: |
-          docker push acrsecuresecsharer.azurecr.io/secure-secret-sharer-frontend:${{ github.sha }}
-      
-      - name: Push backend image if scans pass
-        run: |
-          docker push acrsecuresecsharer.azurecr.io/secure-secret-sharer-backend:${{ github.sha }}
-  
-  deploy:
-    needs: build_and_scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set AKS context
-        uses: azure/aks-set-context@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-          resource-group: rg-secure-secret-sharer-mvp
-          cluster-name: aks-securesharer-mvp
-      
-      - name: Deploy to AKS
-        run: |
-          cd k8s/secret-sharer-app
-          
-          # Update values.yaml with new image tags
-          sed -i "s/frontend.image.tag:.*/frontend.image.tag: \"${{ github.sha }}\"/g" values.yaml
-          sed -i "s/backend.image.tag:.*/backend.image.tag: \"${{ github.sha }}\"/g" values.yaml
-          
-          # Install/upgrade Helm chart
-          helm upgrade --install ss-mvp . --namespace default
+Make the script executable:
+```bash
+chmod +x build_dev.sh
 ```
 
-## 6. Security Controls Details
+Run the script:
+```bash
+./build_dev.sh
+```
 
-### Network Policies
+**Script Options:**
 
-The Helm chart applies Kubernetes Network Policies that follow a zero-trust approach:
+* `--skip-infra`: Skips the Bicep infrastructure deployment. Useful if infrastructure is already deployed and you only want to update images/application.
+* `--skip-containers`: Skips building and pushing container images. Useful if images are already in ACR.
+* `--full-rebuild`: **Deletes the Azure resource group** (default: `rg-secure-secret-sharer-dev`) and purges the Key Vault before starting a new deployment. **Use with extreme caution.**
+* `-h` or `--help`: Displays usage information.
 
-1. **Default Deny All Traffic:**
-   This base policy denies all ingress and egress traffic in the namespace by default.
+Example: To run a full deployment including infrastructure and containers:
+```bash
+./build_dev.sh
+```
 
-2. **Allow Backend to Database:**
-   Specifically allows traffic from backend pods to database pods on port 5432.
+Example: To redeploy the application assuming infrastructure and images are current:
+```bash
+./build_dev.sh --skip-infra --skip-containers
+```
 
-3. **Allow Ingress to Frontend:**
-   Allows traffic from the Ingress controller (AGIC) to frontend pods.
+The script will output progress information. The Bicep deployment can take 10-20 minutes or more.
 
-4. **Allow AGIC to Backend:**
-   Allows traffic from the AGIC controller to backend pods for API requests.
+## 3. Post-Deployment Verification
 
-### Key Vault Integration
+After `build_dev.sh` completes:
 
-The application uses Azure Key Vault Provider for Secrets Store CSI Driver to securely access secrets:
+1.  **Check Pod Statuses**:
+    The script attempts to connect to AKS and get nodes. You can further check your application pods:
+    ```bash
+    kubectl get pods -n default -w
+    ```
+    Ensure `frontend`, `backend`, and `database` (e.g., `secret-sharer-db-0`) pods are in `Running` state and `READY` (e.g., `1/1`).
 
-1. **SecretProviderClass Resources:**
-   Define which Key Vault secrets to mount and how to expose them.
+2.  **Inspect Logs**:
+    * **Database Initialization**:
+        ```bash
+        kubectl logs <your-database-pod-name> -n default
+        ```
+        Look for messages from `init-db.sh` indicating successful user creation.
+    * **Backend Application**:
+        ```bash
+        kubectl logs -l app.kubernetes.io/component=backend -n default --tail=100
+        ```
+        Check for successful connection to the database and initialization of the encryption suite.
+    * **Secrets Store CSI Driver**: If pods are having trouble mounting secrets:
+        ```bash
+        kubectl describe pod <pod-name-with-csi-volume> -n default
+        kubectl logs -n kube-system -l app=secrets-store-provider-azure
+        kubectl logs -n kube-system -l app=secrets-store-csi-driver
+        ```
 
-2. **Volume Mounts:**
-   Mount the secrets as volumes in the appropriate pods.
+3.  **Verify Ingress and Application Gateway**:
+    * Check the status of the Ingress resource:
+        ```bash
+        kubectl get ingress -n default
+        ```
+    * In the Azure portal, navigate to your Application Gateway (e.g., `appgw-secretsharer`) and check its "Backend health" to ensure it can reach the backend services in AKS.
 
-3. **Environment Variables:**
-   Reference mounted secrets as environment variables.
+## 4. Accessing the Application
 
-### RBAC (Role-Based Access Control)
+The `build_dev.sh` script will output instructions for updating your local `hosts` file. This is necessary to resolve the custom hostname (e.g., `secretsharer.local`) to the Public IP address of the Azure Application Gateway.
 
-Kubernetes RBAC is implemented to restrict pod permissions:
+1.  **Update Hosts File**:
+    * The script provides PowerShell commands for Windows. For Linux/macOS, edit `/etc/hosts` manually.
+    * Example line to add (replace `<APP_GW_IP>` and `secretsharer.local` if different, based on script output):
+        ```
+        <APP_GW_IP> secretsharer.local
+        ```
+        You can get the `<APP_GW_IP>` from the script's output (`APP_GW_IP` variable).
 
-1. **Service Accounts:**
-   Dedicated service accounts for each component.
+2.  **Access in Browser**:
+    Open your web browser and navigate to `http://secretsharer.local` (or your configured hostname as per the `HOSTNAME` variable in `build_dev.sh`).
 
-2. **Roles and Role Bindings:**
-   Least-privilege roles that grant only necessary permissions.
+## 5. Understanding the Deployed Infrastructure
 
-3. **Azure Role Assignments:**
-   Azure RBAC roles assigned to Managed Identities for Key Vault access.
+The `infra/main.bicep` file defines all Azure resources. Key components include:
 
-## 7. Further Security and Operational Considerations
+* **Azure Resource Group**: A container for all resources (e.g., `rg-secure-secret-sharer-dev`).
+* **Azure Container Registry (ACR)**.
+* **Azure Key Vault (AKV)**.
+* **User Assigned Managed Identities (UAMIs)**:
+    * One for the backend application to access Key Vault.
+    * One for the database init container to access Key Vault.
+* **Azure Kubernetes Service (AKS)**: Managed Kubernetes cluster.
+    * Configured with OIDC Issuer and Workload Identity enabled.
+    * Secrets Store CSI Driver add-on enabled.
+* **Azure Application Gateway**: L7 Load Balancer and Ingress controller.
+* **Associated Networking**: Virtual Network, Subnets, Public IP Addresses.
+* **Role Assignments**: For UAMIs to access Key Vault.
 
-### 1. Logging and Monitoring Strategy
+Refer to `infra/main.bicep` and `infra/main.dev.bicepparam` for detailed definitions.
 
-* **Current State (MVP):** Basic console logging from the Python backend.
-* **Future Considerations:** Structured logging, integration with Azure Monitor (Logs & Metrics), AKS diagnostic logs, SIEM integration (e.g., Microsoft Sentinel).
+## 6. Cleanup / Teardown
 
-### 2. Input Validation
+To remove all deployed Azure resources:
 
-* **Current State (MVP):** Minimal.
-* **Future Considerations (OWASP Awareness):** Robust server-side validation against common web vulnerabilities (XSS, SQLi, etc.), data type/length/format checks.
+**Manual Deletion**:
+ If you prefer to delete manually or if the script encounters issues:
+ * **Delete Resource Group**:
+     ```bash
+     # Identify your resource group name (e.g., rg-secure-secret-sharer-dev from build_dev.sh output)
+     az group delete --name <your-resource-group-name> --yes --no-wait
+     ```
+ * **Purge Key Vault**: If purge protection was enabled and the Key Vault is soft-deleted, you might need to purge it manually from the Azure Portal or via CLI:
+     ```bash
+     # List soft-deleted vaults
+     az keyvault list-deleted
+     # Purge a specific vault (name and location from build_dev.sh output or your bicepparam file)
+     az keyvault purge --name <keyvault-name> --location <keyvault-location>
+     ```
 
-### 3. Rate Limiting
-
-* **Current State (MVP):** None.
-* **Future Considerations (Production):** Ingress-level (Application Gateway WAF) and potentially application-level rate limiting.
-
-### 4. Basic Compliance Alignment (Conceptual)
-
-* **Current State (MVP):** Foundational security controls.
-* **Future Considerations:** Mapping to specific frameworks (GDPR, HIPAA, etc.), Azure Policy for Kubernetes.
-
-### 5. Azure Security Recommendations Review
-
-* **Current State (MVP):** Focused on secure deployment.
-* **Future Considerations (Operational):** Regular review of Microsoft Defender for Cloud recommendations for AKS and related resources.
-
-## 8. Future Enhancements
-
-The following items are planned for future project iterations:
-
-* Full CI/CD pipeline automation (e.g., GitHub Actions, Azure DevOps) including automated security scanning (Checkov, CodeQL, Trivy) and Helm tests.
-* Infrastructure as Code (IaC) using Bicep or Terraform for provisioning all Azure resources.
-* Advanced/Production-grade HTTPS for Ingress using cert-manager and Let's Encrypt.
-* Detailed Threat Modeling (e.g., STRIDE).
-* Implementation of comprehensive input validation.
-* Implementation of rate limiting.
-* Advanced Logging & Monitoring: Full structured logging to Azure Monitor, analysis of AKS Audit Logs, SIEM integration with Microsoft Sentinel, KQL queries.
-* In-depth Cloud Security Posture Management (CSPM) work: Detailed remediation of Microsoft Defender for Cloud findings, Azure Policy for Kubernetes.
-* CIS Benchmark analysis using tools like kube-bench.
-* More comprehensive documentation, blog posts, and detailed compliance mapping.
+Remember to remove the entry from your local `hosts` file after cleanup.
