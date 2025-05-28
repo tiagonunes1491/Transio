@@ -1,4 +1,4 @@
-# Secure Secret Sharer: A Cloud-Native Security Showcase
+# SecureSharer: A Cloud-Native Security Showcase
 
 ## 🚀 Executive Summary
 
@@ -10,7 +10,7 @@ This project serves as a comprehensive demonstration of **cloud-native security 
 
 Watch this short GIF to see how Secure Secret Sharer allows users to create, share, and view one-time secrets:
 
-![Secure Secret Sharer Demo GIF](docs/SecretShare.gif)
+![SecureSharer Demo GIF](docs/SecretShare.gif)
 
 The flow demonstrated includes:
 1.  User composes a secret message.
