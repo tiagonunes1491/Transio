@@ -6,6 +6,17 @@ Secure Secret Sharer is a production-grade application designed for sharing sens
 
 This project serves as a comprehensive demonstration of **cloud-native security best practices** and **defense-in-depth strategies** deployed on **Azure Kubernetes Service (AKS)**. It showcases expertise in securing containerized applications, managing secrets with Azure Key Vault, implementing robust network policies, and leveraging Azure Workload Identity for secure, credential-less access to cloud resources.
 
+## 🎬 Application Demo
+
+Watch this short GIF to see how Secure Secret Sharer allows users to create, share, and view one-time secrets:
+
+![Secure Secret Sharer Demo GIF](docs/SecretShare.gif)
+
+The flow demonstrated includes:
+1.  User composes a secret message.
+2.  A unique, one-time access link is generated.
+3.  The secret is viewed via the link, after which it's no longer accessible.
+
 ## 🎯 Project Goal
 
 The primary goal of this project is to design, build, and deploy a secure multi-container application on Azure Kubernetes Service, focusing on:
