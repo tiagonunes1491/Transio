@@ -25,3 +25,4 @@ teardown_dev.ps1
 build_dev.ps1
 infra/main.dev.bicepparam
 infra/local-main.dev.bicepparam
+infra/swa-aca-main.dev.bicepparam
