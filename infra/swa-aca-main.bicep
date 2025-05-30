@@ -204,7 +204,7 @@ param dbAdminLogin string = 'pgadminuser'
 @secure()
 param dbAdminPassword string // This will come from your .bicepparam file or pipeline
 
-module postgresqlServer 'modules/paas-postgresql-flexible.bicep' = {
+module postgresqlServer 'modules/swa-postgresql-flexible.bicep' = {
   name: 'postgresqlServer'
   scope: rg
   params: {
@@ -219,5 +219,74 @@ module postgresqlServer 'modules/paas-postgresql-flexible.bicep' = {
     databaseName: 'secureSecretSharerDB' // Initial database name
     tags: tags
     logAnalyticsWorkspaceId: workspace.outputs.workspaceId // Link to the Log Analytics workspace
+  }
+}
+
+
+// Deploying Azure Container Apps
+
+@description('Name of the Azure Container Apps Environment')
+param acaEnvName string = 'cae-sharer-aca-dev' 
+@description('Name of the container and tag to pull to ACA')
+param containerImage string = 'secure-secret-sharer:latest' // This should match the image pushed to ACR
+@description('CPU limit for the Azure Container App in millicores (250 = 0.25 cores)')
+param acaCpuLimit int = 250 // 0.25 cores in millicores
+@description('Memory limit for the Azure Container App in GB')
+param acaMemoryLimit string = '1Gi' // 1 GB memory limit
+
+module acaEnvironment 'modules/swa-aca-environment.bicep' = {
+  name: 'acaEnvironment'
+  scope: rg
+  params: {
+    acaEnvironmentName: acaEnvName
+    acaEnvironmentLocation: resourceLocation
+    acaEnvironmentTags: tags
+    workspaceId: workspace.outputs.workspaceId
+    acaEnvironmentSubnetId: network.outputs.subnetIds[0] // The first subnet is for the ACA
+  }
+}
+
+var acaEnvironmentVariables = [
+  {
+    name: 'DATABASE_HOST'
+    value: postgresqlServer.outputs.fullyQualifiedDomainName
+  }
+  {
+    name: 'DATABASE_PORT'
+    value: '5432'
+  }
+  {
+    name: 'DATABASE_NAME'
+    value: postgresqlServer.outputs.databaseName
+  }
+]
+
+// Secret references - these will reference secrets stored in Key Vault
+var acaSecretReferences = [for secretName in items(akvSecrets): {
+  name: toUpper(replace(secretName.key, '-', '_'))
+  secretRef: secretName.key
+}]
+
+module acaApp 'modules/swa-aca-app.bicep' = {
+  name: 'acaApp'
+  scope: rg
+  params: {
+    appName: 'secure-secret-sharer-aca-dev'
+    appLocation: resourceLocation
+    environmentId: acaEnvironment.outputs.acaEnvironmentId
+    containerImage: '${acr.outputs.acrLoginServer}/${containerImage}' 
+    minReplicas: 0
+    maxReplicas: 1
+    targetPort: 5000
+    externalIngress: true
+    secrets: [for secretItem in items(akvSecrets): {
+      name: secretItem.key
+      identity: 'system'
+      keyVaultUri: '${akv.outputs.keyvaultUri}secrets/${secretItem.key}'    }]
+    environmentVariables: acaEnvironmentVariables
+    secretEnvironmentVariables: acaSecretReferences
+    appTags: tags
+    cpuLimit: acaCpuLimit
+    memoryLimit: acaMemoryLimit
   }
 }
