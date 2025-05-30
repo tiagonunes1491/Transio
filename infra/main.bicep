@@ -129,7 +129,7 @@ var subnets  = [
   }
 ]
 
-module network 'modules/network.bicep' = {
+module network 'modules/common-network.bicep' = {
   name: 'network'
   scope: rg
   params: {
@@ -162,7 +162,7 @@ param acrSku string = 'Standard'
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
 
-module acr 'modules/acr.bicep' = {
+module acr 'modules/common-acr.bicep' = {
   name: 'acr'
   scope: rg
   params: {
@@ -197,7 +197,7 @@ param akvPurgeProtection bool = true
 @secure()
 param akvSecrets object
 
-module akv 'modules/keyvault.bicep' = {
+module akv 'modules/common-keyvault.bicep' = {
   name: 'keyvault'
   scope: rg
   params: {
