@@ -290,3 +290,14 @@ module acaApp 'swa-aca-modules/aca-app.bicep' = {
     memoryLimit: acaMemoryLimit
   }
 }
+
+// Role Assignments for Key Vault and ACR access
+module rbac 'swa-aca-modules/rbac.bicep' = {
+  name: 'rbac'
+  scope: rg
+  params: {
+    keyVaultId: akv.outputs.keyvaultId
+    acrId: acr.outputs.acrId
+    samiId: acaApp.outputs.samIPrincipalId 
+  }
+}
