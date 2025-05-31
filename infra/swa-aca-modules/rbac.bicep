@@ -6,8 +6,8 @@ param keyVaultId string
 @minLength(1)
 param acrId string
 
-@description('SAMI Principal IDs array to give access to Key Vault and ACR')
-param samiId string 
+@description('UAMI Principal IDs array to give access to Key Vault and ACR')
+param uamiId string 
 
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
@@ -27,21 +27,21 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
 
 resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     scope: keyVault
-    name: guid(keyVault.id, samiId, 'KeyVaultSecretsUser')
+    name: guid(keyVault.id, uamiId, 'KeyVaultSecretsUser')
     properties: {
       roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
-      principalId: samiId
+      principalId: uamiId
       principalType: 'ServicePrincipal'
   }
 }
 
-// Assigns AcrPull role to AKS managed identity for pulling container images
+// Make sure the principalId matches the Container App's managed identity
 resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     scope: acr
-    name: guid(acr.id, samiId, 'AcrPull')
+    name: guid(acr.id, uamiId, 'AcrPull')
     properties: {
       roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
-      principalId: samiId
+      principalId: uamiId // This should be the Container App's managed identity principal ID
       principalType: 'ServicePrincipal'
   }
 }

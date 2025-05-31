@@ -23,9 +23,12 @@ param environmentVariables array = []
 @description('Tags for the Azure Container App.')
 param appTags object = {}
 @description('CPU limit for the Azure Container App in millicores (250 = 0.25 cores)')
-param cpuLimit int = 250
+param cpuLimit string = '0.25'
 @description('Memory limit for the Azure Container App in GB')
-param memoryLimit string = '1Gi'
+param memoryLimit string = '0.5Gi'
+@description('User Assigned Managed Identity for the Azure Container App')
+param userAssignedIdentityId string = ''
+
 
 
 resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
@@ -33,7 +36,10 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
   location: appLocation
   tags: appTags
   identity: {
-    type: 'SystemAssigned'
+    type: 'userAssigned'
+    userAssignedIdentities: {
+      '${userAssignedIdentityId}': {}
+    }
   }
   properties: {
     environmentId: environmentId
@@ -49,6 +55,12 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
         identity: secret.identity
       }]
       activeRevisionsMode: 'Single'
+      registries: [
+        {
+          server: split(containerImage, '/')[0] // Extract ACR server from image
+          identity: userAssignedIdentityId
+        }
+     ]
     }
     template: {
       containers: [
@@ -56,7 +68,8 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
           name: appName
           image: containerImage
           resources: {
-            cpu: cpuLimit
+            #disable-next-line BCP036 - Expects INT in lint but API expects float
+            cpu: cpuLimit // Convert millicores to cores
             memory: memoryLimit
           }
           env: union(secretEnvironmentVariables, environmentVariables)
@@ -74,4 +87,3 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
 output id string = acaApp.id
 output name string = acaApp.name
 output aFqdn string = acaApp.properties.configuration.ingress.fqdn
-output samIPrincipalId string = acaApp.identity.principalId

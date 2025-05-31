@@ -283,7 +283,7 @@ module aks 'aks-modules/aks.bicep' = {
 // Retrieves the names of the UAMIs from the federationConfigs parameter
 var uamiNames = [for config in federationConfigs: config.uamiTargetName]
 
-module uami 'aks-modules/uami.bicep' = {
+module uami 'common-modules/uami.bicep' = {
   name: 'uami'
   scope: rg
   params: {

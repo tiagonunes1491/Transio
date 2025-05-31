@@ -43,14 +43,6 @@ var subnets  = [
   {
     name: 'snet-aca'
     addressPrefix: '10.0.10.0/23'
-    delegations: [
-      {
-        name: 'acaDelegation'
-        properties: {
-          serviceName: 'Microsoft.App/environments'
-        }
-      }
-    ]
   }
     {
     name: 'snet-db'
@@ -267,12 +259,6 @@ module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
 
 @description('Name of the Azure Container Apps Environment')
 param acaEnvName string = 'cae-sharer-aca-dev' 
-@description('Name of the container and tag to pull to ACA')
-param containerImage string = 'secure-secret-sharer:latest' // This should match the image pushed to ACR
-@description('CPU limit for the Azure Container App in millicores (250 = 0.25 cores)')
-param acaCpuLimit int = 250 // 0.25 cores in millicores
-@description('Memory limit for the Azure Container App in GB')
-param acaMemoryLimit string = '1Gi' // 1 GB memory limit
 
 module acaEnvironment 'swa-aca-modules/aca-environment.bicep' = {
   name: 'acaEnvironment'
@@ -286,52 +272,22 @@ module acaEnvironment 'swa-aca-modules/aca-environment.bicep' = {
   }
 }
 
-var acaEnvironmentVariables = [
-  {
-    name: 'DATABASE_HOST'
-    value: postgresqlServer.outputs.fullyQualifiedDomainName
-  }
-  {
-    name: 'DATABASE_PORT'
-    value: '5432'
-  }
-  {
-    name: 'DATABASE_NAME'
-    value: postgresqlServer.outputs.databaseName
-  }
+// Create a UAMI for the Azure Container App
+@description('Name of the System Assigned Managed Identity for the Azure Container App')
+param acaUamiName array = [
+  'aca-sharer-identity'
 ]
 
-// Secret references - these will reference secrets stored in Key Vault
-var acaSecretReferences = [for secretName in items(akvSecrets): {
-  name: toUpper(replace(secretName.key, '-', '_'))
-  secretRef: secretName.key
-}]
-
-module acaApp 'swa-aca-modules/aca-app.bicep' = {
-  name: 'acaApp'
+module uami 'common-modules/uami.bicep' = {
+  name: 'uami'
   scope: rg
   params: {
-    appName: 'secure-secret-sharer-aca-dev'
-    appLocation: resourceLocation
-    environmentId: acaEnvironment.outputs.acaEnvironmentId
-    containerImage: '${acr.outputs.acrLoginServer}/${containerImage}' 
-    minReplicas: 0
-    maxReplicas: 1
-    targetPort: 5000
-    externalIngress: true
-    secrets: [for secretItem in items(akvSecrets): {
-      name: secretItem.key
-      identity: 'system'
-      keyVaultUri: '${akv.outputs.keyvaultUri}secrets/${secretItem.key}'    
-      }
-  ]
-    environmentVariables: acaEnvironmentVariables
-    secretEnvironmentVariables: acaSecretReferences
-    appTags: tags
-    cpuLimit: acaCpuLimit
-    memoryLimit: acaMemoryLimit
+    uamiLocation: resourceLocation
+    uamiNames: acaUamiName
+    tags: tags
   }
 }
+
 
 // Role Assignments for Key Vault and ACR access
 module rbac 'swa-aca-modules/rbac.bicep' = {
@@ -340,6 +296,13 @@ module rbac 'swa-aca-modules/rbac.bicep' = {
   params: {
     keyVaultId: akv.outputs.keyvaultId
     acrId: acr.outputs.acrId
-    samiId: acaApp.outputs.samIPrincipalId 
+    uamiId: uami.outputs.uamiPrincipalIds[0] // Use the first UAMI principal ID
   }
 }
+
+output acaEnvironmentId string = acaEnvironment.outputs.acaEnvironmentId
+output acrLoginServer string = acr.outputs.acrLoginServer
+output uamiId string = uami.outputs.uamiIds[0]
+output keyVaultUri string = akv.outputs.keyvaultUri
+output SQLServerFqdn string = postgresqlServer.outputs.fullyQualifiedDomainName
+output SqlDatabaseName string = postgresqlServer.outputs.databaseName
