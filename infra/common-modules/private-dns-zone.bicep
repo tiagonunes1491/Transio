@@ -4,8 +4,6 @@ param privateDnsZoneName string
 param vnetId string
 @description('Private DNS Zone tags')
 param privateDnsZoneTags object = {}
-@description('Private DNS Zone records to create')
-param privateDnsRecords array = []
 
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   name: privateDnsZoneName
@@ -15,7 +13,7 @@ resource privateDnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
 }
 
 resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2024-06-01' = {
-  name: 'link-to-vnet'
+  name: 'link-to-${uniqueString(vnetId)}'
   parent: privateDnsZone
   location: 'global'
   properties: {
@@ -26,15 +24,5 @@ resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLin
   }
 }
 
-resource privateDnsRecordsResource 'Microsoft.Network/privateDnsZones/A@2024-06-01' = [for record in privateDnsRecords: {
-  name: record.name
-  parent: privateDnsZone
-  properties: {
-    ttl: record.ttl
-    aRecords: [
-      {
-        ipv4Address: record.ipv4Address
-      }
-    ]
-  }
-}]
+output privateDnsZoneId string = privateDnsZone.id
+output privateDnsZoneName string = privateDnsZone.name

@@ -122,6 +122,17 @@ module akv 'common-modules/keyvault.bicep' = {
   }
 }
 
+// Deployment of the Private DNS Zone for the Key Vault
+
+module deployKVDNSZone 'common-modules/private-dns-zone.bicep' = {
+  name: 'KeyVaultPrivateDnsZone'
+  scope: rg
+  params: {
+    privateDnsZoneName: 'privatelink.vaultcore.azure.net'
+    vnetId: network.outputs.vnetId
+    privateDnsZoneTags:tags
+    }
+}
 
 // Depoyment of the Private Endpoint for the Key Vault
 
@@ -135,6 +146,7 @@ module akvPE 'common-modules/private-endpoint.bicep' = {
     privateEndpointGroupId: 'vault'
     privateEndpointServiceId: akv.outputs.keyvaultId
     privateEndpointTags: tags
+    privateDnsZoneIds: [deployKVDNSZone.outputs.privateDnsZoneId] 
   }
 }
 
@@ -165,6 +177,18 @@ module acr 'common-modules/acr.bicep' = {
   }
 }
 
+// Create DNS Zone for Azure Container Registry Private Endpoint
+module deployACRDNSZone 'common-modules/private-dns-zone.bicep' = {
+  name: 'ACRPrivateDnsZone'
+  scope: rg
+  params: {
+    privateDnsZoneName: 'privatelink.azurecr.io'
+    vnetId: network.outputs.vnetId
+    privateDnsZoneTags: tags
+  }
+}
+
+
 // Depoyment of the Private Endpoint for the Azure Container Registry
 
 module acrPE 'common-modules/private-endpoint.bicep' = {
@@ -177,6 +201,9 @@ module acrPE 'common-modules/private-endpoint.bicep' = {
     privateEndpointGroupId: 'registry'
     privateEndpointServiceId: acr.outputs.acrId
     privateEndpointTags: tags
+    privateDnsZoneIds: [
+      deployACRDNSZone.outputs.privateDnsZoneId 
+    ] 
   }
 }
 

@@ -10,6 +10,24 @@ param privateEndpointGroupId string
 param privateEndpointServiceId string
 @description('Private Endpoint tags')
 param privateEndpointTags object = {}
+@description('IDs of private DNS zones to link (optional)')
+param privateDnsZoneIds array = []
+
+var dnsConfigs = [for zoneId in privateDnsZoneIds: {
+  name: uniqueString(zoneId)
+  properties: {
+    privateDnsZoneId: zoneId
+  }
+}]
+
+// automatically create the zone-group when at least one zone is supplied
+resource dnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (length(privateDnsZoneIds) > 0) {
+  name: 'default'
+  parent: privateEndpoint
+  properties: {
+    privateDnsZoneConfigs: dnsConfigs
+  }
+}
 
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
   name: privateEndpointName
@@ -20,13 +38,13 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
     }
     privateLinkServiceConnections: [
       {
-        name: privateEndpointGroupId
+        name: '${privateEndpointName}-connection'
         properties: {
           privateLinkServiceId: privateEndpointServiceId
           groupIds: [
             privateEndpointGroupId
           ]
-          requestMessage: 'Please approve the connection.'
+          requestMessage: 'Auto-approved connection for ${privateEndpointName}'
         }
       }
     ]
@@ -37,4 +55,6 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
 
 output privateEndpointId string = privateEndpoint.id
 output privateEndpointName string = privateEndpoint.name
-output ipAddress string = privateEndpoint.properties.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress
+output ipAddress string = length(privateEndpoint.properties.networkInterfaces) > 0 && length(privateEndpoint.properties.networkInterfaces[0].properties.ipConfigurations) > 0 ? privateEndpoint.properties.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress : ''
+output customDnsConfigs array = privateEndpoint.properties.customDnsConfigs ?? []
+output networkInterfaceId string = length(privateEndpoint.properties.networkInterfaces) > 0 ? privateEndpoint.properties.networkInterfaces[0].id : ''
