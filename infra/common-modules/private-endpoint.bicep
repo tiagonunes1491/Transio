@@ -52,9 +52,6 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = {
   tags: privateEndpointTags
 }
 
-
+// Outputs
 output privateEndpointId string = privateEndpoint.id
 output privateEndpointName string = privateEndpoint.name
-output ipAddress string = length(privateEndpoint.properties.networkInterfaces) > 0 && length(privateEndpoint.properties.networkInterfaces[0].properties.ipConfigurations) > 0 ? privateEndpoint.properties.networkInterfaces[0].properties.ipConfigurations[0].properties.privateIPAddress : ''
-output customDnsConfigs array = privateEndpoint.properties.customDnsConfigs ?? []
-output networkInterfaceId string = length(privateEndpoint.properties.networkInterfaces) > 0 ? privateEndpoint.properties.networkInterfaces[0].id : ''

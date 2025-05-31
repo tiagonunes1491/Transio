@@ -46,7 +46,7 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
       secrets: [for secret in secrets: {
         name: secret.name
         keyVaultUrl: secret.keyVaultUri
-        identity: 'system'
+        identity: secret.identity
       }]
       activeRevisionsMode: 'Single'
     }

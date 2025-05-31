@@ -9,6 +9,7 @@ param workspaceId string
 @description('The VNET subnet ID the Azure Container Apps Environment.')
 param acaEnvironmentSubnetId string
 
+
 resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
   name: acaEnvironmentName
   location: acaEnvironmentLocation
@@ -17,8 +18,9 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
-        customerId: reference(workspaceId, '2022-10-01').properties.customerId
-        sharedKey: listKeys(workspaceId, '2022-10-01').primarySharedKey
+        customerId: reference(workspaceId, '2022-10-01').customerId
+         #disable-next-line use-secure-value-for-secure-inputs
+        sharedKey:  listKeys(workspaceId, '2022-10-01').primarySharedKey  // secureString
       }
     }
     vnetConfiguration: {

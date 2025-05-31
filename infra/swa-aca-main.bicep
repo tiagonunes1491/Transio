@@ -309,7 +309,9 @@ module acaApp 'swa-aca-modules/aca-app.bicep' = {
     secrets: [for secretItem in items(akvSecrets): {
       name: secretItem.key
       identity: 'system'
-      keyVaultUri: '${akv.outputs.keyvaultUri}secrets/${secretItem.key}'    }]
+      keyVaultUri: '${akv.outputs.keyvaultUri}secrets/${secretItem.key}'    
+      }
+  ]
     environmentVariables: acaEnvironmentVariables
     secretEnvironmentVariables: acaSecretReferences
     appTags: tags
