@@ -42,7 +42,7 @@ var addressSpace  = [
 var subnets  = [
   {
     name: 'snet-aca'
-    addressPrefix: '10.0.1.0/24'
+    addressPrefix: '10.0.10.0/23'
     delegations: [
       {
         name: 'acaDelegation'
@@ -54,7 +54,7 @@ var subnets  = [
   }
     {
     name: 'snet-db'
-    addressPrefix: '10.0.2.0/24'
+    addressPrefix: '10.0.20.0/24'
     delegations: [
       {
         name: 'dbDelegation'
@@ -66,7 +66,7 @@ var subnets  = [
   }
   {
     name: 'snet-pe'
-    addressPrefix: '10.0.3.0/24'
+    addressPrefix: '10.0.30.0/24'
     privateEndpointNetworkPolicies: 'Disabled'
   }
 ]
@@ -231,6 +231,18 @@ param dbAdminLogin string = 'pgadminuser'
 @secure()
 param dbAdminPassword string // This will come from your .bicepparam file or pipeline
 
+// Create a private DNS zone for PostgreSQL Flexible Server
+module deployPostgreSQLDNSZone 'common-modules/private-dns-zone.bicep' = {
+  name: 'PostgreSQLPrivateDnsZone'
+  scope: rg
+  params: {
+    privateDnsZoneName: 'secureapp.postgres.database.azure.com'
+    vnetId: network.outputs.vnetId
+    privateDnsZoneTags: tags
+  }
+}
+
+
 module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
   name: 'postgresqlServer'
   scope: rg
@@ -246,6 +258,7 @@ module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
     databaseName: 'secureSecretSharerDB' // Initial database name
     tags: tags
     logAnalyticsWorkspaceId: workspace.outputs.workspaceId // Link to the Log Analytics workspace
+    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId // Link to the private DNS zone
   }
 }
 

@@ -29,6 +29,9 @@ param databaseName string
 @description('Tags for the server.')
 param tags object = {}
 
+@description('The ARM resource ID of the private DNS zone for PostgreSQL.')
+param privateDnsZoneId string
+
 @description('ID of the Log Analytics workspace to send diagnostics to.')
 param logAnalyticsWorkspaceId string
 
@@ -57,6 +60,7 @@ resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01'
     network: {
       delegatedSubnetResourceId: delegatedSubnetId
       publicNetworkAccess: 'Disabled' // For private access only
+      privateDnsZoneArmResourceId: privateDnsZoneId 
     }
   }
 }
@@ -77,7 +81,7 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
     workspaceId: logAnalyticsWorkspaceId
     logs: [
       {
-        category: 'PostgreSQLFlexibleServerLogs'
+        category: 'PostgreSQLLogs'
         enabled: true
         retentionPolicy: {
           enabled: false // Retention managed by Log Analytics workspace
