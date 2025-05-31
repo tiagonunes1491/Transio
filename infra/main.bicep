@@ -92,7 +92,7 @@ param appGwNsgAllowRules array = [
 param appGwNsgDenyRules array = []
 
 
-module appGwNsg 'modules/nsg.bicep' = {
+module appGwNsg 'aks-modules/nsg.bicep' = {
   name: appGwNsgName
   scope: rg
   params: {
@@ -129,7 +129,7 @@ var subnets  = [
   }
 ]
 
-module network 'modules/common-network.bicep' = {
+module network 'common-modules/network.bicep' = {
   name: 'network'
   scope: rg
   params: {
@@ -162,7 +162,7 @@ param acrSku string = 'Standard'
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
 
-module acr 'modules/common-acr.bicep' = {
+module acr 'common-modules/acr.bicep' = {
   name: 'acr'
   scope: rg
   params: {
@@ -197,7 +197,7 @@ param akvPurgeProtection bool = true
 @secure()
 param akvSecrets object
 
-module akv 'modules/common-keyvault.bicep' = {
+module akv 'common-modules/keyvault.bicep' = {
   name: 'keyvault'
   scope: rg
   params: {
@@ -253,7 +253,7 @@ param userNodePoolMaxCount int = 3
 @description('AKS Admin Group object IDs for the AKS cluster')
 param aksAdminGroupObjectIds array = []
 
-module aks 'modules/aks.bicep' = {
+module aks 'aks-modules/aks.bicep' = {
   name: 'aks'
   scope: rg
   params: {
@@ -283,7 +283,7 @@ module aks 'modules/aks.bicep' = {
 // Retrieves the names of the UAMIs from the federationConfigs parameter
 var uamiNames = [for config in federationConfigs: config.uamiTargetName]
 
-module uami 'modules/uami.bicep' = {
+module uami 'aks-modules/uami.bicep' = {
   name: 'uami'
   scope: rg
   params: {
@@ -293,7 +293,7 @@ module uami 'modules/uami.bicep' = {
   }
 }
 
-module federation 'modules/federation.bicep' = [for config in federationConfigs: {
+module federation 'aks-modules/federation.bicep' = [for config in federationConfigs: {
   name: 'fed-${take(uniqueString(config.uamiTargetName, config.k8sServiceAccountName), 13)}'
   scope: rg
   params: {
@@ -306,7 +306,7 @@ module federation 'modules/federation.bicep' = [for config in federationConfigs:
 
 // Role Assignmeents for RBAC
 
-module rbac 'modules/rbac.bicep' = {
+module rbac 'aks-modules/rbac.bicep' = {
   name: 'rbac'
   scope: rg
   params: {
@@ -371,7 +371,7 @@ param appGwPathRules array = [
 ]
 
 // Creates AppGW. Assumes subnet for appGW is in place [1] on array.
-module appGw 'modules/appgw.bicep' = {
+module appGw 'aks-modules/appgw.bicep' = {
   name: 'appgw'
   scope: rg
   params: {

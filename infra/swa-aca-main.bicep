@@ -72,7 +72,7 @@ var subnets  = [
 ]
 
 
-module network 'modules/common-network.bicep' = {
+module network 'common-modules/network.bicep' = {
   name: 'network'
   scope: rg
   params: {
@@ -107,7 +107,7 @@ param akvPurgeProtection bool = true
 @secure()
 param akvSecrets object
 
-module akv 'modules/common-keyvault.bicep' = {
+module akv 'common-modules/keyvault.bicep' = {
   name: 'keyvault'
   scope: rg
   params: {
@@ -125,7 +125,7 @@ module akv 'modules/common-keyvault.bicep' = {
 
 // Depoyment of the Private Endpoint for the Key Vault
 
-module akvPE 'modules/common-private-endpoint.bicep' = {
+module akvPE 'common-modules/private-endpoint.bicep' = {
   name: 'akvPE'
   scope: rg
   params: {
@@ -154,7 +154,7 @@ param acrSku string = 'Standard'
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
 
-module acr 'modules/common-acr.bicep' = {
+module acr 'common-modules/acr.bicep' = {
   name: 'acr'
   scope: rg
   params: {
@@ -167,7 +167,7 @@ module acr 'modules/common-acr.bicep' = {
 
 // Depoyment of the Private Endpoint for the Azure Container Registry
 
-module acrPE 'modules/common-private-endpoint.bicep' = {
+module acrPE 'common-modules/private-endpoint.bicep' = {
   name: 'acrPE'
   scope: rg
   params: {
@@ -185,7 +185,7 @@ module acrPE 'modules/common-private-endpoint.bicep' = {
 @description('Name of the workspace')
 param workspaceName string = 'ws-sec-sharer'
 
-module workspace 'modules/common-workspace.bicep' = {
+module workspace 'common-modules/workspace.bicep' = {
   name: 'workspace'
   scope: rg
   params: {
@@ -204,7 +204,7 @@ param dbAdminLogin string = 'pgadminuser'
 @secure()
 param dbAdminPassword string // This will come from your .bicepparam file or pipeline
 
-module postgresqlServer 'modules/swa-postgresql-flexible.bicep' = {
+module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
   name: 'postgresqlServer'
   scope: rg
   params: {
@@ -234,7 +234,7 @@ param acaCpuLimit int = 250 // 0.25 cores in millicores
 @description('Memory limit for the Azure Container App in GB')
 param acaMemoryLimit string = '1Gi' // 1 GB memory limit
 
-module acaEnvironment 'modules/swa-aca-environment.bicep' = {
+module acaEnvironment 'swa-aca-modules/aca-environment.bicep' = {
   name: 'acaEnvironment'
   scope: rg
   params: {
@@ -267,7 +267,7 @@ var acaSecretReferences = [for secretName in items(akvSecrets): {
   secretRef: secretName.key
 }]
 
-module acaApp 'modules/swa-aca-app.bicep' = {
+module acaApp 'swa-aca-modules/aca-app.bicep' = {
   name: 'acaApp'
   scope: rg
   params: {
