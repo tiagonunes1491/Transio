@@ -166,8 +166,7 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
         exit 1
       }
       echo "✓ Connected successfully with SSL"
-      
-      # Secure database initialization (avoiding superuser operations)
+        # Secure database initialization (avoiding superuser operations)
       PGPASSWORD=$POSTGRES_PASSWORD psql "host=$POSTGRES_SERVER_FQDN port=5432 dbname=$POSTGRES_DB user=$POSTGRES_USER sslmode=require" -c "
         -- Remove public schema permissions from everyone
         REVOKE ALL ON SCHEMA public FROM PUBLIC;
@@ -211,20 +210,18 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
         GRANT CONNECT ON DATABASE \"$POSTGRES_DB\" TO \"$APP_DB_USER\";
         GRANT USAGE, CREATE ON SCHEMA public TO \"$APP_DB_USER\";
         
-        -- Grant table permissions only to app user
+        -- Grant table permissions only to app user (for existing tables)
         GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO \"$APP_DB_USER\";
-        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"$APP_DB_USER\";
         
-        -- Grant sequence permissions only to app user
+        -- Grant sequence permissions only to app user (for existing sequences)
         GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO \"$APP_DB_USER\";
-        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO \"$APP_DB_USER\";
         
-        -- Set app user as schema owner for future objects
-        ALTER SCHEMA public OWNER TO \"$APP_DB_USER\";
+        -- Grant admin user permission to alter default privileges for the app user
+        GRANT \"$APP_DB_USER\" TO \"$POSTGRES_USER\";
         
-        -- Ensure no other roles have access
-        ALTER DEFAULT PRIVILEGES FOR ROLE \"$APP_DB_USER\" IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC;
-        ALTER DEFAULT PRIVILEGES FOR ROLE \"$APP_DB_USER\" IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC;
+        -- Now set default privileges for future objects created by admin user
+        ALTER DEFAULT PRIVILEGES FOR ROLE \"$POSTGRES_USER\" IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"$APP_DB_USER\";
+        ALTER DEFAULT PRIVILEGES FOR ROLE \"$POSTGRES_USER\" IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO \"$APP_DB_USER\";
       "
       
       if [ $? -eq 0 ]; then
