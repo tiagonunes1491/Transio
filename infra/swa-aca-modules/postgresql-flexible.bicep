@@ -183,8 +183,7 @@ EOSQL
       
       echo "Database initialization script finished."
     '''
-    cleanupPreference: 'OnSuccess'  }
-  dependsOn: [
+    cleanupPreference: 'OnSuccess'  }  dependsOn: [
     postgresqlDatabase
   ]
 }

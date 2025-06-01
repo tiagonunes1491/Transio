@@ -214,10 +214,8 @@ module workspace 'common-modules/workspace.bicep' = {
   }
 }
 
-
 // Create PostgreSQL Flexible Server
 
-// Define params for DB (values from .bicepparam)
 param dbServerName string = 'pgs-sharer-aca-dev'
 param dbAdminLogin string = 'pgadminuser'
 @secure()
@@ -233,9 +231,6 @@ module deployPostgreSQLDNSZone 'common-modules/private-dns-zone.bicep' = {
     privateDnsZoneTags: tags
   }
 }
-
-
-
 
 // Deploying Azure Container Apps
 
@@ -279,19 +274,20 @@ module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
     location: resourceLocation
     administratorLogin: dbAdminLogin
     administratorLoginPassword: dbAdminPassword
-    skuName: 'Standard_B1ms' // Example SKU, adjust as needed
-    skuTier: 'Burstable' // Example tier, adjust as needed
-    postgresVersion: '15' // Example version, adjust as needed
+    skuName: 'Standard_B1ms' 
+    skuTier: 'Burstable' 
+    postgresVersion: '15' 
     delegatedSubnetId: network.outputs.subnetIds[1] // The second subnet is for the PaaS DB
     databaseName: 'secureSecretSharerDB' // Initial database name
     tags: tags
-    logAnalyticsWorkspaceId: workspace.outputs.workspaceId // Link to the Log Analytics workspace
-    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId // Link to the private DNS zone
-    appDatabaseUser: akvSecrets['database-user'] // App database user from Key Vault secrets
-    appDatabasePassword: akvSecrets['database-password'] // App database password from Key Vault secrets
-    userAssignedIdentityId: uami.outputs.uamiIds[0] // User Assigned Identity for deployment script
+    logAnalyticsWorkspaceId: workspace.outputs.workspaceId 
+    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId /
+    appDatabasePassword: akvSecrets['database-password'] 
     acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
   }
+  dependsOn: [
+    rbac // Ensure RBAC roles (including Network Contributor) are assigned before deployment script
+  ]
 }
 
 
@@ -303,6 +299,7 @@ module rbac 'swa-aca-modules/rbac.bicep' = {
     keyVaultId: akv.outputs.keyvaultId
     acrId: acr.outputs.acrId
     uamiId: uami.outputs.uamiPrincipalIds[0] // Use the first UAMI principal ID
+    acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
   }
 }
 

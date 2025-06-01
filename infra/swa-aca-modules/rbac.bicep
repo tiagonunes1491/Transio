@@ -9,8 +9,12 @@ param acrId string
 @description('UAMI Principal IDs array to give access to Key Vault and ACR')
 param uamiId string 
 
+@description('ACA subnet ID for deployment script networking')
+param acaSubnetId string
+
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
+var networkContributorRoleId = '4d97b98b-1d4f-4787-a291-c67834d212e7'
 // Existing resources
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -46,6 +50,18 @@ resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
+// Network Contributor role assignment for deployment script VNet integration
+resource networkRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+    scope: resourceGroup()
+    name: guid(acaSubnetId, uamiId, 'NetworkContributor')
+    properties: {
+      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
+      principalId: uamiId
+      principalType: 'ServicePrincipal'
+  }
+}
+
 // Outputs
 output acrRoleAssignmentId string = acrRoleAssignment.id
 output keyVaultRoleAssignmentId string = kvRoleAssignment.id
+output networkRoleAssignmentId string = networkRoleAssignment.id
