@@ -28,7 +28,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
 
 // Deployment for VNET 
 // ! Order of subnets are important and should not be changed.
-// The first subnet is for the ACA,  the second one is for the PaaS DB, the third is for Private Endpoints.
+// The first subnet is for the ACA, the second one is for the PaaS DB, the third is for Private Endpoints, the fourth is for deployment scripts.
 
 @description('Name of the virtual network')
 param vnetName string = 'vnet-secureSecretSharer'
@@ -44,7 +44,7 @@ var subnets  = [
     name: 'snet-aca'
     addressPrefix: '10.0.10.0/23'
   }
-    {
+  {
     name: 'snet-db'
     addressPrefix: '10.0.20.0/24'
     delegations: [
@@ -60,6 +60,23 @@ var subnets  = [
     name: 'snet-pe'
     addressPrefix: '10.0.30.0/24'
     privateEndpointNetworkPolicies: 'Disabled'
+  }
+  {
+    name: 'snet-aci'
+    addressPrefix: '10.0.40.0/24'
+    serviceEndpoints: [
+      {
+        service: 'Microsoft.Storage'
+      }
+    ]
+    delegations: [
+      {
+        name: 'aciDelegation'
+        properties: {
+          serviceName: 'Microsoft.ContainerInstance/containerGroups'
+        }
+      }
+    ]
   }
 ]
 
@@ -279,7 +296,7 @@ module deploymentStorageAccount 'common-modules/storage.bicep' = {
     sku: 'Standard_LRS'
     kind: 'StorageV2'
     vnetId: network.outputs.vnetId
-    acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA
+    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts
   }
 }
 
@@ -303,7 +320,7 @@ module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
     appDatabaseUser: akvSecrets['database-user']
     appDatabasePassword: akvSecrets['database-password']
     userAssignedIdentityId: uami.outputs.uamiIds[0]
-    acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
+    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts (snet-aci)
     storageAccountName: storageAccountName
   }
   dependsOn: [
@@ -316,11 +333,10 @@ module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
 module rbac 'swa-aca-modules/rbac.bicep' = {
   name: 'rbac'
   scope: rg
-  params: {
-    keyVaultId: akv.outputs.keyvaultId
+  params: {    keyVaultId: akv.outputs.keyvaultId
     acrId: acr.outputs.acrId
     uamiId: uami.outputs.uamiPrincipalIds[0] // Use the first UAMI principal ID
-    acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
+    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts (snet-aci)
     storageAccountId: deploymentStorageAccount.outputs.storageAccountId
   }
 }
