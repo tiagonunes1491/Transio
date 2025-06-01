@@ -278,6 +278,8 @@ module deploymentStorageAccount 'common-modules/storage.bicep' = {
     tags: tags
     sku: 'Standard_LRS'
     kind: 'StorageV2'
+    vnetId: network.outputs.vnetId
+    acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA
   }
 }
 

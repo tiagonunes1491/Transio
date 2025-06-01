@@ -13,6 +13,12 @@ param sku string = 'Standard_LRS'
 @description('Storage account kind')
 param kind string = 'StorageV2'
 
+@description('VNet ID for VNet rules (optional)')
+param vnetId string = ''
+
+@description('ACA subnet ID for VNet rules (optional)')
+param acaSubnetId string = ''
+
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
   location: location
@@ -28,10 +34,16 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
     networkAcls: {
-      defaultAction: 'Deny'
+      // Use secure deny-by-default with explicit VNet rules when VNet info is provided
+      defaultAction: !empty(vnetId) && !empty(acaSubnetId) ? 'Deny' : 'Allow'
       bypass: 'AzureServices'
       ipRules: []
-      virtualNetworkRules: []
+      virtualNetworkRules: !empty(vnetId) && !empty(acaSubnetId) ? [
+        {
+          id: acaSubnetId
+          action: 'Allow'
+        }
+      ] : []
     }
   }
 }
