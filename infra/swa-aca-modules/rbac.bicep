@@ -37,6 +37,17 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
   name: split(storageAccountId, '/')[8]
 }
 
+// Define the existing virtual network resource
+resource acaVnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = {
+  scope: resourceGroup()
+  name: split(acaSubnetId, '/')[8]
+}
+
+// Define the existing subnet resource using the subnet's ID provided as parameter
+resource acaSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-05-01' existing = {
+  name: split(acaSubnetId, '/')[10]
+  parent: acaVnet
+}
 
 resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     scope: keyVault
@@ -61,8 +72,8 @@ resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 
 // Network Contributor role assignment for deployment script VNet integration
 resource networkRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-    scope: resourceGroup()
-    name: guid(acaSubnetId, uamiId, 'NetworkContributor')
+    scope: acaSubnet
+    name: guid(acaSubnet.id, uamiId, networkContributorRoleId)
     properties: {
       roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
       principalId: uamiId
