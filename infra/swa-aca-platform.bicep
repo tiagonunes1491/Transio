@@ -306,6 +306,9 @@ module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
     acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
     storageAccountName: storageAccountName
   }
+  dependsOn: [
+    rbac // Ensure RBAC is configured before deployment script runs
+  ]
 }
 
 
