@@ -316,6 +316,7 @@ module rbac 'swa-aca-modules/rbac.bicep' = {
     acrId: acr.outputs.acrId
     uamiId: uami.outputs.uamiPrincipalIds[0] // Use the first UAMI principal ID
     acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
+    storageAccountId: deploymentStorageAccount.outputs.storageAccountId
   }
 }
 
