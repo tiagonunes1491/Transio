@@ -106,14 +106,13 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
   }
   properties: {
     azCliVersion: '2.50.0'
-    timeout: 'PT15M'
+    timeout: 'PT5M'
     retentionInterval: 'P1D'
     containerSettings: {
       subnetIds: [
         {
           id: acaSubnetId // Use the ACA subnet for deployment script connectivity
-        }
-      ]
+        }      ]
     }
     storageAccountSettings: {
       storageAccountName: storageAccountName
@@ -145,49 +144,59 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
       }
     ]
     scriptContent: '''
-      set -e
-      
-      echo "Starting database initialization script..."
-      
       # Install PostgreSQL client
       apk add --no-cache postgresql-client
       
-      # Wait for PostgreSQL to be ready
-      echo "Waiting for PostgreSQL server to be available..."
-      for i in {1..30}; do
-        if pg_isready -h $POSTGRES_SERVER_FQDN -U $POSTGRES_USER -t 5; then
-          echo "PostgreSQL is ready!"
-          break
-        fi
-        echo "Attempt $i: PostgreSQL not ready, waiting 10 seconds..."
-        sleep 10
-      done
-      
-      # Execute PostgreSQL DDL (same as your init script)
-      PGPASSWORD=$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 -h $POSTGRES_SERVER_FQDN -U "$POSTGRES_USER" -d "$POSTGRES_DB" <<-EOSQL
+      # Secure database initialization
+      PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_SERVER_FQDN -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+        -- Remove public schema permissions from everyone
+        REVOKE ALL ON SCHEMA public FROM PUBLIC;
+        REVOKE ALL ON DATABASE \"$POSTGRES_DB\" FROM PUBLIC;
+        
+        -- Drop any existing non-system roles (except admin and replication roles)
         DO \$\$
+        DECLARE
+          role_name TEXT;
         BEGIN
-          IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$APP_DB_USER') THEN
-            CREATE ROLE "$APP_DB_USER" WITH LOGIN PASSWORD '$APP_DB_PASSWORD';
-            RAISE NOTICE 'Created role: $APP_DB_USER';
-          ELSE
-            ALTER ROLE "$APP_DB_USER" WITH PASSWORD '$APP_DB_PASSWORD';
-            RAISE NOTICE 'Updated password for role: $APP_DB_USER';
-          END IF;
+          FOR role_name IN 
+            SELECT rolname FROM pg_roles 
+            WHERE rolname NOT IN ('$POSTGRES_USER', 'postgres', 'pg_monitor', 'pg_read_all_settings', 
+                                  'pg_read_all_stats', 'pg_stat_scan_tables', 'pg_read_server_files',
+                                  'pg_write_server_files', 'pg_execute_server_program', 'pg_signal_backend',
+                                  'azure_pg_admin', 'azure_superuser', 'replication')
+            AND rolname NOT LIKE 'pg_%'
+            AND rolname != '$APP_DB_USER'
+          LOOP
+            EXECUTE 'DROP ROLE IF EXISTS ' || quote_ident(role_name);
+          END LOOP;
         END
         \$\$;
-
-        GRANT CONNECT ON DATABASE "$POSTGRES_DB" TO "$APP_DB_USER";
-        GRANT USAGE ON SCHEMA public TO "$APP_DB_USER";
-        ALTER DEFAULT PRIVILEGES IN SCHEMA public
-              GRANT SELECT,INSERT,UPDATE,DELETE ON TABLES TO "$APP_DB_USER";
-
-        REVOKE CREATE ON SCHEMA public FROM PUBLIC;      -- nobody else can create
-        ALTER SCHEMA public OWNER TO "$APP_DB_USER";     -- app role becomes owner
-        GRANT USAGE,CREATE ON SCHEMA public TO "$APP_DB_USER";
-EOSQL
+        
+        -- Create clean application user
+        DROP ROLE IF EXISTS \"$APP_DB_USER\";
+        CREATE ROLE \"$APP_DB_USER\" WITH LOGIN PASSWORD '$APP_DB_PASSWORD';
+        
+        -- Grant minimal required permissions to app user only
+        GRANT CONNECT ON DATABASE \"$POSTGRES_DB\" TO \"$APP_DB_USER\";
+        GRANT USAGE, CREATE ON SCHEMA public TO \"$APP_DB_USER\";
+        
+        -- Grant table permissions only to app user
+        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO \"$APP_DB_USER\";
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"$APP_DB_USER\";
+        
+        -- Grant sequence permissions only to app user
+        GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO \"$APP_DB_USER\";
+        ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO \"$APP_DB_USER\";
+        
+        -- Set app user as schema owner for future objects
+        ALTER SCHEMA public OWNER TO \"$APP_DB_USER\";
+        
+        -- Ensure no other roles have access
+        ALTER DEFAULT PRIVILEGES FOR ROLE \"$APP_DB_USER\" IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC;
+        ALTER DEFAULT PRIVILEGES FOR ROLE \"$APP_DB_USER\" IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC;
+      "
       
-      echo "Database initialization script finished."
+      echo "Database secured: Only admin and app user roles exist, no public access"
     '''
     cleanupPreference: 'OnSuccess'
   }

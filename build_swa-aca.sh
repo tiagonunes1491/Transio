@@ -147,7 +147,22 @@ az deployment group create \
 # Get the actual app name from the deployment output and then get backend FQDN
 echo "[INFO] Retrieving container app details..."
 APP_NAME=$(az deployment group show --name "$APP_DEPLOYMENT_NAME" --resource-group "$RESOURCE_GROUP" --query properties.parameters.appName.value -o tsv)
+
+# Fallback to default app name if deployment query fails
+if [[ -z "$APP_NAME" || "$APP_NAME" == "null" ]]; then
+  echo "[WARNING] Could not retrieve app name from deployment. Using default name."
+  APP_NAME="secure-secret-sharer-aca-dev"
+fi
+
 echo "[INFO] Container app name: $APP_NAME"
+
+# Verify the container app exists before trying to get FQDN
+if ! az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" > /dev/null 2>&1; then
+  echo "[ERROR] Container app '$APP_NAME' not found in resource group '$RESOURCE_GROUP'"
+  echo "[INFO] Available container apps:"
+  az containerapp list --resource-group "$RESOURCE_GROUP" --query '[].name' -o tsv
+  exit 1
+fi
 
 BACKEND_FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
