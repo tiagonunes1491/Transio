@@ -30,20 +30,13 @@ param tags object
 param postgresqlServerFqdn string 
 
 @description('SQL Database name')
-param SqlDatabaseName string
+param databaseName string
 
 @description('CPU limit for the ACA App')
 param acaCpuLimit string
 
 @description('Memory limit for the ACA App')
 param acaMemoryLimit string
-
-// Define the secrets that need to be available to the container app
-var requiredSecrets = [
-  keyVaultSecrets.databaseUser
-  keyVaultSecrets.databasePassword
-  keyVaultSecrets.masterEncryptionKey
-]
 
 var acaEnvironmentVariables = [
   {
@@ -56,7 +49,11 @@ var acaEnvironmentVariables = [
   }
   {
     name: 'DATABASE_NAME'
-    value: SqlDatabaseName
+    value: databaseName
+  }
+  {
+    name: 'DATABASE_SSL_MODE'
+    value: 'require'
   }
 ]
 
@@ -90,11 +87,23 @@ module acaApp 'swa-aca-modules/aca-app.bicep' = {
     targetPort: 5000
     externalIngress: true
     userAssignedIdentityId: userAssignedIdentityId
-    secrets: [for secretName in requiredSecrets: {
-      name: secretName
-      identity: userAssignedIdentityId
-      keyVaultUri: '${keyVaultUri}secrets/${secretName}'
-    }]
+    secrets: [
+      {
+        name: keyVaultSecrets.databaseUser
+        identity: userAssignedIdentityId
+        keyVaultUri: '${keyVaultUri}secrets/${keyVaultSecrets.databaseUser}'
+      }
+      {
+        name: keyVaultSecrets.databasePassword
+        identity: userAssignedIdentityId
+        keyVaultUri: '${keyVaultUri}secrets/${keyVaultSecrets.databasePassword}'
+      }
+      {
+        name: keyVaultSecrets.masterEncryptionKey
+        identity: userAssignedIdentityId
+        keyVaultUri: '${keyVaultUri}secrets/${keyVaultSecrets.masterEncryptionKey}'
+      }
+    ]
     environmentVariables: acaEnvironmentVariables
     secretEnvironmentVariables: acaSecretReferences
     appTags: tags

@@ -234,9 +234,6 @@ module workspace 'common-modules/workspace.bicep' = {
 // Create PostgreSQL Flexible Server
 
 param dbServerName string = 'pgs-sharer-aca-dev'
-param dbAdminLogin string = 'pgadminuser'
-@secure()
-param dbAdminPassword string // This will come from your .bicepparam file or pipeline
 
 // Create a private DNS zone for PostgreSQL Flexible Server
 module deployPostgreSQLDNSZone 'common-modules/private-dns-zone.bicep' = {
@@ -307,8 +304,8 @@ module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
   params: {
     serverName: dbServerName
     location: resourceLocation
-    administratorLogin: dbAdminLogin
-    administratorLoginPassword: dbAdminPassword
+    administratorLogin: akvSecrets['postgres-admin-user']
+    administratorLoginPassword: akvSecrets['postgres-admin-password']
     skuName: 'Standard_B1ms' 
     skuTier: 'Burstable' 
     postgresVersion: '15' 

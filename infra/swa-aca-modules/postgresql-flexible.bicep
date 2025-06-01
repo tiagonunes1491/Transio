@@ -112,7 +112,8 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
       subnetIds: [
         {
           id: acaSubnetId // Use the ACA subnet for deployment script connectivity
-        }      ]
+        }
+      ]
     }
     storageAccountSettings: {
       storageAccountName: storageAccountName
@@ -143,17 +144,36 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
         secureValue: appDatabasePassword
       }
     ]
-    scriptContent: '''
-      # Install PostgreSQL client
+    scriptContent: '''      # Install PostgreSQL client
       apk add --no-cache postgresql-client
       
-      # Secure database initialization
-      PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_SERVER_FQDN -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+      echo "=== PostgreSQL Database Initialization ==="
+      echo "Server: $POSTGRES_SERVER_FQDN"
+      echo "Admin User: $POSTGRES_USER"
+      echo "App User: $APP_DB_USER"
+      echo "Database: $POSTGRES_DB"
+      
+      # Set PostgreSQL connection parameters for SSL (required by Azure)
+      export PGSSL_MODE=require
+      export PGSSL_CERT=""
+      export PGSSL_KEY=""
+      export PGSSL_ROOT_CERT=""
+      
+      # Test connection with SSL
+      echo "Testing PostgreSQL connection with SSL..."
+      PGPASSWORD=$POSTGRES_PASSWORD psql "host=$POSTGRES_SERVER_FQDN port=5432 dbname=$POSTGRES_DB user=$POSTGRES_USER sslmode=require" -c "SELECT version();" || {
+        echo "ERROR: Cannot connect to PostgreSQL with SSL"
+        exit 1
+      }
+      echo "✓ Connected successfully with SSL"
+      
+      # Secure database initialization (avoiding superuser operations)
+      PGPASSWORD=$POSTGRES_PASSWORD psql "host=$POSTGRES_SERVER_FQDN port=5432 dbname=$POSTGRES_DB user=$POSTGRES_USER sslmode=require" -c "
         -- Remove public schema permissions from everyone
         REVOKE ALL ON SCHEMA public FROM PUBLIC;
         REVOKE ALL ON DATABASE \"$POSTGRES_DB\" FROM PUBLIC;
         
-        -- Drop any existing non-system roles (except admin and replication roles)
+        -- Only drop non-superuser roles that we can safely drop
         DO \$\$
         DECLARE
           role_name TEXT;
@@ -163,11 +183,19 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
             WHERE rolname NOT IN ('$POSTGRES_USER', 'postgres', 'pg_monitor', 'pg_read_all_settings', 
                                   'pg_read_all_stats', 'pg_stat_scan_tables', 'pg_read_server_files',
                                   'pg_write_server_files', 'pg_execute_server_program', 'pg_signal_backend',
-                                  'azure_pg_admin', 'azure_superuser', 'replication')
+                                  'azure_pg_admin', 'azure_superuser', 'replication', 'rds_superuser',
+                                  'rds_replication', 'rdsadmin', 'rdsrepladmin')
             AND rolname NOT LIKE 'pg_%'
+            AND rolname NOT LIKE 'azure_%'
             AND rolname != '$APP_DB_USER'
+            AND NOT rolsuper  -- Don't try to drop superuser roles
           LOOP
-            EXECUTE 'DROP ROLE IF EXISTS ' || quote_ident(role_name);
+            BEGIN
+              EXECUTE 'DROP ROLE IF EXISTS ' || quote_ident(role_name);
+              RAISE NOTICE 'Dropped role: %', role_name;
+            EXCEPTION WHEN OTHERS THEN
+              RAISE NOTICE 'Could not drop role % (this is usually fine): %', role_name, SQLERRM;
+            END;
           END LOOP;
         END
         \$\$;
@@ -175,6 +203,9 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
         -- Create clean application user
         DROP ROLE IF EXISTS \"$APP_DB_USER\";
         CREATE ROLE \"$APP_DB_USER\" WITH LOGIN PASSWORD '$APP_DB_PASSWORD';
+        
+        -- Verify user was created
+        SELECT 'Created user:' as status, rolname, rolcanlogin FROM pg_roles WHERE rolname = '$APP_DB_USER';
         
         -- Grant minimal required permissions to app user only
         GRANT CONNECT ON DATABASE \"$POSTGRES_DB\" TO \"$APP_DB_USER\";
@@ -196,7 +227,38 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
         ALTER DEFAULT PRIVILEGES FOR ROLE \"$APP_DB_USER\" IN SCHEMA public REVOKE ALL ON SEQUENCES FROM PUBLIC;
       "
       
+      if [ $? -eq 0 ]; then
+        echo "✓ Database initialization completed successfully"
+      else
+        echo "ERROR: Database initialization failed"
+        exit 1
+      fi
+      
+      # Test app user connection with SSL
+      echo "Testing app user connection with SSL..."
+      PGPASSWORD=$APP_DB_PASSWORD psql "host=$POSTGRES_SERVER_FQDN port=5432 dbname=$POSTGRES_DB user=$APP_DB_USER sslmode=require" -c "SELECT current_user;" || {
+        echo "ERROR: App user $APP_DB_USER cannot connect with SSL"
+        exit 1
+      }
+      echo "✓ App user connected successfully with SSL"
+      
+      # Verify permissions
+      echo "Verifying app user permissions..."
+      PGPASSWORD=$APP_DB_PASSWORD psql "host=$POSTGRES_SERVER_FQDN port=5432 dbname=$POSTGRES_DB user=$APP_DB_USER sslmode=require" -c "
+        -- Test table creation
+        CREATE TABLE IF NOT EXISTS test_permissions (id SERIAL PRIMARY KEY, test_data TEXT);
+        INSERT INTO test_permissions (test_data) VALUES ('permission_test');
+        SELECT * FROM test_permissions WHERE test_data = 'permission_test';
+        DROP TABLE test_permissions;
+      " || {
+        echo "ERROR: App user permissions verification failed"
+        exit 1
+      }
+      echo "✓ App user permissions verified"
+      
+      echo "=== Database Setup Complete ==="
       echo "Database secured: Only admin and app user roles exist, no public access"
+      echo "SSL encryption: REQUIRED for all connections"
     '''
     cleanupPreference: 'OnSuccess'
   }

@@ -141,7 +141,7 @@ az deployment group create \
     acrLoginServer="$ACR_LOGIN_SERVER" \
     keyVaultUri="$KEY_VAULT_URI" \
     postgresqlServerFqdn="$SQL_SERVER_FQDN" \
-    SqlDatabaseName="$SQL_DATABASE_NAME" \
+    databaseName="$SQL_DATABASE_NAME" \
   --verbose
 
 # Get the actual app name from the deployment output and then get backend FQDN

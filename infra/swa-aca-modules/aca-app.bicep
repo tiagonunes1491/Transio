@@ -29,14 +29,12 @@ param memoryLimit string = '0.5Gi'
 @description('User Assigned Managed Identity for the Azure Container App')
 param userAssignedIdentityId string = ''
 
-
-
 resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
   name: appName
   location: appLocation
   tags: appTags
   identity: {
-    type: 'userAssigned'
+    type: 'UserAssigned'
     userAssignedIdentities: {
       '${userAssignedIdentityId}': {}
     }
@@ -52,7 +50,7 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
       secrets: [for secret in secrets: {
         name: secret.name
         keyVaultUrl: secret.keyVaultUri
-        identity: secret.identity
+        identity: userAssignedIdentityId
       }]
       activeRevisionsMode: 'Single'
       registries: [
@@ -60,7 +58,7 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
           server: split(containerImage, '/')[0] // Extract ACR server from image
           identity: userAssignedIdentityId
         }
-     ]
+      ]
     }
     template: {
       containers: [
@@ -68,8 +66,7 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
           name: appName
           image: containerImage
           resources: {
-            #disable-next-line BCP036 - Expects INT in lint but API expects float
-            cpu: cpuLimit // Convert millicores to cores
+            cpu: json(cpuLimit) // Convert string to number for API
             memory: memoryLimit
           }
           env: union(secretEnvironmentVariables, environmentVariables)
