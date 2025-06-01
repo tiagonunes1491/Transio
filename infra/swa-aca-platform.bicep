@@ -235,24 +235,6 @@ module deployPostgreSQLDNSZone 'common-modules/private-dns-zone.bicep' = {
 }
 
 
-module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
-  name: 'postgresqlServer'
-  scope: rg
-  params: {
-    serverName: dbServerName
-    location: resourceLocation
-    administratorLogin: dbAdminLogin
-    administratorLoginPassword: dbAdminPassword
-    skuName: 'Standard_B1ms' // Example SKU, adjust as needed
-    skuTier: 'Burstable' // Example tier, adjust as needed
-    postgresVersion: '15' // Example version, adjust as needed
-    delegatedSubnetId: network.outputs.subnetIds[1] // The second subnet is for the PaaS DB
-    databaseName: 'secureSecretSharerDB' // Initial database name
-    tags: tags
-    logAnalyticsWorkspaceId: workspace.outputs.workspaceId // Link to the Log Analytics workspace
-    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId // Link to the private DNS zone
-  }
-}
 
 
 // Deploying Azure Container Apps
@@ -285,6 +267,30 @@ module uami 'common-modules/uami.bicep' = {
     uamiLocation: resourceLocation
     uamiNames: acaUamiName
     tags: tags
+  }
+}
+
+// Create PostgreSQL Flexible Server with deployment script
+module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
+  name: 'postgresqlServer'
+  scope: rg
+  params: {
+    serverName: dbServerName
+    location: resourceLocation
+    administratorLogin: dbAdminLogin
+    administratorLoginPassword: dbAdminPassword
+    skuName: 'Standard_B1ms' // Example SKU, adjust as needed
+    skuTier: 'Burstable' // Example tier, adjust as needed
+    postgresVersion: '15' // Example version, adjust as needed
+    delegatedSubnetId: network.outputs.subnetIds[1] // The second subnet is for the PaaS DB
+    databaseName: 'secureSecretSharerDB' // Initial database name
+    tags: tags
+    logAnalyticsWorkspaceId: workspace.outputs.workspaceId // Link to the Log Analytics workspace
+    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId // Link to the private DNS zone
+    appDatabaseUser: akvSecrets['database-user'] // App database user from Key Vault secrets
+    appDatabasePassword: akvSecrets['database-password'] // App database password from Key Vault secrets
+    userAssignedIdentityId: uami.outputs.uamiIds[0] // User Assigned Identity for deployment script
+    acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
   }
 }
 
