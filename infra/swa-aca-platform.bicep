@@ -265,8 +265,24 @@ module uami 'common-modules/uami.bicep' = {
   }
 }
 
+// Create a storage account for deployment scripts
+@description('Name of the storage account for deployment scripts')
+param storageAccountName string = 'sadeploysharerdev'
+
+module deploymentStorageAccount 'common-modules/storage.bicep' = {
+  name: 'deploymentStorageAccount'
+  scope: rg
+  params: {
+    storageAccountName: storageAccountName
+    location: resourceLocation
+    tags: tags
+    sku: 'Standard_LRS'
+    kind: 'StorageV2'
+  }
+}
+
 // Create PostgreSQL Flexible Server with deployment script
-module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
+module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
   name: 'postgresqlServer'
   scope: rg
   params: {
@@ -281,13 +297,13 @@ module postgresqlServer 'swa-aca-modules//postgresql-flexible.bicep' = {
     databaseName: 'secureSecretSharerDB' // Initial database name
     tags: tags
     logAnalyticsWorkspaceId: workspace.outputs.workspaceId 
-    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId /
-    appDatabasePassword: akvSecrets['database-password'] 
+    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId
+    appDatabaseUser: akvSecrets['database-user']
+    appDatabasePassword: akvSecrets['database-password']
+    userAssignedIdentityId: uami.outputs.uamiIds[0]
     acaSubnetId: network.outputs.subnetIds[0] // The first subnet is for ACA (needed for deployment script VNet integration)
+    storageAccountName: storageAccountName
   }
-  dependsOn: [
-    rbac // Ensure RBAC roles (including Network Contributor) are assigned before deployment script
-  ]
 }
 
 

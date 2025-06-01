@@ -49,6 +49,9 @@ param userAssignedIdentityId string
 @description('ACA subnet ID for deployment script networking')
 param acaSubnetId string
 
+@description('Storage account name for deployment script artifacts')
+param storageAccountName string
+
 resource postgresqlServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
   name: serverName
   location: location
@@ -111,6 +114,9 @@ resource createAppUserRole 'Microsoft.Resources/deploymentScripts@2023-08-01' = 
           id: acaSubnetId // Use the ACA subnet for deployment script connectivity
         }
       ]
+    }
+    storageAccountSettings: {
+      storageAccountName: storageAccountName
     }
     environmentVariables: [
       {
@@ -183,7 +189,9 @@ EOSQL
       
       echo "Database initialization script finished."
     '''
-    cleanupPreference: 'OnSuccess'  }  dependsOn: [
+    cleanupPreference: 'OnSuccess'
+  }
+  dependsOn: [
     postgresqlDatabase
   ]
 }
