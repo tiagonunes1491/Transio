@@ -83,4 +83,4 @@ resource acaApp 'Microsoft.App/containerApps@2025-01-01' = {
 //Outputs for the Azure Container App
 output id string = acaApp.id
 output name string = acaApp.name
-output aFqdn string = acaApp.properties.configuration.ingress.fqdn
+output fqdn string = acaApp.properties.configuration.ingress.fqdn

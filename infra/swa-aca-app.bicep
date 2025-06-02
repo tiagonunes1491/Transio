@@ -111,3 +111,9 @@ module acaApp 'swa-aca-modules/aca-app.bicep' = {
     memoryLimit: acaMemoryLimit
   }
 }
+
+// Output the ACA APP
+
+output acaAppId string = acaApp.outputs.id
+output AcaAppFqdn string = acaApp.outputs.fqdn
+output acaAppName string = acaApp.outputs.name
