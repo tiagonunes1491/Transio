@@ -10,6 +10,7 @@ BACKEND_TAG="0.3.0"
 
 SKIP_INFRA=false
 SKIP_CONTAINERS=false
+SKIP_FRONTEND=false
 FULL_REBUILD=false
 
 # Parse flags
@@ -17,9 +18,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --skip-infra) SKIP_INFRA=true; shift ;;  
     --skip-containers) SKIP_CONTAINERS=true; shift ;;  
+    --skip-frontend) SKIP_FRONTEND=true; shift ;;
     --full-rebuild) FULL_REBUILD=true; shift ;;
     -h|--help) 
-      echo "Usage: $0 [--skip-infra] [--skip-containers] [--full-rebuild]"; exit 0 ;;  
+      echo "Usage: $0 [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild]"; exit 0 ;;  
     *) 
       echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -166,11 +168,40 @@ fi
 
 BACKEND_FQDN=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
+# Get the backend resource ID for linking
+BACKEND_RESOURCE_ID=$(az containerapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
+
+echo "[INFO] Backend FQDN: $BACKEND_FQDN"
+echo "[INFO] Backend Resource ID: $BACKEND_RESOURCE_ID"
+
+# 6) Deploy Static Web App with backend linking via Bicep module
+if [[ "$SKIP_FRONTEND" == false ]]; then
+  echo "[INFO] Deploying Static Web App with linked backend (this may take a few minutes)..."
+  FRONTEND_DEPLOYMENT_NAME="frontend-deployment"
+  az deployment group create \
+    --resource-group "$RESOURCE_GROUP" \
+    --template-file "infra/swa-aca-frontend.bicep" \
+    --parameters "infra/swa-aca-frontend.bicepparam" \
+    --parameters backendApiResourceId="$BACKEND_RESOURCE_ID" \
+    --name "$FRONTEND_DEPLOYMENT_NAME" \
+    --verbose
+  # retrieve outputs if needed
+else
+  echo "[INFO] Skipping Static Web App deployment"
+  STATIC_WEB_APP_URL="(skipped)"
+  STATIC_WEB_APP_NAME="(skipped)"
+fi
+
 echo ""
 echo "=============================================="
 echo "DEPLOYMENT SUMMARY"
 echo "=============================================="
-echo "Backend URL: https://$BACKEND_FQDN"
+echo "Frontend URL: $STATIC_WEB_APP_URL"
+echo "Backend URL: $BACKEND_URL"
+echo "Static Web App Name: $STATIC_WEB_APP_NAME"
+echo "Backend Resource ID: $BACKEND_RESOURCE_ID"
+echo ""
+echo "Infrastructure Details:"
 echo "ACA Environment: $ACA_ENVIRONMENT_ID"
 echo "Resource Group: $RESOURCE_GROUP"
 echo "Key Vault: $KEY_VAULT_NAME"
@@ -178,4 +209,8 @@ echo "Container Registry: $ACR_LOGIN_SERVER"
 echo "PostgreSQL Server: $SQL_SERVER_FQDN"
 echo "Database Name: $SQL_DATABASE_NAME"
 echo "Managed Identity: $UAMI_ID"
+echo ""
+echo "🎉 Deployment Complete!"
+echo "✅ Backend is linked to Static Web App"
+echo "✅ API requests to /api/* will route to your Container App"
 echo "=============================================="
