@@ -173,6 +173,8 @@ BACKEND_RESOURCE_ID=$(az containerapp show --name "$APP_NAME" --resource-group "
 
 echo "[INFO] Backend FQDN: $BACKEND_FQDN"
 echo "[INFO] Backend Resource ID: $BACKEND_RESOURCE_ID"
+# ensure BACKEND_URL is set for summary
+export BACKEND_URL="$BACKEND_FQDN"
 
 # 6) Deploy Static Web App with backend linking via Bicep module
 if [[ "$SKIP_FRONTEND" == false ]]; then
@@ -185,7 +187,16 @@ if [[ "$SKIP_FRONTEND" == false ]]; then
     --parameters backendApiResourceId="$BACKEND_RESOURCE_ID" \
     --name "$FRONTEND_DEPLOYMENT_NAME" \
     --verbose
-  # retrieve outputs if needed
+  # retrieve outputs using --query and tsv
+  STATIC_WEB_APP_URL=$(az deployment group show \
+    --name "$FRONTEND_DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.staticWebAppUrl.value -o tsv)
+  STATIC_WEB_APP_NAME=$(az deployment group show \
+    --name "$FRONTEND_DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.staticWebAppName.value -o tsv)
+  export STATIC_WEB_APP_URL STATIC_WEB_APP_NAME
 else
   echo "[INFO] Skipping Static Web App deployment"
   STATIC_WEB_APP_URL="(skipped)"

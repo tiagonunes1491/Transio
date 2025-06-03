@@ -40,8 +40,7 @@ resource staticWebApp 'Microsoft.Web/staticSites@2024-04-01' = {
   }
 }
 
-// Link to backend if provided
-resource backendLink 'Microsoft.Web/staticSites/linkedBackends@2024-04-01' = if (backendApiResourceId != '') {
+resource backendLink 'Microsoft.Web/staticSites/linkedBackends@2024-04-01' = {
   parent: staticWebApp
   name: 'api'
   properties: {
@@ -54,3 +53,4 @@ output staticWebAppUrl string = 'https://${staticWebApp.properties.defaultHostna
 output staticWebAppId string = staticWebApp.id
 output staticWebAppName string = staticWebApp.name
 output defaultHostname string = staticWebApp.properties.defaultHostname
+output backendLinkResourceId string = backendLink.id
