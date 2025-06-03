@@ -23,7 +23,7 @@ with app.app_context(): # <-- CREATE TABLES
     db.create_all() # Use the imported db instance
     print("Database tables created or already exist.")
 
-@app.route("/share", methods=["POST"])
+@app.route("/api/share", methods=["POST"])
 def share_secret_api():
     """API endpoint to share a new secret."""
     if not request.is_json:
@@ -48,7 +48,7 @@ def share_secret_api():
         link_id = store_encrypted_secret(encrypted_data)
         # The API returns the ID. The frontend will construct the full access URL.
         # Example: http://yourdomain/view/LINK_ID (where /view/ is a frontend route)
-        # Or for direct API access: http://yourdomain/secret/LINK_ID
+        # Or for direct API access: http://yourdomain/api/share/secret/LINK_ID
         current_app.logger.info(f"Secret stored successfully with link_id: {link_id}")
         return jsonify({"link_id": link_id, "message": "Secret stored. Use this ID to create your access link."}), 201
     except ValueError as ve: # Catch specific errors like empty secret from encryption/storage
@@ -63,7 +63,7 @@ def share_secret_api():
         # Return a generic error message to the client.
         return jsonify({"error": "Failed to store secret due to an internal server error."}), 500
 
-@app.route("/secret/<link_id>", methods=["GET", "HEAD"])
+@app.route("/api/share/secret/<link_id>", methods=["GET", "HEAD"])
 def retrieve_secret_api(link_id):
     """API endpoint to retrieve (and delete) a secret."""
     if not link_id: # Should be caught by routing rules, but defensive check.
