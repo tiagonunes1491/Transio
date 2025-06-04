@@ -155,7 +155,7 @@ ingress:
     - host: "secretsharer.local" 
       paths:
         frontend: # Configures the first path rule in ingress.yaml
-          path: "/api"
+          path: "/"
           pathType: Prefix
         backend:  # Configures the second path rule in ingress.yaml
           path: "/api" # External path for your API
