@@ -49,9 +49,6 @@ param tags object = {}
 @description('Application Gateeway ID for AGIC integration')
 param applicationGatewayIdForAgic string = ''
 
-@description('Namespace for AGIC to watch. Set to "" or omit for all namespaces.')
-param agicWatchNamespace string = 'default'
-
 resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
   tags: tags
   name: aksName
@@ -107,7 +104,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
       serviceCidr: '10.1.0.0/16'
       dnsServiceIP: '10.1.0.10'
     }
-    addonProfiles: {      
+    addonProfiles: {
       azureKeyvaultSecretsProvider: {
         enabled: true
         config: {
@@ -118,7 +115,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
         enabled: !empty(applicationGatewayIdForAgic)
         config: !empty(applicationGatewayIdForAgic) ? {
           applicationGatewayId: applicationGatewayIdForAgic
-          watchNamespace: agicWatchNamespace
+          watchNamespace: 'default'
         } : {}
       }
     }
@@ -129,4 +126,3 @@ output aksId string = aks.id
 output aksName string = aks.name
 output controlPlaneIdentityId string = aks.identity.principalId
 output oidcIssuerUrl string = aks.properties.oidcIssuerProfile.issuerURL
-output agicIdentityId string = !empty(applicationGatewayIdForAgic) ? aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId : ''

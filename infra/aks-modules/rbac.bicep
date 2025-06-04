@@ -13,23 +13,22 @@ param uamiIds array = []
 @minLength(1)
 param aksId string
 
-@description('ID of the Azure Application Gateway for AGIC role assignments')
-param applicationGatewayId string = ''
+@description('ID of the Azure Application Gateway that AGIC will use')
+@minLength(1)
+param appGwId  string
 
-@description('AGIC managed identity object ID for role assignments')
-param agicIdentityId string = ''
+@description('ID of the Azure Virtual Network')
+@minLength(1)
+param vnetId string
 
-@description('ID of the Application Gateway subnet for AGIC role assignments')
-param appGwSubnetId string = ''
-
-@description('ID of the AKS subnet for AGIC role assignments')
-param aksSubnetId string = ''
+// VAR for role IDs
 
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 var readerRoleId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 var networkContributorRoleId = '4d97b98b-1d4f-4787-a291-c67834d212e7'
+
 // Existing resources
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -47,10 +46,14 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: split(acrId, '/')[8]
 }
 
-// Reference to Application Gateway (conditionally created when AGIC is enabled)
-resource appGw 'Microsoft.Network/applicationGateways@2023-05-01' existing = if (!empty(applicationGatewayId)) {
+resource AppGw 'Microsoft.Network/applicationGateways@2023-05-01' existing = {
   scope: resourceGroup()
-  name: split(applicationGatewayId, '/')[8]
+  name: split(appGwId, '/')[8]
+}
+
+resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = {
+  scope: resourceGroup()
+  name: split(vnetId, '/')[8]
 }
 
 // Assigns Key Vault Secrets User role to UAMIs for accessing secrets in Key Vault
@@ -78,49 +81,49 @@ resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-// AGIC role assignments (when Application Gateway is provided)
-// Note: AGIC managed identity ID is passed as a parameter from the AKS module output
+// AGIC Role Assignments - Following Azure best practices for least privilege
+// Note: AGIC uses the ingressApplicationGateway addon identity
 
-// Assigns Contributor role to AGIC managed identity on the Application Gateway
-resource agicAppGwContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(applicationGatewayId) && !empty(agicIdentityId)) {
-  scope: appGw
-  name: guid(applicationGatewayId, agicIdentityId, 'AGICContributor')
-  properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleId)
-    principalId: agicIdentityId
-    principalType: 'ServicePrincipal'
-  }
-}
-
-// Assigns Reader role to AGIC managed identity on the resource group
-resource agicResourceGroupReaderRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(applicationGatewayId) && !empty(agicIdentityId)) {
-  scope: resourceGroup()
-  name: guid(resourceGroup().id, agicIdentityId, 'AGICReader')
+// Reader role at resource group level for AGIC to read resource metadata
+resource agicToRgReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(resourceGroup().id, aks.id, readerRoleId, 'agic-reader')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', readerRoleId)
-    principalId: agicIdentityId
+    principalId: aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
     principalType: 'ServicePrincipal'
   }
 }
 
-// Assigns Network Contributor role to AGIC managed identity on the Application Gateway subnet
-// This is required for AGIC to join the subnet and manage Application Gateway network configuration
-resource agicSubnetNetworkContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appGwSubnetId) && !empty(agicIdentityId)) {
-  name: guid(appGwSubnetId, agicIdentityId, 'AGICNetworkContributor')
+// Contributor role on Application Gateway for AGIC to manage gateway configuration
+resource agicToAppGwContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: AppGw
+  name: guid(AppGw.id, aks.id, contributorRoleId, 'agic-appgw')
   properties: {
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
-    principalId: agicIdentityId
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleId)
+    principalId: aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
     principalType: 'ServicePrincipal'
   }
 }
 
-// Assigns Network Contributor role to AGIC managed identity on the AKS subnet
-// This allows AGIC to manage network policies and advanced networking between AKS and Application Gateway
-resource agicAksSubnetNetworkContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aksSubnetId) && !empty(agicIdentityId)) {
-  name: guid(aksSubnetId, agicIdentityId, 'AGICAksNetworkContributor')
+// Network Contributor role on VNet for AGIC to manage network resources
+resource agicToVnetNetworkContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: vnet
+  name: guid(vnet.id, aks.id, networkContributorRoleId, 'agic-vnet')
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
-    principalId: agicIdentityId
+    principalId: aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Additional Contributor role for AKS cluster system-assigned identity on Application Gateway
+// This addresses scenarios where AGIC uses the cluster's system identity for some operations
+resource aksClusterToAppGwContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  scope: AppGw
+  name: guid(AppGw.id, aks.id, contributorRoleId, 'aks-cluster-appgw')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', contributorRoleId)
+    principalId: aks.identity.principalId
     principalType: 'ServicePrincipal'
   }
 }
@@ -130,10 +133,9 @@ output acrRoleAssignment object = {
   id: acrRoleAssignment.id
   principalId: aks.identity.principalId
 }
-output agicRoleAssignments object = !empty(applicationGatewayId) && !empty(agicIdentityId) ? {
-  appGwContributor: agicAppGwContributorRoleAssignment.id
-  resourceGroupReader: agicResourceGroupReaderRoleAssignment.id
-  appGwSubnetNetworkContributor: !empty(appGwSubnetId) ? agicSubnetNetworkContributorRoleAssignment.id : ''
-  aksSubnetNetworkContributor: !empty(aksSubnetId) ? agicAksSubnetNetworkContributorRoleAssignment.id : ''
-  agicPrincipalId: agicIdentityId
-} : {}
+output agicRoleAssignments object = {
+  readerRoleAssignmentId: agicToRgReader.id
+  appGwContributorRoleAssignmentId: agicToAppGwContributor.id
+  vnetNetworkContributorRoleAssignmentId: agicToVnetNetworkContributor.id
+  aksClusterToAppGwContributorRoleAssignmentId: aksClusterToAppGwContributor.id
+}

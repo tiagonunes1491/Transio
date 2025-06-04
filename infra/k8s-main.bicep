@@ -253,9 +253,6 @@ param userNodePoolMaxCount int = 3
 @description('AKS Admin Group object IDs for the AKS cluster')
 param aksAdminGroupObjectIds array = []
 
-@description('Namespace for AGIC to watch. Set to "default" to watch only the default namespace, or "" to watch all namespaces.')
-param agicWatchNamespace string = 'default'
-
 module aks 'aks-modules/aks.bicep' = {
   name: 'aks'
   scope: rg
@@ -277,7 +274,6 @@ module aks 'aks-modules/aks.bicep' = {
     userNodePoolMaxCount: userNodePoolMaxCount
     aksSubnetId: network.outputs.subnetIds[0]
     applicationGatewayIdForAgic: appGw.outputs.appGwId 
-    agicWatchNamespace: agicWatchNamespace
   }
 }
 
@@ -318,10 +314,8 @@ module rbac 'aks-modules/rbac.bicep' = {
     acrId: acr.outputs.acrId
     uamiIds: uami.outputs.uamiPrincipalIds 
     aksId: aks.outputs.aksId
-    applicationGatewayId: appGw.outputs.appGwId
-    agicIdentityId: aks.outputs.agicIdentityId
-    appGwSubnetId: network.outputs.subnetIds[1]  // Second subnet is Application Gateway subnet
-    aksSubnetId: network.outputs.subnetIds[0]    // First subnet is AKS subnet
+    appGwId: appGw.outputs.appGwId
+    vnetId: network.outputs.vnetId
   }
 }
 
@@ -342,41 +336,6 @@ param appGwsku string ='WAF_v2'
 param appGwPublicIpName string = 'appgw-public-ip'
 
 
-@description('Hostname to use for health probes')
-param appGwHostName string = 'secretsharer.example.com'
-
-@description('Backend pool configurations')
-param appGwBackendPools array = [
-  {
-    name: 'pool-frontend'
-    ipAddresses: []
-    port: 8080
-    protocol: 'Http'
-    path: '/'
-    healthProbePath: '/'
-    healthProbeInterval: 10
-    healthProbeTimeout: 5
-  }
-  {
-    name: 'pool-backend'
-    ipAddresses: []
-    port: 5000
-    protocol: 'Http'
-    path: '/'
-    healthProbePath: '/health'
-    healthProbeInterval: 15
-    healthProbeTimeout: 5
-  }
-]
-
-@description('Path routing rules')
-param appGwPathRules array = [
-  {
-    name: 'rule-api'
-    paths: ['/api*']
-    backendPoolName: 'pool-backend'
-  }
-]
 
 // Creates AppGW. Assumes subnet for appGW is in place [1] on array.
 module appGw 'aks-modules/appgw.bicep' = {
@@ -388,9 +347,6 @@ module appGw 'aks-modules/appgw.bicep' = {
     tags: tags
     sku: appGwsku
     publicIpName: appGwPublicIpName
-    hostName: appGwHostName
-    backendPools: appGwBackendPools
-    pathRules: appGwPathRules
     appGwSubnetId: network.outputs.subnetIds[1]
   }
 }
