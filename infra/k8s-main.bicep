@@ -253,10 +253,13 @@ param userNodePoolMaxCount int = 3
 @description('AKS Admin Group object IDs for the AKS cluster')
 param aksAdminGroupObjectIds array = []
 
+@description('Namespace for AGIC to watch. Set to "default" to watch only the default namespace, or "" to watch all namespaces.')
+param agicWatchNamespace string = 'default'
+
 module aks 'aks-modules/aks.bicep' = {
   name: 'aks'
   scope: rg
-  params: {
+  params: {    
     location: resourceLocation
     tags: tags
     aksAdminGroupObjectIds: aksAdminGroupObjectIds
@@ -274,6 +277,7 @@ module aks 'aks-modules/aks.bicep' = {
     userNodePoolMaxCount: userNodePoolMaxCount
     aksSubnetId: network.outputs.subnetIds[0]
     applicationGatewayIdForAgic: appGw.outputs.appGwId 
+    agicWatchNamespace: agicWatchNamespace
   }
 }
 
@@ -316,6 +320,8 @@ module rbac 'aks-modules/rbac.bicep' = {
     aksId: aks.outputs.aksId
     applicationGatewayId: appGw.outputs.appGwId
     agicIdentityId: aks.outputs.agicIdentityId
+    appGwSubnetId: network.outputs.subnetIds[1]  // Second subnet is Application Gateway subnet
+    aksSubnetId: network.outputs.subnetIds[0]    // First subnet is AKS subnet
   }
 }
 

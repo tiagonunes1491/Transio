@@ -19,10 +19,17 @@ param applicationGatewayId string = ''
 @description('AGIC managed identity object ID for role assignments')
 param agicIdentityId string = ''
 
+@description('ID of the Application Gateway subnet for AGIC role assignments')
+param appGwSubnetId string = ''
+
+@description('ID of the AKS subnet for AGIC role assignments')
+param aksSubnetId string = ''
+
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 var readerRoleId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
+var networkContributorRoleId = '4d97b98b-1d4f-4787-a291-c67834d212e7'
 // Existing resources
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -96,6 +103,28 @@ resource agicResourceGroupReaderRoleAssignment 'Microsoft.Authorization/roleAssi
   }
 }
 
+// Assigns Network Contributor role to AGIC managed identity on the Application Gateway subnet
+// This is required for AGIC to join the subnet and manage Application Gateway network configuration
+resource agicSubnetNetworkContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appGwSubnetId) && !empty(agicIdentityId)) {
+  name: guid(appGwSubnetId, agicIdentityId, 'AGICNetworkContributor')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
+    principalId: agicIdentityId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Assigns Network Contributor role to AGIC managed identity on the AKS subnet
+// This allows AGIC to manage network policies and advanced networking between AKS and Application Gateway
+resource agicAksSubnetNetworkContributorRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(aksSubnetId) && !empty(agicIdentityId)) {
+  name: guid(aksSubnetId, agicIdentityId, 'AGICAksNetworkContributor')
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
+    principalId: agicIdentityId
+    principalType: 'ServicePrincipal'
+  }
+}
+
 output kvRoleAssignments array = [for i in range(0, length(uamiIds)): kvRoleAssignments[i].id]
 output acrRoleAssignment object = {
   id: acrRoleAssignment.id
@@ -104,5 +133,7 @@ output acrRoleAssignment object = {
 output agicRoleAssignments object = !empty(applicationGatewayId) && !empty(agicIdentityId) ? {
   appGwContributor: agicAppGwContributorRoleAssignment.id
   resourceGroupReader: agicResourceGroupReaderRoleAssignment.id
+  appGwSubnetNetworkContributor: !empty(appGwSubnetId) ? agicSubnetNetworkContributorRoleAssignment.id : ''
+  aksSubnetNetworkContributor: !empty(aksSubnetId) ? agicAksSubnetNetworkContributorRoleAssignment.id : ''
   agicPrincipalId: agicIdentityId
 } : {}
