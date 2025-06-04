@@ -3,7 +3,7 @@ set -euo pipefail
 
 # build_swa-aca.sh - Streamlined deployment for Secure Secret Sharer on Azure Container Apps
 # Run inside any Ubuntu distro (e.g., WSL)
-# Usage: ./build_swa-aca.sh [--skip-infra] [--skip-containers] [--full-rebuild]
+# Usage: ./build_swa-aca.sh [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]
 
 # Default image tags (independent)
 BACKEND_TAG="0.3.0"
@@ -12,6 +12,7 @@ SKIP_INFRA=false
 SKIP_CONTAINERS=false
 SKIP_FRONTEND=false
 FULL_REBUILD=false
+TEARDOWN_ONLY=false
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -20,8 +21,9 @@ while [[ $# -gt 0 ]]; do
     --skip-containers) SKIP_CONTAINERS=true; shift ;;  
     --skip-frontend) SKIP_FRONTEND=true; shift ;;
     --full-rebuild) FULL_REBUILD=true; shift ;;
+    --teardown-only) TEARDOWN_ONLY=true; shift ;;
     -h|--help) 
-      echo "Usage: $0 [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild]"; exit 0 ;;  
+      echo "Usage: $0 [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
     *) 
       echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -38,7 +40,21 @@ SERVICES=("backend")
 echo "[INFO] Checking prerequisites..."
 command -v az >/dev/null || { echo "[ERROR] az CLI not found"; exit 1; }
 command -v docker >/dev/null || { echo "[ERROR] docker not found"; exit 1; }
+command -v swa >/dev/null || { echo "[ERROR] swa CLI not found. Install with: npm install -g @azure/static-web-apps-cli"; exit 1; }
 echo "[INFO] Prerequisites OK"
+
+# Teardown-only mode: delete resources and exit
+if [[ "$TEARDOWN_ONLY" == true ]]; then
+  echo "[INFO] Teardown-only mode: deleting 'rg-secure-sharer-swa-dev' and purging Key Vault..."
+  echo "[INFO] Deleting resource group (this may take several minutes)..."
+  az group delete --name rg-secure-sharer-swa-dev --yes --verbose
+  
+  echo "[INFO] Purging Key Vault (this may take a few minutes)..."
+  az keyvault purge --name kv-securesharer-swa-dev --verbose
+  echo "[INFO] Teardown completed successfully"
+  echo "[INFO] Exiting - no deployment performed"
+  exit 0
+fi
 
 # 1) Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
@@ -224,4 +240,52 @@ echo ""
 echo "🎉 Deployment Complete!"
 echo "✅ Backend is linked to Static Web App"
 echo "✅ API requests to /api/* will route to your Container App"
+echo "=============================================="
+
+# 7) Deploy frontend static files to Static Web App production environment
+if [[ "$SKIP_FRONTEND" == false ]]; then
+  echo ""
+  echo "[INFO] Deploying frontend static files to Static Web App production environment..."
+  
+  # Retrieve the deployment token for the Static Web App
+  echo "[INFO] Retrieving deployment token for Static Web App: $STATIC_WEB_APP_NAME"
+  DEPLOYMENT_TOKEN=$(az staticwebapp secrets list \
+    --name "$STATIC_WEB_APP_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.apiKey -o tsv)
+  
+  if [[ -z "$DEPLOYMENT_TOKEN" || "$DEPLOYMENT_TOKEN" == "null" ]]; then
+    echo "[ERROR] Failed to retrieve deployment token for Static Web App"
+    exit 1
+  fi
+  
+  echo "[INFO] Deployment token retrieved successfully"
+  echo "[INFO] Deploying static files from ./frontend/static to production environment..."
+  
+  # Deploy static files using SWA CLI
+  swa deploy \
+    --app-location "./frontend/static" \
+    --deployment-token "$DEPLOYMENT_TOKEN" \
+    --env "production"
+  
+  echo "[INFO] ✅ Static files deployed successfully to production environment"
+else
+  echo "[INFO] Skipping frontend static files deployment (frontend deployment was skipped)"
+fi
+
+echo ""
+echo "=============================================="
+echo "🚀 FINAL DEPLOYMENT STATUS"
+echo "=============================================="
+echo "✅ Infrastructure: Deployed"
+echo "✅ Backend Container App: Deployed and running"
+if [[ "$SKIP_FRONTEND" == false ]]; then
+  echo "✅ Static Web App: Deployed with backend linking"
+  echo "✅ Frontend Static Files: Deployed to production"
+else
+  echo "⏭️  Static Web App: Skipped"
+  echo "⏭️  Frontend Static Files: Skipped"
+fi
+echo ""
+echo "🌐 Your application is ready at: $STATIC_WEB_APP_URL"
 echo "=============================================="
