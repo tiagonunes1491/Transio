@@ -126,3 +126,4 @@ output aksId string = aks.id
 output aksName string = aks.name
 output controlPlaneIdentityId string = aks.identity.principalId
 output oidcIssuerUrl string = aks.properties.oidcIssuerProfile.issuerURL
+output agicIdentityId string = !empty(applicationGatewayIdForAgic) ? aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId : ''

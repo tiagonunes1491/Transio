@@ -314,6 +314,8 @@ module rbac 'aks-modules/rbac.bicep' = {
     acrId: acr.outputs.acrId
     uamiIds: uami.outputs.uamiPrincipalIds 
     aksId: aks.outputs.aksId
+    applicationGatewayId: appGw.outputs.appGwId
+    agicIdentityId: aks.outputs.agicIdentityId
   }
 }
 
