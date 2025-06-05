@@ -6,7 +6,7 @@ backend:
   replicaCount: 1
   image:
     name: "secure-secret-sharer-backend"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "0.3.0"
 
   service:
@@ -113,7 +113,7 @@ frontend:
   replicaCount: 1
   image:
     name: "secure-secret-sharer-frontend"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "0.3.0"
 
   probes:
