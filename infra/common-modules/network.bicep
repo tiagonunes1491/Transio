@@ -33,6 +33,9 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
           networkSecurityGroup: !empty(subnet.?networkSecurityGroupId) ? { 
             id: subnet.networkSecurityGroupId 
           } : null
+          delegations: subnet.?delegations
+          privateEndpointNetworkPolicies: subnet.?privateEndpointNetworkPolicies
+          serviceEndpoints: subnet.?serviceEndpoints
         }
       }
     ]

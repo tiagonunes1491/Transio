@@ -148,7 +148,7 @@ ingress:
     # For requests going to the backend service via paths defined in this Ingress,
     # AGIC will use "/" as the prefix when sending the request to the backend pod.
     # So, if Ingress receives /api/share, and /api/* is routed to the backend service,
-    # the backend pod will receive /share (if this annotation is correctly applied
+    # the backend pod will receive /api/share (if this annotation is correctly applied
     # by AGIC to the backend HTTP settings for that path).
     appgw.ingress.kubernetes.io/backend-path-prefix: "/" 
   hosts:

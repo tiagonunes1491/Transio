@@ -40,8 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     headerTitle.textContent = 'Checking...';
     
     checkSecretExists(linkId);
-    
-    // Function to check if the secret exists without revealing it
+      // Function to check if the secret exists without revealing it
     async function checkSecretExists(linkId) {
         try {
             // Determine API endpoint based on environment
@@ -49,8 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                window.location.hostname === '127.0.0.1' ||
                                window.location.protocol === 'file:';
             const apiEndpoint = isDevelopment 
-                ? `http://127.0.0.1:5000/secret/${linkId}` // Local dev
-                : `/api/secret/${linkId}`; // Deployed
+                ? `http://127.0.0.1:5000/api/share/secret/${linkId}` // Local dev
+                : `/api/share/secret/${linkId}`; // Deployed
             
             // Just check if the secret exists without revealing it
             console.log('Checking if secret exists at endpoint:', apiEndpoint);
@@ -102,8 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showError(`Failed to check if the secret exists: ${error.message}`);
         }
     }
-    
-    // Function to fetch the secret from the API
+      // Function to fetch the secret from the API
     async function fetchSecret(linkId) {
         try {
             // Determine API endpoint based on environment
@@ -111,8 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                window.location.hostname === '127.0.0.1' ||
                                window.location.protocol === 'file:';
             const apiEndpoint = isDevelopment 
-                ? `http://127.0.0.1:5000/secret/${linkId}` // Local dev
-                : `/api/secret/${linkId}`; // Deployed
+                ? `http://127.0.0.1:5000/api/share/secret/${linkId}` // Local dev
+                : `/api/share/secret/${linkId}`; // Deployed
             
             // Fetch the secret
             console.log('Fetching from API endpoint:', apiEndpoint);

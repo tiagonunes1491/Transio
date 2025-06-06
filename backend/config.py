@@ -41,12 +41,16 @@ class Config:
         DB_NAME = os.getenv("DATABASE_NAME")
 
         if all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
+            # Get SSL mode from environment variable, default to 'disable' for development
+            # Set DATABASE_SSL_MODE=require for production Azure PostgreSQL
+            ssl_mode = os.getenv("DATABASE_SSL_MODE", "disable")
+            
             SQLALCHEMY_DATABASE_URI = (
-                f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+                f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={ssl_mode}"
             )
             logging.info(
                 "Database URI constructed: "
-                f"postgresql://{DB_USER}:<PASSWORD_HIDDEN>@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+                f"postgresql://{DB_USER}:<PASSWORD_HIDDEN>@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={ssl_mode}"
             )
         else:
             # 3) Log which pieces are missing (no unpacking bug).
@@ -69,11 +73,9 @@ class Config:
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-
     #Defines time that secret expires in minutes
     # Default to 60 minutes if not set in .env
     SECRET_EXPIRY_MINUTES = int(os.getenv("SECRET_EXPIRY_MINUTES", "60")) 
-
 
     if not MASTER_ENCRYPTION_KEY:
         # Fail fast - encryption key is required for this security application
