@@ -1,0 +1,23 @@
+name: "Backend CI Pipeline"
+on: 
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'backend/**'
+
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'backend/**'
+env:
+  IMAGE_NAME: 'backend-app'
+  DOCKERFILE_PATH: 'backend/Dockerfile'
+  DEPENDENCY_FILE: 'backend/requirements.txt'
+jobs:
+  static_analysis:
+    name: 'Static Analysis (SAST Scan)'
+    uses: ./.github/workflows/reusable-sast-scan.yml
+    with:
+      language: 'python'

@@ -1,0 +1,26 @@
+name: 'Reusable SAST Scan with CodeQL'
+on:
+    workflow_call:
+        inputs:
+            language:
+                required: true
+                description: 'Programming language for the SAST scan'
+                type: string
+jobs:
+    static_analysis:
+        name: 'Static Analysis'
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up CodeQL
+              uses: github/codeql-action/init@v3
+              with:
+                  languages: ${{ inputs.language }}
+
+            - name: Perform CodeQL analysis
+              uses: github/codeql-action/analyze@v3
