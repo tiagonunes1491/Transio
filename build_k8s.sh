@@ -5,6 +5,13 @@ set -euo pipefail
 # Run inside any Ubuntu distro (e.g., WSL)
 # Usage: ./build_dev.sh [--skip-infra] [--skip-containers] [--full-rebuild]
 
+# Function to print timestamped messages
+log() {
+  local level="$1"
+  shift
+  echo "[$(date '+%Y-%m-%dT%H:%M:%S') $level] $*"
+}
+
 # Default image tags (independent)
 BACKEND_TAG="0.3.0"
 FRONTEND_TAG="0.3.0"
@@ -29,43 +36,43 @@ done
 # Configuration
 DEPLOYMENT_NAME="secure-secret-sharer-deploy"
 LOCATION="spaincentral"
-BICEP_FILE="infra/main.bicep"
-PARAMS_FILE="infra/main.dev.bicepparam"
+BICEP_FILE="infra/k8s-main.bicep"
+PARAMS_FILE="infra/k8s-main.bicep.dev.bicepparam"
 SERVICES=("backend" "frontend")
 
 # 1) Prerequisites
-echo "[INFO] Checking prerequisites..."
-command -v az >/dev/null || { echo "[ERROR] az CLI not found"; exit 1; }
-command -v docker >/dev/null || { echo "[ERROR] docker not found"; exit 1; }
-command -v kubectl >/dev/null || { echo "[ERROR] kubectl not found"; exit 1; }
-command -v helm >/dev/null || { echo "[ERROR] helm not found"; exit 1; }
-echo "[INFO] Prerequisites OK"
+log "INFO" "Checking prerequisites..."
+command -v az >/dev/null || { log "ERROR" "az CLI not found"; exit 1; }
+command -v docker >/dev/null || { log "ERROR" "docker not found"; exit 1; }
+command -v kubectl >/dev/null || { log "ERROR" "kubectl not found"; exit 1; }
+command -v helm >/dev/null || { log "ERROR" "helm not found"; exit 1; }
+log "INFO" "Prerequisites OK"
 
 # 1) Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
-  echo "[INFO] Full rebuild requested: tearing down 'rg-secure-secret-sharer-dev'..."
-  echo "[INFO] Deleting resource group (this may take several minutes)..."
+  log "INFO" "Full rebuild requested: tearing down 'rg-secure-secret-sharer-dev'..."
+  log "INFO" "Deleting resource group (this may take several minutes)..."
   az group delete --name rg-secure-secret-sharer-dev --yes --verbose
   
-  echo "[INFO] Purging Key Vault (this may take a few minutes)..."
+  log "INFO" "Purging Key Vault (this may take a few minutes)..."
   az keyvault purge --name kv-securesharer-dev --location spaincentral --verbose
-  echo "[INFO] Teardown completed"
+  log "INFO" "Teardown completed"
 fi
 
 # 2) Deploy infrastructure
 if [[ "$SKIP_INFRA" == false ]]; then
-  echo "[INFO] Deploying Bicep infrastructure (this may take 10-15 minutes)..."
-  echo "[INFO] You will see detailed deployment progress below..."
+  log "INFO" "Deploying Bicep infrastructure (this may take 10-15 minutes)..."
+  log "INFO" "You will see detailed deployment progress below..."
   az deployment sub create --template-file "$BICEP_FILE" --parameters "$PARAMS_FILE" --location "$LOCATION" \
     --name "$DEPLOYMENT_NAME" --verbose
-  echo "[INFO] Infrastructure deployment completed"
+  log "INFO" "Infrastructure deployment completed"
 else
-  echo "[INFO] Skipping infrastructure deployment"
+  log "INFO" "Skipping infrastructure deployment"
 fi
 
 # 3) Retrieve outputs from Bicep deployment
-echo "[INFO] Retrieving deployment outputs from Azure..."
-echo "[INFO] This may take a moment while querying the deployment state..."
+log "INFO" "Retrieving deployment outputs from Azure..."
+log "INFO" "This may take a moment while querying the deployment state..."
 
 # Core infrastructure outputs
 AKS_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.aksName.value -o tsv)
@@ -81,38 +88,38 @@ DATABASE_UAMI_CLIENT_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --que
 BACKEND_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.backendK8sServiceAccountName.value -o tsv)
 DATABASE_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.databaseInitK8sServiceAccountName.value -o tsv)
 
-echo "[INFO] Successfully retrieved deployment outputs:"
-echo "[INFO] AKS_NAME=$AKS_NAME"
-echo "[INFO] RESOURCE_GROUP=$RESOURCE_GROUP"
-echo "[INFO] ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
-echo "[INFO] APP_GW_IP=$APP_GW_IP"
-echo "[INFO] TENANT_ID=$TENANT_ID"
-echo "[INFO] KEY_VAULT_NAME=$KEY_VAULT_NAME"
-echo "[INFO] BACKEND_UAMI_CLIENT_ID=$BACKEND_UAMI_CLIENT_ID"
-echo "[INFO] DATABASE_UAMI_CLIENT_ID=$DATABASE_UAMI_CLIENT_ID"
-echo "[INFO] BACKEND_SERVICE_ACCOUNT_NAME=$BACKEND_SERVICE_ACCOUNT_NAME"
-echo "[INFO] DATABASE_SERVICE_ACCOUNT_NAME=$DATABASE_SERVICE_ACCOUNT_NAME"
+log "INFO" "Successfully retrieved deployment outputs:"
+log "INFO" "AKS_NAME=$AKS_NAME"
+log "INFO" "RESOURCE_GROUP=$RESOURCE_GROUP"
+log "INFO" "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
+log "INFO" "APP_GW_IP=$APP_GW_IP"
+log "INFO" "TENANT_ID=$TENANT_ID"
+log "INFO" "KEY_VAULT_NAME=$KEY_VAULT_NAME"
+log "INFO" "BACKEND_UAMI_CLIENT_ID=$BACKEND_UAMI_CLIENT_ID"
+log "INFO" "DATABASE_UAMI_CLIENT_ID=$DATABASE_UAMI_CLIENT_ID"
+log "INFO" "BACKEND_SERVICE_ACCOUNT_NAME=$BACKEND_SERVICE_ACCOUNT_NAME"
+log "INFO" "DATABASE_SERVICE_ACCOUNT_NAME=$DATABASE_SERVICE_ACCOUNT_NAME"
 
 # 4) Build & push container images
 if [[ "$SKIP_CONTAINERS" == false ]]; then
-  echo "[INFO] Logging into Azure Container Registry..."
+  log "INFO" "Logging into Azure Container Registry..."
   ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
   az acr login --name "$ACR_NAME" --verbose
-  echo "[INFO] Building and pushing container images..."
+  log "INFO" "Building and pushing container images..."
   IMAGES=()
   for svc in "${SERVICES[@]}"; do
     TAG_VAR="${svc^^}_TAG"
     TAG_VALUE="${!TAG_VAR:-latest}"
     IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
-    echo "[INFO] Building $svc image ($TAG_VALUE) - this may take several minutes..."
+    log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
     docker build -t "$IMAGE" "./$svc" --progress=plain
-    echo "[INFO] Pushing $svc image to ACR..."
+    log "INFO" "Pushing $svc image to ACR..."
     docker push "$IMAGE"
     IMAGES+=("$svc:$IMAGE")
-    echo "[INFO] Completed $svc image: $IMAGE"
+    log "INFO" "Completed $svc image: $IMAGE"
   done
 else
-  echo "[INFO] Skipping container build & push"
+  log "INFO" "Skipping container build & push"
   # Build image references for existing images when skipping container build
   IMAGES=()
   for svc in "${SERVICES[@]}"; do
@@ -124,17 +131,17 @@ else
 fi
 
 # 5) Connect to AKS
-echo "[INFO] Connecting to AKS: $AKS_NAME (this may take a moment)..." 
+log "INFO" "Connecting to AKS: $AKS_NAME (this may take a moment)..." 
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing --verbose
-echo "[INFO] Setting kubectl context..."
+log "INFO" "Setting kubectl context..."
 kubectl config use-context "$AKS_NAME"
-echo "[INFO] Verifying cluster connection..."
+log "INFO" "Verifying cluster connection..."
 kubectl get nodes
 
-echo "[INFO] Successfully connected to AKS cluster"
+log "INFO" "Successfully connected to AKS cluster"
 
 # 6) Deploy Helm chart with enhanced monitoring
-echo "[INFO] Deploying Helm chart (this may take a few minutes)..."
+log "INFO" "Deploying Helm chart (this may take a few minutes)..."
 
 # Parse image references from IMAGES array
 BACKEND_REPO=""
@@ -158,7 +165,7 @@ for image_entry in "${IMAGES[@]}"; do
 done
 
 
-echo "[INFO] Starting Helm deployment..."
+log "INFO" "Starting Helm deployment..."
 helm upgrade --install secret-sharer k8s/secret-sharer-app \
   --namespace default --create-namespace \
   --set backend.keyVault.name="$KEY_VAULT_NAME" \

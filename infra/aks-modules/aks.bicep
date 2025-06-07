@@ -115,7 +115,7 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
         enabled: !empty(applicationGatewayIdForAgic)
         config: !empty(applicationGatewayIdForAgic) ? {
           applicationGatewayId: applicationGatewayIdForAgic
-          watchNamespace: 'kube-system'
+          watchNamespace: 'default'
         } : {}
       }
     }

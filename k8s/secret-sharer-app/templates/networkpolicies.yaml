@@ -64,26 +64,13 @@ spec:
   podSelector:
     matchLabels:
       {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: frontend # Selects the frontend pods
+      app.kubernetes.io/component: frontend 
   policyTypes:
     - Ingress # This policy is about allowing INCOMING traffic to the frontend
   ingress:
     - from:
-        # This is a general approach. For AGIC, traffic originates from the Application Gateway.
-        # A more precise rule would use an ipBlock for the App Gateway's subnet.
-        # For MVP, allowing from common Ingress controller namespaces or all within the cluster (if no other from specified)
-        # after default deny is a starting point.
-        # Let's allow from any pod in the 'kube-system' namespace (where AGIC controller runs)
-        # AND from any pod within the same namespace (for potential same-namespace routing/forwarding)
-        # This may need to be adjusted based on the actual Ingress controller behavior and network setup.
-        # If your Ingress controller (like Nginx) runs in a different specific namespace, adjust accordingly.
-        - namespaceSelector:
-            matchLabels:
-              # This label is common on the kube-system namespace.
-              # You might need to verify/adjust for your specific AKS setup or Ingress controller namespace.
-              kubernetes.io/metadata.name: kube-system 
-        # If you have an Ingress controller in the same namespace as your app (not typical for AGIC addon):
-        # - podSelector: {} # Allows from any pod in the same namespace (if that's where your Ingress controller proxies from)
+        - ipBlock:
+            cidr: "10.0.2.0/24" 
       ports:
         # Allow traffic TO this port on the Frontend pods
         - protocol: TCP
@@ -109,17 +96,8 @@ spec:
     - Ingress # This policy is about allowing INCOMING traffic to the backend
   ingress:
     - from:
-        # Allow traffic from pods in the kube-system namespace.
-        # This is a common approach when the Ingress controller (like AGIC's control plane)
-        # resides in kube-system and orchestrates traffic from the Application Gateway.
-        # A more precise rule for AGIC's data plane would use an ipBlock
-        # for the Application Gateway's subnet, but this is simpler for MVP.
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-        # If you also wanted to allow from any pod in the same namespace (e.g., for an in-cluster proxy or a service mesh sidecar)
-        # you could add another entry here:
-        # - podSelector: {} 
+        - ipBlock:
+            cidr: "10.0.2.0/24" 
       ports:
         # Allow traffic TO this port on the Backend pods
         - protocol: TCP

@@ -6,7 +6,7 @@ backend:
   replicaCount: 1
   image:
     name: "secure-secret-sharer-backend"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "0.3.0"
 
   service:
@@ -113,7 +113,7 @@ frontend:
   replicaCount: 1
   image:
     name: "secure-secret-sharer-frontend"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
     tag: "0.3.0"
 
   probes:
@@ -144,13 +144,8 @@ ingress:
   enabled: true 
   className: "azure-application-gateway" # For Kubernetes v1.18+ with IngressClass resource, if needed
   annotations:
-    # This annotation tells AGIC to rewrite the path for the backend.
-    # For requests going to the backend service via paths defined in this Ingress,
-    # AGIC will use "/" as the prefix when sending the request to the backend pod.
-    # So, if Ingress receives /api/share, and /api/* is routed to the backend service,
-    # the backend pod will receive /api/share (if this annotation is correctly applied
-    # by AGIC to the backend HTTP settings for that path).
-    appgw.ingress.kubernetes.io/backend-path-prefix: "/" 
+    # AGIC path rewrite annotation removed to preserve original path to backend
+    # appgw.ingress.kubernetes.io/backend-path-prefix: 
   hosts:
     - host: "secretsharer.local" 
       paths:
