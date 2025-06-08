@@ -16,6 +16,18 @@ env:
   DOCKERFILE_PATH: 'backend/Dockerfile'
   DEPENDENCY_FILE: 'backend/requirements.txt'
 jobs:
+  check_changes:
+    name: 'Check for file changes'
+    runs-on: ubuntu-latest
+    # This job will have an 'output' that other jobs can use.
+    outputs:
+      sca_scan_required: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - uses: tj-actions/changed-files@v44 # Use a specific version for stability
+        id: changed-files
+        with:
+          # We tell the action to ONLY look for changes in this specific file.
+          files: ${{ env.DEPENDENCY_FILE }}
   static_analysis:
     name: 'Static Analysis (SAST Scan)'
     uses: ./.github/workflows/reusable-sast-scan.yml
@@ -23,6 +35,8 @@ jobs:
       language: 'python'
   sca_analysis:
     name: 'Software Composition Analysis (SCA Scan)'
+    needs: check_changes
+    if: needs.check_changes.outputs.sca_scan_required == 'true'
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       paths: 'backend/requirements.txt'
