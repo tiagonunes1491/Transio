@@ -21,3 +21,8 @@ jobs:
     uses: ./.github/workflows/reusable-sast-scan.yml
     with:
       language: 'python'
+  sca_analysis:
+    name: 'Software Composition Analysis (SCA Scan)'
+    uses: ./.github/workflows/reusable-sca-scan.yml
+    with:
+      paths: 'backend/requirements.txt'
