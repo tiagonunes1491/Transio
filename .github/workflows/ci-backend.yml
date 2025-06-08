@@ -23,6 +23,11 @@ jobs:
       sca_scan_required: ${{ steps.changed-file-requirements.outputs.any_changed }}
       dockerfile_scan_required: ${{ steps.changed-file-dockerfile.outputs.any_changed }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for changed-files to work properly
+      
       - uses: tj-actions/changed-files@v44 # Use a specific version for stability
         id: changed-file-requirements
         with:
