@@ -54,7 +54,7 @@ jobs:
       
       - name: Build Docker image
         run: |
-          docker build -f ${{ inputs.path }} -t ${{ inputs.container-name }}${{ github.sha }} ${{ inputs.build-context }}
+          docker build -f ${{ inputs.path }} -t ${{ inputs.container-name }}:${{ github.sha }} ${{ inputs.build-context }}
 
       - name: Run Trivy container scanner
         uses: aquasecurity/trivy-action@0.31.0
