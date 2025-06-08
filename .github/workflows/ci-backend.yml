@@ -48,3 +48,4 @@ jobs:
     with:
       path: 'backend/Dockerfile'
       container-name: 'backend-app'
+      build-context: 'backend'
