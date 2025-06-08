@@ -19,15 +19,22 @@ jobs:
   check_changes:
     name: 'Check for file changes'
     runs-on: ubuntu-latest
-    # This job will have an 'output' that other jobs can use.
     outputs:
-      sca_scan_required: ${{ steps.changed-files.outputs.any_changed }}
+      sca_scan_required: ${{ steps.changed-file-requirements.outputs.any_changed }}
+      dockerfile_scan_required: ${{ steps.changed-file-dockerfile.outputs.any_changed }}
     steps:
       - uses: tj-actions/changed-files@v44 # Use a specific version for stability
-        id: changed-files
+        id: changed-file-requirements
         with:
           # We tell the action to ONLY look for changes in this specific file.
           files: ${{ env.DEPENDENCY_FILE }}
+  
+      - uses: tj-actions/changed-files@v44 # Use a specific version for stability
+        id: changed-file-dockerfile
+        with:
+          # We tell the action to ONLY look for changes in this specific file.
+          files: ${{ env.DOCKERFILE_PATH }}
+
   static_analysis:
     name: 'Static Analysis (SAST Scan)'
     uses: ./.github/workflows/reusable-sast-scan.yml
@@ -40,3 +47,10 @@ jobs:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       paths: 'backend/requirements.txt'
+  container_analysis:
+    name: 'Container Analyis (Dockerfile Scan, Container Scan, Container build)'
+    needs: check_changes
+    if: needs.check_changes.outputs.sca_scan_required == 'true' || needs.check_changes.outputs.dockerfile_scan_required == 'true'
+    uses: ./.github/workflows/reusable-container-scan.yml
+    with:
+      path: 'backend/Dockerfile'

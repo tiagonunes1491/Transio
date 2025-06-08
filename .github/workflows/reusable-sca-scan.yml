@@ -26,7 +26,7 @@ jobs:
           # this setup will scan the current directory ('.').
           # If inputs.paths is a single path (no commas), it will scan that specific path.
           scan-ref: ${{ (inputs.paths == '' || contains(inputs.paths, ',')) && '.' || inputs.paths }}
-          ignore-unfixed: true
+          ignore-unfixed: false
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'HIGH,CRITICAL'
