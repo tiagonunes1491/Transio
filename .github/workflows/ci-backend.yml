@@ -11,10 +11,6 @@ on:
       - 'main'
     paths:
       - 'backend/**'
-env:
-  IMAGE_NAME: 'backend-app'
-  DOCKERFILE_PATH: 'backend/Dockerfile'
-  DEPENDENCY_FILE: 'backend/requirements.txt'
 jobs:
   check_changes:
     name: 'Check for file changes'
@@ -31,7 +27,7 @@ jobs:
         id: changed-file-requirements
         with:
           # We tell the action to ONLY look for changes in this specific file.
-          files: ${{ env.DEPENDENCY_FILE }}
+          files: backend/requirements.txt
 
   static_analysis:
     name: 'Static Analysis (SAST Scan)'
