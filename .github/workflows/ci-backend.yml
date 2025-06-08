@@ -54,3 +54,4 @@ jobs:
     uses: ./.github/workflows/reusable-container-scan.yml
     with:
       path: 'backend/Dockerfile'
+      container-name: 'backend-app'
