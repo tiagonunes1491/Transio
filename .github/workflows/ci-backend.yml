@@ -33,13 +33,7 @@ jobs:
         with:
           # We tell the action to ONLY look for changes in this specific file.
           files: ${{ env.DEPENDENCY_FILE }}
-  
-      - uses: tj-actions/changed-files@v44 # Use a specific version for stability
-        id: changed-file-dockerfile
-        with:
-          # We tell the action to ONLY look for changes in this specific file.
-          files: ${{ env.DOCKERFILE_PATH }}
-
+          
   static_analysis:
     name: 'Static Analysis (SAST Scan)'
     uses: ./.github/workflows/reusable-sast-scan.yml
