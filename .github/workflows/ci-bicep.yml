@@ -1,0 +1,128 @@
+name: 'Bicep CI - Validate Infrastructure Code'
+
+on:
+  pull_request:
+    branches: # Add this section
+      - main
+    paths:
+      - 'infra/**.bicep'
+      - 'infra/**.bicepparam'
+
+permissions:
+  id-token: write
+  contents: read
+  security-events: write # Required for SARIF uploads
+  pull-requests: write # Required for PR comments
+
+jobs:
+  # This job discovers which bicep files have changed in the PR
+  discover-changed-files:
+    name: 'Discover Changed Bicep Files'
+    runs-on: ubuntu-latest
+    outputs:
+      # This will output a JSON array of changed bicep files
+      changed_bicep_files: ${{ steps.changed-files.outputs.all_changed_files }}
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history for accurate change detection
+
+      - name: 'Find changed Bicep files'
+        id: changed-files
+        uses: tj-actions/changed-files@v44 
+        with:
+          files: infra/**.bicep,infra/**.bicepparam # Specify the patterns to match Bicep files
+
+  # This job runs a validation matrix for each file discovered above
+  validate-bicep:
+    name: 'Validate ${{ matrix.bicep_file }}'
+    needs: discover-changed-files
+    if: needs.discover-changed-files.outputs.changed_bicep_files != '[]'
+    
+    # The matrix strategy creates a parallel job for each changed file
+    strategy:
+      matrix:
+        bicep_file: ${{ fromJson(needs.discover-changed-files.outputs.changed_bicep_files) }}
+      fail-fast: false # Continue running all jobs even if one fails
+        
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+          
+      - name: 'Setup Bicep CLI'
+        run: |
+          az bicep install
+
+      - name: 'Build Bicep File (Primary Validation)'
+        if: endsWith(matrix.bicep_file, '.bicep')
+        run: |
+            echo "Validating: ${{ matrix.bicep_file }}"
+            if ! bicep build ${{ matrix.bicep_file }} --outfile compiled-${{ strategy.job-index }}.json; then
+            echo "❌ Bicep compilation failed for ${{ matrix.bicep_file }}"
+            exit 1
+            fi
+            echo "✅ Bicep compilation successful"
+
+      - name: 'Lint Bicep File (Quality & Security)'
+        if: endsWith(matrix.bicep_file, '.bicep')
+        run: |
+          # Lint for code quality, best practices, and security issues
+          bicep lint ${{ matrix.bicep_file }} --diagnostics-format sarif > bicep-template-${{ strategy.job-index }}.sarif
+
+      - name: 'Lint Bicep Parameters'
+        if: endsWith(matrix.bicep_file, '.bicepparam')
+        run: |
+          # Lint parameter files for best practices
+          bicep lint ${{ matrix.bicep_file }} --diagnostics-format sarif > bicep-params-${{ strategy.job-index }}.sarif
+
+      - name: 'Upload Bicep Template SARIF'
+        if: always() && endsWith(matrix.bicep_file, '.bicep')
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: bicep-template-${{ matrix.bicep_file }}
+          sarif_file: bicep-template-${{ strategy.job-index }}.sarif
+
+      - name: 'Upload Bicep Parameters SARIF'
+        if: always() && endsWith(matrix.bicep_file, '.bicepparam')
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: bicep-params-${{ matrix.bicep_file }}
+          sarif_file: bicep-params-${{ strategy.job-index }}.sarif
+
+      - name: 'Run Security Scan with Checkov'
+        if: endsWith(matrix.bicep_file, '.bicep')
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          file: ${{ matrix.bicep_file }}
+          framework: bicep
+          output_format: sarif
+          output_file_path: checkov-${{ strategy.job-index }}.sarif
+
+      - name: 'Upload Checkov SARIF'
+        if: endsWith(matrix.bicep_file, '.bicep')
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: checkov-${{ matrix.bicep_file }}
+          sarif_file: checkov-${{ strategy.job-index }}.sarif
+          
+  post-failure-comment:
+    name: 'Post Bicep Validation Failure Comment'
+    needs: validate-bicep # Depends on the matrix job
+    runs-on: ubuntu-latest
+    # Only run if the validate-bicep job failed and it's a pull request event
+    if: failure() && github.event_name == 'pull_request'
+    steps:
+      - name: 'Post PR Comment on Failure'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ **Bicep Validation Failed**
+
+            One or more Bicep files failed validation. 
+            Please review the [Checks tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+          edit-mode: replace # Replaces previous comment by this action with the same body identifier (if any)
