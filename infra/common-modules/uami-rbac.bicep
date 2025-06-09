@@ -4,11 +4,8 @@ param uamiPrincipalId string
 @description('Role definition ID to assign')
 param roleDefinitionId string
 
-@description('Scope where the role should be assigned')
-param scope string
-
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(uamiPrincipalId, roleDefinitionId, scope)
+  name: guid(uamiPrincipalId, roleDefinitionId, resourceGroup().id)
   properties: {
     principalId: uamiPrincipalId
     roleDefinitionId: roleDefinitionId
