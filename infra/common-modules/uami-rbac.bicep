@@ -1,6 +1,7 @@
+targetScope = 'subscription'
+
 @description('Principal ID of the UAMI')
 param uamiPrincipalId string
-
 
 @description('Role definition ID for the RBAC assignment')
 param roleDefinitionId string
