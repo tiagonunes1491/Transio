@@ -2,8 +2,6 @@ name: 'Bicep CI - Validate Infrastructure Code'
 
 on:
   pull_request:
-    branches: # Add this section
-      - main
     paths:
       - 'infra/**.bicep'
       - 'infra/**.bicepparam'
