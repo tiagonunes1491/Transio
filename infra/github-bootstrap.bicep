@@ -20,8 +20,6 @@ param gitHubRepositoryName string
 @description('GitHub subject pattern to federate with')
 param gitHubSubjectPattern string = 'refs/heads/main'
 
-@description('Name of the security group for GitHub Actions managed identities')
-param securityGroupName string = 'sg-github-actions-${environment}'
 
 @description('Tags for resources')
 param tags object = {
