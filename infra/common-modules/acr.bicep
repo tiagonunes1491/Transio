@@ -26,7 +26,7 @@ resource acr 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
   }
 }
 
-// Trigger change v8
+// Trigger change v9
 
 output acrId string = acr.id
 output acrLoginServer string = acr.properties.loginServer
