@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       # This will output a JSON array of changed bicep files
-      changed_bicep_files: ${{ steps.changed-files.outputs.all_changed_files }}
+      changed_bicep_files: ${{ steps.changed-files.outputs.all_changed_files || '[]'  }}
     steps:
       - name: 'Checkout Code'
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v44 
         with:
-          files: infra/**.bicep,infra/**.bicepparam # Specify the patterns to match Bicep files
+          files: infra/**.bicep,infra/**.bicepparam, infra/**/*.bicep,infra/**/*.bicepparam # Specify the patterns to match Bicep files
 
   # This job runs a validation matrix for each file discovered above
   validate-bicep:
