@@ -49,9 +49,19 @@ jobs:
       - name: 'Validate Changed Bicep Files'
         if: steps.changed-files.outputs.any_changed == 'true'
         shell: bash
+        env:
+          # Ensure Azure CLI doesn't have permission issues during validation
+          AZURE_CORE_COLLECT_TELEMETRY: false
+          AZURE_CORE_DISABLE_CONFIRM_PROMPT: true
+          AZURE_CORE_DISABLE_PROGRESS_BAR: true
+          AZURE_CORE_ONLY_SHOW_ERRORS: true
         run: |
           echo "🔍 Found changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
 
+          # Ensure Azure CLI config directory exists with proper permissions
+          mkdir -p ~/.azure
+          chmod 755 ~/.azure
+          
           # Convert space-separated files to array
           IFS=' ' read -ra files <<< "${{ steps.changed-files.outputs.all_changed_files }}"
 
@@ -112,8 +122,15 @@ jobs:
               # Build Bicep file for syntax validation
               echo "📦 Building Bicep file..."
               build_output=$(mktemp)
-              if az bicep build --file "$file" --outfile "temp-$(basename "$file" .bicep).json" 2> "$build_output"; then
+              
+              # Use environment variables to prevent permission issues
+              if AZURE_CORE_COLLECT_TELEMETRY=false \
+                 AZURE_CORE_DISABLE_CONFIRM_PROMPT=true \
+                 AZURE_CORE_DISABLE_PROGRESS_BAR=true \
+                 AZURE_CORE_ONLY_SHOW_ERRORS=true \
+                 az bicep build --file "$file" --outfile "temp-$(basename "$file" .bicep).json" 2> "$build_output"; then
                 echo "✅ Build successful: $file"
+                rm -f "temp-$(basename "$file" .bicep).json"
               else
                 echo "❌ Build failed: $file"
                 failed_files+=("$file")
@@ -156,8 +173,12 @@ jobs:
               echo "🔍 Linting Bicep file..."
               temp_lint_sarif="temp-lint-$(basename "$file" .bicep).sarif"
               
-              # Generate SARIF directly from bicep lint
-              if az bicep lint --file "$file" --diagnostics-format sarif > "$temp_lint_sarif" 2>/dev/null; then
+              # Generate SARIF directly from bicep lint with environment variables
+              if AZURE_CORE_COLLECT_TELEMETRY=false \
+                 AZURE_CORE_DISABLE_CONFIRM_PROMPT=true \
+                 AZURE_CORE_DISABLE_PROGRESS_BAR=true \
+                 AZURE_CORE_ONLY_SHOW_ERRORS=true \
+                 az bicep lint --file "$file" --diagnostics-format sarif > "$temp_lint_sarif" 2>/dev/null; then
                 echo "✅ Lint successful: $file"
               else
                 echo "⚠️ Lint found issues in: $file"
@@ -187,7 +208,11 @@ jobs:
               echo "📋 Validating Bicep parameters..."
               temp_param_sarif="temp-param-$(basename "$file" .bicepparam).sarif"
               
-              if az bicep lint --file "$file" --diagnostics-format sarif > "$temp_param_sarif" 2>/dev/null; then
+              if AZURE_CORE_COLLECT_TELEMETRY=false \
+                 AZURE_CORE_DISABLE_CONFIRM_PROMPT=true \
+                 AZURE_CORE_DISABLE_PROGRESS_BAR=true \
+                 AZURE_CORE_ONLY_SHOW_ERRORS=true \
+                 az bicep lint --file "$file" --diagnostics-format sarif > "$temp_param_sarif" 2>/dev/null; then
                 echo "✅ Parameter validation successful: $file"
               else
                 echo "❌ Parameter validation failed: $file"
@@ -282,7 +307,7 @@ jobs:
             output_format: sarif
             output_file_path: checkov-results.sarif
             quiet: true
-            soft_fail: true
+            soft_fail: false
             check: CKV_AZURE_*
 
         - name: 'Upload Checkov SARIF'
