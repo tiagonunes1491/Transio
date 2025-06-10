@@ -74,6 +74,7 @@ module uamis 'common-modules/uami.bicep' = {
     uamiLocation: location
     uamiNames: [
       'uami-ssharer-acr-${environmentName}'
+      'uami-ssharer-shared-infra-creator'
       'uami-ssharer-k8s-${environmentName}'
       'uami-ssharer-k8s-deploy-${environmentName}'
       'uami-ssharer-paas-${environmentName}'
@@ -108,13 +109,35 @@ module uamiAcrPush 'common-modules/uami-rbac.bicep'= {
   }
 }
 
+// --- 1. User Assigned Managed Identity (UAMI) for Shared Infrastructure Creator ---
+
+// Federate UAMI with GitHub Actions for shared infrastructure creation
+module sharedInfraCreatorGhFed 'common-modules/github-federation.bicep' = {
+  scope: managementRg
+  params: {
+    UamiName: uamis.outputs.uamiNames[1]
+    GitHubOrganizationName: gitHubOrganizationName
+    GitHubRepositoryName: gitHubRepositoryName
+    gitHubSubjectPattern: gitHubSubjectPattern
+  }
+}
+
+// Assign the Contributor role to the UAMI for shared infrastructure creation in the hub resource group
+module uamiSharedInfraCreatorContributor 'common-modules/uami-rbac.bicep'= {
+  scope: hubRG
+  params: {
+    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[1]
+    roleDefinitionId: ContributorRoleDefinitionId
+  }
+}
+
 // --- 2. Create User Assigned Managed Identity (UAMI) for K8S Spoke ---
 
 // Federate UAMI with GitHub Actions
 module k8SpokeGhFed 'common-modules/github-federation.bicep' = {
   scope: managementRg
   params: {
-    UamiName: uamis.outputs.uamiNames[1]
+    UamiName: uamis.outputs.uamiNames[2]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
     gitHubSubjectPattern: gitHubSubjectPattern
@@ -126,7 +149,7 @@ module k8SpokeGhFed 'common-modules/github-federation.bicep' = {
 module uamiK8sContributor 'common-modules/uami-rbac.bicep'= {
   scope: k8sRG
   params: {
-    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[1]
+    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[2]
     roleDefinitionId: ContributorRoleDefinitionId
   }
 }
@@ -136,7 +159,7 @@ module uamiK8sContributor 'common-modules/uami-rbac.bicep'= {
 module uamiK8sAcrPull 'common-modules/uami-rbac.bicep'= {
   scope: hubRG
   params: {
-    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[1]
+    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[2]
     roleDefinitionId: acrPullRoleDefinitionId
   }
 }
@@ -148,7 +171,7 @@ module uamiK8sAcrPull 'common-modules/uami-rbac.bicep'= {
 module k8SpokeDeploymentGhFed 'common-modules/github-federation.bicep' = {
   scope: managementRg
   params: {
-    UamiName: uamis.outputs.uamiNames[2]
+    UamiName: uamis.outputs.uamiNames[3]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
     gitHubSubjectPattern: gitHubSubjectPattern
@@ -159,7 +182,7 @@ module k8SpokeDeploymentGhFed 'common-modules/github-federation.bicep' = {
 module uamiK8DeploymentsAcrPull 'common-modules/uami-rbac.bicep'= {
   scope: hubRG
   params: {
-    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[2]
+    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[3]
     roleDefinitionId: acrPullRoleDefinitionId
   }
 }
@@ -169,7 +192,7 @@ module uamiK8DeploymentsAcrPull 'common-modules/uami-rbac.bicep'= {
 module uamiPaasGhFed 'common-modules/github-federation.bicep' = {
   scope: managementRg
   params: {
-    UamiName: uamis.outputs.uamiNames[3]
+    UamiName: uamis.outputs.uamiNames[4]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
     gitHubSubjectPattern: gitHubSubjectPattern
@@ -180,7 +203,7 @@ module uamiPaasGhFed 'common-modules/github-federation.bicep' = {
 module uamiPaasContributor 'common-modules/uami-rbac.bicep'= {
   scope: paasRG
   params: {
-    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[3]
+    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[4]
     roleDefinitionId: ContributorRoleDefinitionId
   }
 }
@@ -190,7 +213,7 @@ module uamiPaasContributor 'common-modules/uami-rbac.bicep'= {
 module uamiPaasAcrPull 'common-modules/uami-rbac.bicep'= {
   scope: hubRG 
   params: {
-    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[3]
+    uamiPrincipalId: uamis.outputs.uamiPrincipalIds[4]
     roleDefinitionId: acrPullRoleDefinitionId
   }
 }
@@ -209,14 +232,18 @@ output acrUamiName string = uamis.outputs.uamiNames[0]
 output acrUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[0]
 output acrUamiClientId string = uamis.outputs.uamiClientIds[0]
 
-output k8sUamiName string = uamis.outputs.uamiNames[1]
-output k8sUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[1]
-output k8sUamiClientId string = uamis.outputs.uamiClientIds[1]
+output sharedInfraCreatorUamiName string = uamis.outputs.uamiNames[1]
+output sharedInfraCreatorUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[1]
+output sharedInfraCreatorUamiClientId string = uamis.outputs.uamiClientIds[1]
 
-output k8sDeployUamiName string = uamis.outputs.uamiNames[2]
-output k8sDeployUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[2]
-output k8sDeployUamiClientId string = uamis.outputs.uamiClientIds[2]
+output k8sUamiName string = uamis.outputs.uamiNames[2]
+output k8sUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[2]
+output k8sUamiClientId string = uamis.outputs.uamiClientIds[2]
 
-output paasUamiName string = uamis.outputs.uamiNames[3]
-output paasUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[3]
-output paasUamiClientId string = uamis.outputs.uamiClientIds[3]
+output k8sDeployUamiName string = uamis.outputs.uamiNames[3]
+output k8sDeployUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[3]
+output k8sDeployUamiClientId string = uamis.outputs.uamiClientIds[3]
+
+output paasUamiName string = uamis.outputs.uamiNames[4]
+output paasUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[4]
+output paasUamiClientId string = uamis.outputs.uamiClientIds[4]
