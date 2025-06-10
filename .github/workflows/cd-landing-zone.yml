@@ -47,7 +47,7 @@ jobs:
             exit 1
           fi
 
-          echo "Submitting PIM activation requests for the group using REST API..."
+          echo "UAMI requesting PIM activation for roles eligible through group membership..."
           
           # Get access token
           ACCESS_TOKEN=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)
@@ -55,14 +55,17 @@ jobs:
           JUSTIFICATION="GH Actions Run ${{ github.run_id }} for workflow ${{ github.workflow }} job ${{ github.job }}"
           START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           
-          # Create PIM activation requests using REST API
-          echo "Requesting Contributor role activation..."
+          # The UAMI requests activation of roles it's eligible for through group membership
+          # The principalId should be the UAMI, not the group
+          # But we need to reference the group-based eligibility
+          
+          echo "Requesting Contributor role activation through group membership..."
           curl -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{
               \"properties\": {
-                \"principalId\": \"$GROUP_OBJECT_ID\",
+                \"principalId\": \"$AZURE_UAMI_PRINCIPAL_ID\",
                 \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c\",
                 \"requestType\": \"SelfActivate\",
                 \"justification\": \"$JUSTIFICATION\",
@@ -77,13 +80,13 @@ jobs:
             }" \
             "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
-          echo "Requesting User Access Administrator role activation..."
+          echo "Requesting User Access Administrator role activation through group membership..."
           curl -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{
               \"properties\": {
-                \"principalId\": \"$GROUP_OBJECT_ID\",
+                \"principalId\": \"$AZURE_UAMI_PRINCIPAL_ID\",
                 \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9\",
                 \"requestType\": \"SelfActivate\",
                 \"justification\": \"$JUSTIFICATION\",
@@ -98,13 +101,13 @@ jobs:
             }" \
             "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
-          echo "Requesting Managed Identity Contributor role activation..."
+          echo "Requesting Managed Identity Contributor role activation through group membership..."
           curl -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d "{
               \"properties\": {
-                \"principalId\": \"$GROUP_OBJECT_ID\",
+                \"principalId\": \"$AZURE_UAMI_PRINCIPAL_ID\",
                 \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/e4062425-5110-4434-8464-414b433434d3\",
                 \"requestType\": \"SelfActivate\",
                 \"justification\": \"$JUSTIFICATION\",
@@ -119,7 +122,7 @@ jobs:
             }" \
             "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
-          echo "PIM activation requests submitted. Waiting for manual approval and role inheritance..."
+          echo "PIM activation requests submitted for UAMI. Waiting for approval..."
           
           # Wait for role activation
           end_time=$((SECONDS+600))
@@ -129,7 +132,7 @@ jobs:
             if echo "$active_roles" | grep -q "Contributor" && \
                echo "$active_roles" | grep -q "User Access Administrator" && \
                echo "$active_roles" | grep -q "Managed Identity Contributor"; then
-              echo "All 3 PIM roles have been approved and inherited by the UAMI!"
+              echo "All 3 PIM roles have been approved and are now active for the UAMI!"
               roles_activated=true
               break
             fi
@@ -138,13 +141,13 @@ jobs:
           done
 
           if [ "$roles_activated" = false ]; then
-            echo "::error::Timeout: Not all required PIM roles were approved or inherited by the UAMI within the 10-minute window."
+            echo "::error::Timeout: Not all required PIM roles were approved within the 10-minute window."
             echo "Current active roles for UAMI ($AZURE_UAMI_PRINCIPAL_ID):"
             echo "$active_roles"
             exit 1
           fi
-          echo "PIM roles successfully activated and inherited by UAMI."
-
+          echo "PIM roles successfully activated for UAMI."
+          
       - name: 'Re-login to Azure after PIM approval'
         uses: azure/login@v2
         with:
