@@ -47,4 +47,6 @@ jobs:
             --name "shared-infra-${{ inputs.environment }}-${{ github.run_id }}" \
             --resource-group "rg-${{ env.AZURE_PREFIX_SECRET }}-${{ inputs.environment }}" \
             --template-file ./infra/shared-infra.bicep \
-            --parameters acrName="${{ inputs.acrName }}" resourceLocation="${{ vars.AZURE_REGION }}" tags="environment=${{ inputs.environment }} project=${{ vars.PROJECT_NAME }} owner=GitHubActions runId=${{ github.run_id }}"
+            --parameters acrName="${{ inputs.acrName }}" \
+                         resourceLocation="${{ vars.AZURE_REGION }}" \
+                         tags='{"environment":"${{ inputs.environment }}","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions","runId":"${{ github.run_id }}"}'
