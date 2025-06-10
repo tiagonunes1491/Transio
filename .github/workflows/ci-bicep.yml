@@ -3,12 +3,12 @@ name: 'Bicep CI - Validate Infrastructure Code'
 on:
   pull_request:
     paths:
-      - 'infra/**/*.bicep'
-      - 'infra/**/*.bicepparam'
+      - 'infra/**.bicep'
+      - 'infra/**.bicepparam'
   push:
     paths:
-      - 'infra/**/*.bicep'
-      - 'infra/**/*.bicepparam'
+      - 'infra/**.bicep'
+      - 'infra/**.bicepparam'
 
 permissions:
   id-token: write
