@@ -27,9 +27,9 @@ param gitHubSubjectPattern string = 'refs/heads/main'
 
 // Variables for the role definition IDs
 
-var acrPullRoleDefinitionId = 'f8b3c0d1-2a4e-4b6c-9f5c-7d8e2f1b3c4d' // AcrPull role definition ID
-var acrPushRoleDefinitionId = '8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
-var ContributorRoleDefinitionId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
+var acrPullRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull role definition ID
+var acrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
+var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
 
 // Create all resource groups for landing zone
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -54,9 +54,15 @@ resource paasRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 }
 
 
-// reference existing resource group for management
-resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
+// Create or reference existing management resource group
+resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: managementResourceGroupName
+  location: location
+  tags: {
+    Application: 'Secure Sharer'
+    environment: environmentName
+    purpose: 'management'
+  }
 }
 
 
@@ -188,3 +194,29 @@ module uamiPaasAcrPull 'common-modules/uami-rbac.bicep'= {
     roleDefinitionId: acrPullRoleDefinitionId
   }
 }
+
+// Outputs for reference information
+output managementResourceGroupName string = managementRg.name
+output hubResourceGroupName string = hubRG.name
+output k8sResourceGroupName string = k8sRG.name
+output paasResourceGroupName string = paasRG.name
+output tenantId string = subscription().tenantId
+output subscriptionId string = subscription().subscriptionId
+output environmentName string = environmentName
+
+// UAMI Outputs
+output acrUamiName string = uamis.outputs.uamiNames[0]
+output acrUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[0]
+output acrUamiClientId string = uamis.outputs.uamiClientIds[0]
+
+output k8sUamiName string = uamis.outputs.uamiNames[1]
+output k8sUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[1]
+output k8sUamiClientId string = uamis.outputs.uamiClientIds[1]
+
+output k8sDeployUamiName string = uamis.outputs.uamiNames[2]
+output k8sDeployUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[2]
+output k8sDeployUamiClientId string = uamis.outputs.uamiClientIds[2]
+
+output paasUamiName string = uamis.outputs.uamiNames[3]
+output paasUamiPrincipalId string = uamis.outputs.uamiPrincipalIds[3]
+output paasUamiClientId string = uamis.outputs.uamiClientIds[3]
