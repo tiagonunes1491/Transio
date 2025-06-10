@@ -37,6 +37,7 @@ jobs:
           files: | 
             infra/**/*.bicep
             infra/**/*.bicepparam
+          json: true
           
       - name: 'Debug – show diff and file list'
         shell: bash
