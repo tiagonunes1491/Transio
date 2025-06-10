@@ -1,4 +1,4 @@
-name: 'Bicep CI - Validate Infrastructure Code'
+name: 'CI - Validate Infrastructure Code'
 
 on:
   pull_request:
