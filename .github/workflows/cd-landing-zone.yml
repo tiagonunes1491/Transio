@@ -1,3 +1,5 @@
+# Template for deploying a landing zone using Azure Bicep templates
+# This workflow is triggered manually and allows the user to select the target environment (dev or prod).
 name: 'CD - Landing Zone'
 
 on:
