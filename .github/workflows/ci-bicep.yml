@@ -35,6 +35,21 @@ jobs:
         uses: tj-actions/changed-files@v44 
         with:
           files: infra/**.bicep,infra/**.bicepparam, infra/**/*.bicep,infra/**/*.bicepparam # Specify the patterns to match Bicep files
+          
+      - name: 'Debug – show diff and file list'
+        shell: bash
+        run: |
+          echo '=== changed-files output ==='
+          echo "${{ steps.changed-files.outputs.all_changed_and_modified_files }}"
+          echo
+          echo '=== raw git diff ==='
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git --no-pager diff --name-status \
+              "${{ github.event.pull_request.base.sha }}" \
+              "${{ github.event.pull_request.head.sha }}"
+          else
+            git --no-pager diff --name-status "${{ github.event.before }}" "${{ github.sha }}"
+          fi
 
   # This job runs a validation matrix for each file discovered above
   validate-bicep:
