@@ -37,9 +37,8 @@ jobs:
       - name: 'Activate PIM Roles and Wait for UAMI Inheritance'
         env:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_UAMI_PRINCIPAL_ID: ${{ secrets.AZURE_CLIENT_ID }} # Principal ID of the UAMI
-          AZURE_PIM_GROUP_OBJECT_ID: ${{ secrets.AZURE_PIM_GROUP_OBJECT_ID }} #
-
+          AZURE_UAMI_PRINCIPAL_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_PIM_GROUP_OBJECT_ID: ${{ secrets.AZURE_PIM_GROUP_OBJECT_ID }}
         run: |
           GROUP_OBJECT_ID="${AZURE_PIM_GROUP_OBJECT_ID}"
 
@@ -54,69 +53,70 @@ jobs:
           ACCESS_TOKEN=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)
           
           JUSTIFICATION="GH Actions Run ${{ github.run_id }} for workflow ${{ github.workflow }} job ${{ github.job }}"
+          START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           
           # Create PIM activation requests using REST API
-          # Contributor Role
+          echo "Requesting Contributor role activation..."
           curl -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "properties": {
-                "principalId": "'$GROUP_OBJECT_ID'",
-                "roleDefinitionId": "/subscriptions/'$AZURE_SUBSCRIPTION_ID'/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
-                "requestType": "SelfActivate",
-                "justification": "'$JUSTIFICATION'",
-                "scheduleInfo": {
-                  "startDateTime": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
-                  "expiration": {
-                    "type": "AfterDuration",
-                    "duration": "PT2H"
+            -d "{
+              \"properties\": {
+                \"principalId\": \"$GROUP_OBJECT_ID\",
+                \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c\",
+                \"requestType\": \"SelfActivate\",
+                \"justification\": \"$JUSTIFICATION\",
+                \"scheduleInfo\": {
+                  \"startDateTime\": \"$START_TIME\",
+                  \"expiration\": {
+                    \"type\": \"AfterDuration\",
+                    \"duration\": \"PT2H\"
                   }
                 }
               }
-            }' \
+            }" \
             "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
-          # User Access Administrator Role
+          echo "Requesting User Access Administrator role activation..."
           curl -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "properties": {
-                "principalId": "'$GROUP_OBJECT_ID'",
-                "roleDefinitionId": "/subscriptions/'$AZURE_SUBSCRIPTION_ID'/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9",
-                "requestType": "SelfActivate",
-                "justification": "'$JUSTIFICATION'",
-                "scheduleInfo": {
-                  "startDateTime": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
-                  "expiration": {
-                    "type": "AfterDuration",
-                    "duration": "PT2H"
+            -d "{
+              \"properties\": {
+                \"principalId\": \"$GROUP_OBJECT_ID\",
+                \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9\",
+                \"requestType\": \"SelfActivate\",
+                \"justification\": \"$JUSTIFICATION\",
+                \"scheduleInfo\": {
+                  \"startDateTime\": \"$START_TIME\",
+                  \"expiration\": {
+                    \"type\": \"AfterDuration\",
+                    \"duration\": \"PT2H\"
                   }
                 }
               }
-            }' \
+            }" \
             "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
-          # Custom Role
+          echo "Requesting Managed Identity Contributor role activation..."
           curl -X POST \
             -H "Authorization: Bearer $ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "properties": {
-                "principalId": "'$GROUP_OBJECT_ID'",
-                "roleDefinitionId": "/subscriptions/'$AZURE_SUBSCRIPTION_ID'/providers/Microsoft.Authorization/roleDefinitions/e4062425-5110-4434-8464-414b433434d3",
-                "requestType": "SelfActivate",
-                "justification": "'$JUSTIFICATION'",
-                "scheduleInfo": {
-                  "startDateTime": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
-                  "expiration": {
-                    "type": "AfterDuration",
-                    "duration": "PT2H"
+            -d "{
+              \"properties\": {
+                \"principalId\": \"$GROUP_OBJECT_ID\",
+                \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/e4062425-5110-4434-8464-414b433434d3\",
+                \"requestType\": \"SelfActivate\",
+                \"justification\": \"$JUSTIFICATION\",
+                \"scheduleInfo\": {
+                  \"startDateTime\": \"$START_TIME\",
+                  \"expiration\": {
+                    \"type\": \"AfterDuration\",
+                    \"duration\": \"PT2H\"
                   }
                 }
               }
-            }' \
+            }" \
             "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
           echo "PIM activation requests submitted. Waiting for manual approval and role inheritance..."
