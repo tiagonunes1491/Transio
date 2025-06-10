@@ -8,7 +8,7 @@ param GitHubOrganizationName string
 param GitHubRepositoryName string
 
 @description('GitHub environment, branch or pattern to federate with')
-param gitHubSubjectPattern string  = 'refs/heads/main'
+param gitHubSubjectPattern string
 
 @description('Name for the federated identity credential')
 param federatedCredentialName string = 'github-federation'

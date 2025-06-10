@@ -23,4 +23,4 @@ param gitHubOrganizationName = 'tiagonunes1491'
 param gitHubRepositoryName = 'SecureSharer'
 
 @description('GitHub subject pattern to federate with')
-param gitHubSubjectPattern = 'refs/heads/*'
+param gitHubSubjectPattern = 'environment:${environmentName}'
