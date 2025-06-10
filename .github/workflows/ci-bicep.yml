@@ -1,0 +1,348 @@
+name: 'Bicep CI - Validate Infrastructure Code'
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**.bicep'
+      - 'infra/**.bicepparam'
+
+permissions:
+  id-token: write
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  validate-bicep:
+    name: 'Validate Changed Bicep Files'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 'Find changed Bicep files'
+        id: changed-files
+        uses: tj-actions/changed-files@v44 
+        with:
+          files: |
+            infra/**/*.bicep
+            infra/**/*.bicepparam
+
+      - name: 'Setup Azure CLI and Bicep'
+        if: steps.changed-files.outputs.any_changed == 'true'
+        shell: bash
+        run: |
+          echo "🔧 Setting up Azure CLI and Bicep..."
+          
+          # Use alternative config directory that doesn't require permissions
+          export AZURE_CONFIG_DIR="${RUNNER_TEMP}/.azure"
+          mkdir -p "${AZURE_CONFIG_DIR}"
+          
+          # Set Azure CLI environment variables to prevent permission issues
+          export AZURE_CORE_COLLECT_TELEMETRY=false
+          export AZURE_CORE_DISABLE_CONFIRM_PROMPT=true
+          export AZURE_CORE_DISABLE_PROGRESS_BAR=true
+          export AZURE_CORE_ONLY_SHOW_ERRORS=true
+          export AZURE_CORE_NO_COLOR=true
+          
+          # Install Azure CLI (it's pre-installed on GitHub runners)
+          echo "📦 Installing Bicep CLI..."
+          az bicep install
+          
+          echo "🔍 Verifying Bicep installation..."
+          az bicep version
+          
+          echo "✅ Bicep CLI setup complete"
+        env:
+          AZURE_CORE_COLLECT_TELEMETRY: false
+          AZURE_CORE_DISABLE_CONFIRM_PROMPT: true
+          AZURE_CORE_DISABLE_PROGRESS_BAR: true
+          AZURE_CORE_ONLY_SHOW_ERRORS: true
+          AZURE_CORE_NO_COLOR: true
+
+      - name: 'Validate Changed Bicep Files'
+        if: steps.changed-files.outputs.any_changed == 'true'
+        shell: bash
+        env:
+          # Use custom Azure config directory
+          AZURE_CONFIG_DIR: ${{ runner.temp }}/.azure
+          # Prevent Azure CLI permission issues
+          AZURE_CORE_COLLECT_TELEMETRY: false
+          AZURE_CORE_DISABLE_CONFIRM_PROMPT: true
+          AZURE_CORE_DISABLE_PROGRESS_BAR: true
+          AZURE_CORE_ONLY_SHOW_ERRORS: true
+          AZURE_CORE_NO_COLOR: true
+        run: |
+          echo "🔍 Found changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+
+          # Ensure custom Azure config directory exists
+          mkdir -p "${AZURE_CONFIG_DIR}"
+          
+          # Convert space-separated files to array
+          IFS=' ' read -ra files <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+
+          failed_files=()
+          
+          # Initialize SARIF structure with enhanced metadata
+          sarif_file="bicep-validation-results.sarif"
+          cat > "$sarif_file" << 'EOF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "Bicep Validator",
+                    "version": "1.0.0",
+                    "informationUri": "https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/",
+                    "rules": [
+                      {
+                        "id": "bicep-build-error",
+                        "name": "BicepBuildError",
+                        "shortDescription": {
+                          "text": "Bicep compilation failed"
+                        },
+                        "helpUri": "https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/bicep-cli#build"
+                      },
+                      {
+                        "id": "bicep-lint",
+                        "name": "BicepLintIssue", 
+                        "shortDescription": {
+                          "text": "Bicep linting issue"
+                        },
+                        "helpUri": "https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/linter"
+                      },
+                      {
+                        "id": "bicep-param-validation",
+                        "name": "BicepParameterValidation",
+                        "shortDescription": {
+                          "text": "Bicep parameter validation failed"
+                        },
+                        "helpUri": "https://docs.microsoft.com/en-us/azure/azure-resource-manager/bicep/parameter-files"
+                      }
+                    ]
+                  }
+                },
+                "results": [
+          EOF
+
+          result_count=0
+
+          for file in "${files[@]}"; do
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "🔨 Processing: $file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            if [[ "$file" == *.bicep ]]; then
+              # Build Bicep file for syntax validation
+              echo "📦 Building Bicep file..."
+              build_output=$(mktemp)
+              
+              if az bicep build --file "$file" --outfile "temp-$(basename "$file" .bicep).json" 2> "$build_output"; then
+                echo "✅ Build successful: $file"
+                rm -f "temp-$(basename "$file" .bicep).json"
+              else
+                echo "❌ Build failed: $file"
+                failed_files+=("$file")
+                
+                # Extract actual error message from build output
+                error_message=$(head -n 1 "$build_output" | sed 's/"/\\"/g')
+                if [[ -z "$error_message" ]]; then
+                  error_message="Bicep build failed - check syntax and references"
+                fi
+                
+                # Add build failure to SARIF with actual error details
+                if [ $result_count -gt 0 ]; then
+                  echo "," >> "$sarif_file"
+                fi
+                cat >> "$sarif_file" << EOF
+                  {
+                    "ruleId": "bicep-build-error",
+                    "level": "error",
+                    "message": {
+                      "text": "$error_message"
+                    },
+                    "locations": [
+                      {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "$file"
+                          }
+                        }
+                      }
+                    ]
+                  }
+          EOF
+                result_count=$((result_count + 1))
+                rm -f "$build_output"
+                continue
+              fi
+              rm -f "$build_output"
+              
+              # Use az bicep lint with SARIF output for better accuracy
+              echo "🔍 Linting Bicep file..."
+              temp_lint_sarif="temp-lint-$(basename "$file" .bicep).sarif"
+              
+              # Generate SARIF directly from bicep lint
+              if az bicep lint --file "$file" --diagnostics-format sarif > "$temp_lint_sarif" 2>/dev/null; then
+                echo "✅ Lint successful: $file"
+              else
+                echo "⚠️ Lint found issues in: $file"
+              fi
+              
+              # Merge lint SARIF results if they exist and have content
+              if [[ -f "$temp_lint_sarif" && -s "$temp_lint_sarif" ]]; then
+                # Extract results from the temporary SARIF and add to main SARIF
+                if command -v jq >/dev/null 2>&1; then
+                  while IFS= read -r result; do
+                    if [[ -n "$result" && "$result" != "null" ]]; then
+                      if [ $result_count -gt 0 ]; then
+                        echo "," >> "$sarif_file"
+                      fi
+                      echo "$result" >> "$sarif_file"
+                      result_count=$((result_count + 1))
+                    fi
+                  done <<< "$(jq -c '.runs[0].results[]?' "$temp_lint_sarif" 2>/dev/null)"
+                fi
+                rm -f "$temp_lint_sarif"
+              fi
+              
+            elif [[ "$file" == *.bicepparam ]]; then
+              # Validate parameter files with SARIF output
+              echo "📋 Validating Bicep parameters..."
+              temp_param_sarif="temp-param-$(basename "$file" .bicepparam).sarif"
+              
+              if az bicep lint --file "$file" --diagnostics-format sarif > "$temp_param_sarif" 2>/dev/null; then
+                echo "✅ Parameter validation successful: $file"
+              else
+                echo "❌ Parameter validation failed: $file"
+                failed_files+=("$file")
+              fi
+              
+              # Merge parameter SARIF results
+              if [[ -f "$temp_param_sarif" && -s "$temp_param_sarif" ]]; then
+                if command -v jq >/dev/null 2>&1; then
+                  while IFS= read -r result; do
+                    if [[ -n "$result" && "$result" != "null" ]]; then
+                      if [ $result_count -gt 0 ]; then
+                        echo "," >> "$sarif_file"
+                      fi
+                      echo "$result" >> "$sarif_file"
+                      result_count=$((result_count + 1))
+                    fi
+                  done <<< "$(jq -c '.runs[0].results[]?' "$temp_param_sarif" 2>/dev/null)"
+                fi
+                rm -f "$temp_param_sarif"
+              fi
+            fi
+            
+            echo ""
+          done
+
+          # Close SARIF file
+          cat >> "$sarif_file" << 'EOF'
+                ]
+              }
+            ]
+          }
+          EOF
+
+          # Validate SARIF file
+          if command -v jq >/dev/null 2>&1; then
+            if jq empty "$sarif_file" 2>/dev/null; then
+              echo "✅ Valid SARIF file generated"
+            else
+              echo "⚠️ SARIF file may have formatting issues"
+            fi
+          fi
+
+          # Summary
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 VALIDATION SUMMARY"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Total files processed: ${#files[@]}"
+          echo "Failed files: ${#failed_files[@]}"
+          echo "SARIF results: $result_count"
+          echo "📄 SARIF file created: $sarif_file"
+
+          if [ ${#failed_files[@]} -gt 0 ]; then
+            echo "❌ The following files failed CRITICAL validation:"
+            for failed_file in "${failed_files[@]}"; do
+              echo "  - $failed_file"
+            done
+            echo "🚨 CI will fail due to critical validation errors"
+            exit 1
+          else
+            echo "✅ All Bicep files passed validation!"
+            echo "💡 Check Security tab for any lint recommendations"
+          fi
+
+      - name: 'Upload Bicep Lint SARIF'
+        if: always() && steps.changed-files.outputs.any_changed == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: bicep-lint-analysis
+          sarif_file: bicep-validation-results.sarif
+          
+  security-scan:
+      name: 'Security Scan Bicep Files'
+      runs-on: ubuntu-latest
+      steps:
+        - name: 'Checkout Code'
+          uses: actions/checkout@v4
+
+        - name: 'Find changed Bicep files'
+          id: changed-files
+          uses: tj-actions/changed-files@v44 
+          with:
+            files: |
+              infra/**/*.bicep
+              infra/**/*.bicepparam
+
+        - name: 'Run Security Scan with Checkov'
+          if: steps.changed-files.outputs.any_changed == 'true'
+          uses: bridgecrewio/checkov-action@v12
+          with:
+            file: ${{ steps.changed-files.outputs.all_changed_files }}
+            framework: bicep
+            output_format: sarif
+            output_file_path: checkov-results.sarif
+            quiet: true
+            soft_fail: false
+            check: CKV_AZURE_*
+
+        - name: 'Upload Checkov SARIF'
+          if: always()
+          uses: github/codeql-action/upload-sarif@v3
+          with:
+            category: checkov-bicep-security
+            sarif_file: checkov-results.sarif
+
+  post-failure-comment:
+    name: 'Post Validation Failure Comment'
+    needs: validate-bicep
+    runs-on: ubuntu-latest
+    if: failure() && github.event_name == 'pull_request'
+    steps:
+      - name: 'Post PR Comment on Failure'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ **Bicep Validation Failed**
+
+            One or more Bicep files failed validation. 
+            Please review the [Checks tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            The validation includes:
+            - 📦 Bicep compilation (syntax validation)
+            - 🔍 Bicep linting (best practices)
+            - 🛡️ Security scanning with Checkov
+
+            Please fix the issues and push your changes.
+          edit-mode: replace

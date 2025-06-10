@@ -344,3 +344,5 @@ output uamiId string = uami.outputs.uamiIds[0]
 output keyVaultUri string = akv.outputs.keyvaultUri
 output SQLServerFqdn string = postgresqlServer.outputs.fullyQualifiedDomainName
 output SqlDatabaseName string = postgresqlServer.outputs.databaseName
+
+//Trigger change on main folder.
