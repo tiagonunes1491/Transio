@@ -34,120 +34,52 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
-      - name: 'Activate PIM Roles and Wait for UAMI Inheritance'
+      - name: 'Activate PIM Roles for Group and Wait for Approval'
         env:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_UAMI_PRINCIPAL_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_UAMI_PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
           AZURE_PIM_GROUP_OBJECT_ID: ${{ secrets.AZURE_PIM_GROUP_OBJECT_ID }}
         run: |
-          GROUP_OBJECT_ID="${AZURE_PIM_GROUP_OBJECT_ID}"
+          set -e # Exit immediately if a command fails
+          
+          # Step 1: Get an access token specifically for Microsoft Graph API
+          echo "Acquiring access token for Microsoft Graph API..."
+          GRAPH_TOKEN=$(az account get-access-token --resource-type ms-graph --query accessToken --output tsv)
+          
+          # Step 2: Find the ID of the role definition (e.g., Contributor)
+          echo "Finding Role Definition ID for 'Contributor'..."
+          CONTRIBUTOR_ROLE_DEF_ID=$(az role definition list --name "Contributor" --query "[0].id" -o tsv)
 
-          if [ -z "$GROUP_OBJECT_ID" ]; then
-            echo "::error::AZURE_PIM_GROUP_OBJECT_ID secret is not set or is empty."
+          # Step 3: Find the PIM eligibility schedule for the group
+          echo "Finding PIM eligibility schedule for the group..."
+          PIM_ELIGIBILITY_ID=$(az rest --method GET --uri "https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilitySchedules?`$filter=principalId eq '$AZURE_PIM_GROUP_OBJECT_ID' and roleDefinitionId eq '$CONTRIBUTOR_ROLE_DEF_ID'" --headers "Authorization=Bearer $GRAPH_TOKEN" --query "value[0].id" -o tsv)
+          
+          if [ -z "$PIM_ELIGIBILITY_ID" ]; then
+            echo "::error::Could not find PIM 'Contributor' eligibility for the specified group. Ensure the group is eligible for the role in PIM."
             exit 1
           fi
 
-          echo "UAMI requesting PIM activation for roles eligible through group membership..."
-          
-          # Get access token
-          ACCESS_TOKEN=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)
-          
-          JUSTIFICATION="GH Actions Run ${{ github.run_id }} for workflow ${{ github.workflow }} job ${{ github.job }}"
-          START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          
-          # The UAMI requests activation of roles it's eligible for through group membership
-          # The principalId should be the UAMI, not the group
-          # But we need to reference the group-based eligibility
-          
-          echo "Requesting Contributor role activation through group membership..."
-          curl -X POST \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"properties\": {
-                \"principalId\": \"$AZURE_UAMI_PRINCIPAL_ID\",
-                \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c\",
-                \"requestType\": \"SelfActivate\",
-                \"justification\": \"$JUSTIFICATION\",
-                \"scheduleInfo\": {
-                  \"startDateTime\": \"$START_TIME\",
-                  \"expiration\": {
-                    \"type\": \"AfterDuration\",
-                    \"duration\": \"PT2H\"
-                  }
-                }
-              }
-            }" \
-            "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
+          # Step 4: Submit the PIM activation request FOR THE GROUP using the MS Graph API
+          echo "Submitting PIM activation request for the group..."
+          REQUEST_BODY=$(printf '{"principalId":"%s","roleDefinitionId":"%s","directoryScopeId":"/","justification":"GH Actions Run %s","scheduleInfo":{"startDateTime":"%s","expiration":{"type":"afterDuration","duration":"PT1H"}}}' "$AZURE_PIM_GROUP_OBJECT_ID" "$CONTRIBUTOR_ROLE_DEF_ID" "${{ github.run_id }}" "$(date -u -Iseconds)")
+          az rest --method POST --uri "https://graph.microsoft.com/v1.0/roleManagement/directory/roleAssignmentScheduleRequests" --headers "Authorization=Bearer $GRAPH_TOKEN" "Content-Type=application/json" --body "$REQUEST_BODY"
 
-          echo "Requesting User Access Administrator role activation through group membership..."
-          curl -X POST \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"properties\": {
-                \"principalId\": \"$AZURE_UAMI_PRINCIPAL_ID\",
-                \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9\",
-                \"requestType\": \"SelfActivate\",
-                \"justification\": \"$JUSTIFICATION\",
-                \"scheduleInfo\": {
-                  \"startDateTime\": \"$START_TIME\",
-                  \"expiration\": {
-                    \"type\": \"AfterDuration\",
-                    \"duration\": \"PT2H\"
-                  }
-                }
-              }
-            }" \
-            "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
-
-          echo "Requesting Managed Identity Contributor role activation through group membership..."
-          curl -X POST \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"properties\": {
-                \"principalId\": \"$AZURE_UAMI_PRINCIPAL_ID\",
-                \"roleDefinitionId\": \"/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleDefinitions/e4062425-5110-4434-8464-414b433434d3\",
-                \"requestType\": \"SelfActivate\",
-                \"justification\": \"$JUSTIFICATION\",
-                \"scheduleInfo\": {
-                  \"startDateTime\": \"$START_TIME\",
-                  \"expiration\": {
-                    \"type\": \"AfterDuration\",
-                    \"duration\": \"PT2H\"
-                  }
-                }
-              }
-            }" \
-            "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
-
-          echo "PIM activation requests submitted for UAMI. Waiting for approval..."
+          # Step 5: Wait for your manual approval
+          echo "Workflow is now paused, waiting for manual PIM approval in the Azure Portal..."
+          end_time=$((SECONDS+600)) # 10-minute timeout
           
-          # Wait for role activation
-          end_time=$((SECONDS+600))
-          roles_activated=false
           while [ $SECONDS -lt $end_time ]; do
+            # Check if the UAMI has inherited the 'Contributor' role
             active_roles=$(az role assignment list --assignee $AZURE_UAMI_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
-            if echo "$active_roles" | grep -q "Contributor" && \
-               echo "$active_roles" | grep -q "User Access Administrator" && \
-               echo "$active_roles" | grep -q "Managed Identity Contributor"; then
-              echo "All 3 PIM roles have been approved and are now active for the UAMI!"
-              roles_activated=true
+            if echo "$active_roles" | grep -q "Contributor"; then
+              echo "Required role has been approved and is now active for the UAMI!"
               break
             fi
-            echo "Required roles not active for UAMI yet. Waiting 30 seconds..."
+            echo "Role not active yet. Waiting 30 seconds..."
             sleep 30
           done
-
-          if [ "$roles_activated" = false ]; then
-            echo "::error::Timeout: Not all required PIM roles were approved within the 10-minute window."
-            echo "Current active roles for UAMI ($AZURE_UAMI_PRINCIPAL_ID):"
-            echo "$active_roles"
-            exit 1
-          fi
-          echo "PIM roles successfully activated for UAMI."
           
+
       - name: 'Re-login to Azure after PIM approval'
         uses: azure/login@v2
         with:
