@@ -5,6 +5,10 @@ on:
     paths:
       - 'infra/**.bicep'
       - 'infra/**.bicepparam'
+  push:
+    paths:
+      - 'infra/**.bicep'
+      - 'infra/**.bicepparam'
 
 permissions:
   id-token: write
