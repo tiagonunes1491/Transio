@@ -24,7 +24,7 @@ jobs:
 
       - name: 'Find changed Bicep files'
         id: changed-files
-        uses: tj-actions/changed-files@v44 
+        uses: tj-actions/changed-files@v46 
         with:
           files: |
             infra/**/*.bicep
@@ -296,7 +296,7 @@ jobs:
 
         - name: 'Find changed Bicep files'
           id: changed-files
-          uses: tj-actions/changed-files@v44 
+          uses: tj-actions/changed-files@v46 
           with:
             files: |
               infra/**/*.bicep
