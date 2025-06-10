@@ -26,71 +26,68 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-     
-      # --- ADD THIS NEW DEBUGGING STEP ---
-      - name: 'Debug: List available secret keys'
-        run: |
-          echo "Listing available secret keys to check for AZURE_CLIENT_ID..."
-          echo "${{ toJSON(secrets) }}"
-     
-      # This step authenticates, requests PIM activation, and waits for your approval.
-      - name: 'Request PIM Roles and Wait for Approval'
-        # The 'env' block must be at the same level as 'name' and 'run'.
-        # This makes the secrets and variables available to the script below.
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
-          AZURE_GROUP_NAME: ${{ vars.AZURE_GROUP_NAME }}
-        
-        # The 'run' block contains only the shell script.
-        run: |
-          # Step 1: Azure Login with OIDC
-          echo "Logging into Azure tenant using OIDC..."
-          az login --service-principal \
-            -u $AZURE_CLIENT_ID \
-            -t $AZURE_TENANT_ID \
-            --federated-token "$(cat $ACTIONS_RUNTIME_TOKEN)"
+            
+      - name: 'Re-login to Azure after PIM approval'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
-          # Step 2: Find the Object ID of the Azure AD group
-          echo "Finding Object ID for group '$AZURE_GROUP_NAME'..."
-          GROUP_OBJECT_ID=$(az ad group show --group "$AZURE_GROUP_NAME" --query "id" -o tsv)
+      - name: 'Activate PIM Roles and Wait for UAMI Inheritance'
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_PIM_GROUP_NAME: ${{ secrets.AZURE_PIM_GROUP_NAME }} # Name of the Azure AD group for PIM activation
+          AZURE_UAMI_PRINCIPAL_ID: ${{ secrets.AZURE_CLIENT_ID }} # Principal ID of the UAMI
+        run: |
+          echo "Finding Object ID for group '${AZURE_PIM_GROUP_NAME}'..."
+          GROUP_OBJECT_ID=$(az ad group show --group "${AZURE_PIM_GROUP_NAME}" --query "id" -o tsv)
           if [ -z "$GROUP_OBJECT_ID" ]; then
-            echo "::error::Could not find Azure AD group with name '$AZURE_GROUP_NAME'."
+            echo "::error::Could not find Azure AD group with name '${AZURE_PIM_GROUP_NAME}'."
             exit 1
           fi
           echo "Found Group Object ID: $GROUP_OBJECT_ID"
-          
-          # Step 3: Submit PIM activation requests for the GROUP
-          echo "Submitting PIM activation requests for the group..."
-          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'b24988ac-6180-42a0-ab88-20f7382dd24c' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "GH Actions Run ${{ github.run_id }}"
-          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "GH Actions Run ${{ github.run_id }}"
-          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'e4062425-51۱۰-4434-8464-414b433434d3' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "GH Actions Run ${{ github.run_id }}"
 
-          # Step 4: Pause and wait for your manual approvals
-          echo "Workflow is now paused, waiting for 3 manual PIM approvals for the group in the Azure Portal..."
+          echo "Submitting PIM activation requests for the group..."
+          JUSTIFICATION="GH Actions Run ${{ github.run_id }} for workflow ${{ github.workflow }} job ${{ github.job }}"
+          # Contributor Role
+          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'b24988ac-6180-42a0-ab88-20f7382dd24c' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "$JUSTIFICATION"
+          # User Access Administrator Role
+          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "$JUSTIFICATION"
+          # Custom/Specific Role (ensure this ID is correct for your needs)
+          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'e4062425-5110-4434-8464-414b433434d3' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "$JUSTIFICATION"
+
+          echo "Workflow is now paused, waiting for up to 10 minutes for 3 manual PIM approvals for the group in the Azure Portal, and for roles to be inherited by UAMI (${AZURE_UAMI_PRINCIPAL_ID})..."
           end_time=$((SECONDS+600))
+          roles_activated=false
           while [ $SECONDS -lt $end_time ]; do
-            active_roles=$(az role assignment list --assignee $AZURE_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
-            if echo "$active_roles" | grep -q "Contributor" && echo "$active_roles" | grep -q "User Access Administrator" && echo "$active_roles" | grep -q "Managed Identity Contributor"; then
+            # Check active roles for the UAMI (which should be a member of the group)
+            active_roles=$(az role assignment list --assignee $AZURE_UAMI_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
+            if echo "$active_roles" | grep -q "Contributor" && \
+               echo "$active_roles" | grep -q "User Access Administrator" && \
+               echo "$active_roles" | grep -q "Managed Identity Contributor"; then # Ensure this role name matches the one activated by the third GUID
               echo "All 3 PIM roles have been approved and inherited by the UAMI!"
+              roles_activated=true
               break
             fi
-            echo "Roles not active for UAMI yet. Waiting 30 seconds..."
+            echo "Required roles not active for UAMI yet. Waiting 30 seconds..."
             sleep 30
           done
-          
-          # Step 5: Final check
-          final_check=$(az role assignment list --assignee $AZURE_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
-          if ! (echo "$final_check" | grep -q "Contributor" && echo "$final_check" | grep -q "User Access Administrator" && echo "$final_check" | grep -q "Managed Identity Contributor"); then
-            echo "::error::Timeout: Not all required PIM roles were approved or inherited within the 10-minute window."
+
+          if [ "$roles_activated" = false ]; then
+            echo "::error::Timeout: Not all required PIM roles were approved or inherited by the UAMI within the 10-minute window."
+            echo "Current active roles for UAMI ($AZURE_UAMI_PRINCIPAL_ID):"
+            echo "$active_roles"
             exit 1
           fi
-          
-          # Step 6: Set the subscription context
-          echo "Setting subscription context..."
-          az account set --subscription $AZURE_SUBSCRIPTION_ID
+          echo "PIM roles successfully activated and inherited by UAMI."
+
+      - name: 'Re-login to Azure after PIM approval'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: 'Deploy Landing Zone bicep template'
         env:
