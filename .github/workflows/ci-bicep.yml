@@ -34,7 +34,9 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v44 
         with:
-          files: infra/**.bicep,infra/**.bicepparam, infra/**/*.bicep,infra/**/*.bicepparam # Specify the patterns to match Bicep files
+          files: | 
+            infra/**/*.bicep
+            infra/**/*.bicepparam
           
       - name: 'Debug – show diff and file list'
         shell: bash
