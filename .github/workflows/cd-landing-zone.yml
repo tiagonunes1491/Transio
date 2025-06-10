@@ -52,7 +52,8 @@ jobs:
 
           # Step 3: Find the PIM eligibility schedule for the group
           echo "Finding PIM eligibility schedule for the group..."
-          PIM_ELIGIBILITY_ID=$(az rest --method GET --uri "https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilitySchedules?`$filter=principalId eq '$AZURE_PIM_GROUP_OBJECT_ID' and roleDefinitionId eq '$CONTRIBUTOR_ROLE_DEF_ID'" --headers "Authorization=Bearer $GRAPH_TOKEN" --query "value[0].id" -o tsv)
+          # The backtick before $filter has been removed in the line below
+          PIM_ELIGIBILITY_ID=$(az rest --method GET --uri "https://graph.microsoft.com/v1.0/roleManagement/directory/roleEligibilitySchedules?$filter=principalId eq '$AZURE_PIM_GROUP_OBJECT_ID' and roleDefinitionId eq '$CONTRIBUTOR_ROLE_DEF_ID'" --headers "Authorization=Bearer $GRAPH_TOKEN" --query "value[0].id" -o tsv)
           
           if [ -z "$PIM_ELIGIBILITY_ID" ]; then
             echo "::error::Could not find PIM 'Contributor' eligibility for the specified group. Ensure the group is eligible for the role in PIM."
