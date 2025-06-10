@@ -27,7 +27,7 @@ jobs:
         with:
           fetch-depth: 0
             
-      - name: 'Re-login to Azure after PIM approval'
+      - name: 'Login to Azure before PIM approval'
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
@@ -37,16 +37,16 @@ jobs:
       - name: 'Activate PIM Roles and Wait for UAMI Inheritance'
         env:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          AZURE_PIM_GROUP_NAME: ${{ secrets.AZURE_PIM_GROUP_NAME }} # Name of the Azure AD group for PIM activation
           AZURE_UAMI_PRINCIPAL_ID: ${{ secrets.AZURE_CLIENT_ID }} # Principal ID of the UAMI
+          AZURE_PIM_GROUP_OBJECT_ID: ${{ secrets.AZURE_PIM_GROUP_OBJECT_ID }} #
+
         run: |
-          echo "Finding Object ID for group '${AZURE_PIM_GROUP_NAME}'..."
-          GROUP_OBJECT_ID=$(az ad group show --group "${AZURE_PIM_GROUP_NAME}" --query "id" -o tsv)
+          GROUP_OBJECT_ID="${AZURE_PIM_GROUP_OBJECT_ID}" # Use the Object ID directly from the secret
+
           if [ -z "$GROUP_OBJECT_ID" ]; then
-            echo "::error::Could not find Azure AD group with name '${AZURE_PIM_GROUP_NAME}'."
+            echo "::error::AZURE_PIM_GROUP_OBJECT_ID secret is not set or is empty."
             exit 1
           fi
-          echo "Found Group Object ID: $GROUP_OBJECT_ID"
 
           echo "Submitting PIM activation requests for the group..."
           JUSTIFICATION="GH Actions Run ${{ github.run_id }} for workflow ${{ github.workflow }} job ${{ github.job }}"
