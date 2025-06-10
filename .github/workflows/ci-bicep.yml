@@ -36,31 +36,53 @@ jobs:
 
       - name: 'Setup Azure CLI and Bicep'
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: azure/CLI@v2
-        with:
-          azcliversion: latest
-          inlineScript: |
-            echo "Installing Bicep CLI..."
-            az bicep install
-            echo "Verifying Bicep installation..."
-            az bicep version
-            echo "✅ Bicep CLI setup complete"
+        shell: bash
+        run: |
+          echo "🔧 Setting up Azure CLI and Bicep..."
+          
+          # Use alternative config directory that doesn't require permissions
+          export AZURE_CONFIG_DIR="${RUNNER_TEMP}/.azure"
+          mkdir -p "${AZURE_CONFIG_DIR}"
+          
+          # Set Azure CLI environment variables to prevent permission issues
+          export AZURE_CORE_COLLECT_TELEMETRY=false
+          export AZURE_CORE_DISABLE_CONFIRM_PROMPT=true
+          export AZURE_CORE_DISABLE_PROGRESS_BAR=true
+          export AZURE_CORE_ONLY_SHOW_ERRORS=true
+          export AZURE_CORE_NO_COLOR=true
+          
+          # Install Azure CLI (it's pre-installed on GitHub runners)
+          echo "📦 Installing Bicep CLI..."
+          az bicep install
+          
+          echo "🔍 Verifying Bicep installation..."
+          az bicep version
+          
+          echo "✅ Bicep CLI setup complete"
+        env:
+          AZURE_CORE_COLLECT_TELEMETRY: false
+          AZURE_CORE_DISABLE_CONFIRM_PROMPT: true
+          AZURE_CORE_DISABLE_PROGRESS_BAR: true
+          AZURE_CORE_ONLY_SHOW_ERRORS: true
+          AZURE_CORE_NO_COLOR: true
 
       - name: 'Validate Changed Bicep Files'
         if: steps.changed-files.outputs.any_changed == 'true'
         shell: bash
         env:
-          # Ensure Azure CLI doesn't have permission issues during validation
+          # Use custom Azure config directory
+          AZURE_CONFIG_DIR: ${{ runner.temp }}/.azure
+          # Prevent Azure CLI permission issues
           AZURE_CORE_COLLECT_TELEMETRY: false
           AZURE_CORE_DISABLE_CONFIRM_PROMPT: true
           AZURE_CORE_DISABLE_PROGRESS_BAR: true
           AZURE_CORE_ONLY_SHOW_ERRORS: true
+          AZURE_CORE_NO_COLOR: true
         run: |
           echo "🔍 Found changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
 
-          # Ensure Azure CLI config directory exists with proper permissions
-          mkdir -p ~/.azure
-          chmod 755 ~/.azure
+          # Ensure custom Azure config directory exists
+          mkdir -p "${AZURE_CONFIG_DIR}"
           
           # Convert space-separated files to array
           IFS=' ' read -ra files <<< "${{ steps.changed-files.outputs.all_changed_files }}"
@@ -123,12 +145,7 @@ jobs:
               echo "📦 Building Bicep file..."
               build_output=$(mktemp)
               
-              # Use environment variables to prevent permission issues
-              if AZURE_CORE_COLLECT_TELEMETRY=false \
-                 AZURE_CORE_DISABLE_CONFIRM_PROMPT=true \
-                 AZURE_CORE_DISABLE_PROGRESS_BAR=true \
-                 AZURE_CORE_ONLY_SHOW_ERRORS=true \
-                 az bicep build --file "$file" --outfile "temp-$(basename "$file" .bicep).json" 2> "$build_output"; then
+              if az bicep build --file "$file" --outfile "temp-$(basename "$file" .bicep).json" 2> "$build_output"; then
                 echo "✅ Build successful: $file"
                 rm -f "temp-$(basename "$file" .bicep).json"
               else
@@ -173,12 +190,8 @@ jobs:
               echo "🔍 Linting Bicep file..."
               temp_lint_sarif="temp-lint-$(basename "$file" .bicep).sarif"
               
-              # Generate SARIF directly from bicep lint with environment variables
-              if AZURE_CORE_COLLECT_TELEMETRY=false \
-                 AZURE_CORE_DISABLE_CONFIRM_PROMPT=true \
-                 AZURE_CORE_DISABLE_PROGRESS_BAR=true \
-                 AZURE_CORE_ONLY_SHOW_ERRORS=true \
-                 az bicep lint --file "$file" --diagnostics-format sarif > "$temp_lint_sarif" 2>/dev/null; then
+              # Generate SARIF directly from bicep lint
+              if az bicep lint --file "$file" --diagnostics-format sarif > "$temp_lint_sarif" 2>/dev/null; then
                 echo "✅ Lint successful: $file"
               else
                 echo "⚠️ Lint found issues in: $file"
@@ -187,9 +200,7 @@ jobs:
               # Merge lint SARIF results if they exist and have content
               if [[ -f "$temp_lint_sarif" && -s "$temp_lint_sarif" ]]; then
                 # Extract results from the temporary SARIF and add to main SARIF
-                lint_results=$(jq -r '.runs[0].results[]?' "$temp_lint_sarif" 2>/dev/null)
-                if [[ -n "$lint_results" ]]; then
-                  # Add each result to the main SARIF
+                if command -v jq >/dev/null 2>&1; then
                   while IFS= read -r result; do
                     if [[ -n "$result" && "$result" != "null" ]]; then
                       if [ $result_count -gt 0 ]; then
@@ -208,11 +219,7 @@ jobs:
               echo "📋 Validating Bicep parameters..."
               temp_param_sarif="temp-param-$(basename "$file" .bicepparam).sarif"
               
-              if AZURE_CORE_COLLECT_TELEMETRY=false \
-                 AZURE_CORE_DISABLE_CONFIRM_PROMPT=true \
-                 AZURE_CORE_DISABLE_PROGRESS_BAR=true \
-                 AZURE_CORE_ONLY_SHOW_ERRORS=true \
-                 az bicep lint --file "$file" --diagnostics-format sarif > "$temp_param_sarif" 2>/dev/null; then
+              if az bicep lint --file "$file" --diagnostics-format sarif > "$temp_param_sarif" 2>/dev/null; then
                 echo "✅ Parameter validation successful: $file"
               else
                 echo "❌ Parameter validation failed: $file"
@@ -221,16 +228,17 @@ jobs:
               
               # Merge parameter SARIF results
               if [[ -f "$temp_param_sarif" && -s "$temp_param_sarif" ]]; then
-                # Add parameter results to main SARIF
-                while IFS= read -r result; do
-                  if [[ -n "$result" && "$result" != "null" ]]; then
-                    if [ $result_count -gt 0 ]; then
-                      echo "," >> "$sarif_file"
+                if command -v jq >/dev/null 2>&1; then
+                  while IFS= read -r result; do
+                    if [[ -n "$result" && "$result" != "null" ]]; then
+                      if [ $result_count -gt 0 ]; then
+                        echo "," >> "$sarif_file"
+                      fi
+                      echo "$result" >> "$sarif_file"
+                      result_count=$((result_count + 1))
                     fi
-                    echo "$result" >> "$sarif_file"
-                    result_count=$((result_count + 1))
-                  fi
-                done <<< "$(jq -c '.runs[0].results[]?' "$temp_param_sarif" 2>/dev/null)"
+                  done <<< "$(jq -c '.runs[0].results[]?' "$temp_param_sarif" 2>/dev/null)"
+                fi
                 rm -f "$temp_param_sarif"
               fi
             fi
