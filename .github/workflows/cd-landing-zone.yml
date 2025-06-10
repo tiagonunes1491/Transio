@@ -41,31 +41,94 @@ jobs:
           AZURE_PIM_GROUP_OBJECT_ID: ${{ secrets.AZURE_PIM_GROUP_OBJECT_ID }} #
 
         run: |
-          GROUP_OBJECT_ID="${AZURE_PIM_GROUP_OBJECT_ID}" # Use the Object ID directly from the secret
+          GROUP_OBJECT_ID="${AZURE_PIM_GROUP_OBJECT_ID}"
 
           if [ -z "$GROUP_OBJECT_ID" ]; then
             echo "::error::AZURE_PIM_GROUP_OBJECT_ID secret is not set or is empty."
             exit 1
           fi
 
-          echo "Submitting PIM activation requests for the group..."
+          echo "Submitting PIM activation requests for the group using REST API..."
+          
+          # Get access token
+          ACCESS_TOKEN=$(az account get-access-token --resource https://management.azure.com/ --query accessToken -o tsv)
+          
           JUSTIFICATION="GH Actions Run ${{ github.run_id }} for workflow ${{ github.workflow }} job ${{ github.job }}"
+          
+          # Create PIM activation requests using REST API
           # Contributor Role
-          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'b24988ac-6180-42a0-ab88-20f7382dd24c' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "$JUSTIFICATION"
-          # User Access Administrator Role
-          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "$JUSTIFICATION"
-          # Custom/Specific Role (ensure this ID is correct for your needs)
-          az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'e4062425-5110-4434-8464-414b433434d3' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "$JUSTIFICATION"
+          curl -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "properties": {
+                "principalId": "'$GROUP_OBJECT_ID'",
+                "roleDefinitionId": "/subscriptions/'$AZURE_SUBSCRIPTION_ID'/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c",
+                "requestType": "SelfActivate",
+                "justification": "'$JUSTIFICATION'",
+                "scheduleInfo": {
+                  "startDateTime": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                  "expiration": {
+                    "type": "AfterDuration",
+                    "duration": "PT2H"
+                  }
+                }
+              }
+            }' \
+            "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
 
-          echo "Workflow is now paused, waiting for up to 10 minutes for 3 manual PIM approvals for the group in the Azure Portal, and for roles to be inherited by UAMI (${AZURE_UAMI_PRINCIPAL_ID})..."
+          # User Access Administrator Role
+          curl -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "properties": {
+                "principalId": "'$GROUP_OBJECT_ID'",
+                "roleDefinitionId": "/subscriptions/'$AZURE_SUBSCRIPTION_ID'/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9",
+                "requestType": "SelfActivate",
+                "justification": "'$JUSTIFICATION'",
+                "scheduleInfo": {
+                  "startDateTime": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                  "expiration": {
+                    "type": "AfterDuration",
+                    "duration": "PT2H"
+                  }
+                }
+              }
+            }' \
+            "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
+
+          # Custom Role
+          curl -X POST \
+            -H "Authorization: Bearer $ACCESS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "properties": {
+                "principalId": "'$GROUP_OBJECT_ID'",
+                "roleDefinitionId": "/subscriptions/'$AZURE_SUBSCRIPTION_ID'/providers/Microsoft.Authorization/roleDefinitions/e4062425-5110-4434-8464-414b433434d3",
+                "requestType": "SelfActivate",
+                "justification": "'$JUSTIFICATION'",
+                "scheduleInfo": {
+                  "startDateTime": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+                  "expiration": {
+                    "type": "AfterDuration",
+                    "duration": "PT2H"
+                  }
+                }
+              }
+            }' \
+            "https://management.azure.com/subscriptions/$AZURE_SUBSCRIPTION_ID/providers/Microsoft.Authorization/roleAssignmentScheduleRequests?api-version=2020-10-01"
+
+          echo "PIM activation requests submitted. Waiting for manual approval and role inheritance..."
+          
+          # Wait for role activation
           end_time=$((SECONDS+600))
           roles_activated=false
           while [ $SECONDS -lt $end_time ]; do
-            # Check active roles for the UAMI (which should be a member of the group)
             active_roles=$(az role assignment list --assignee $AZURE_UAMI_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
             if echo "$active_roles" | grep -q "Contributor" && \
                echo "$active_roles" | grep -q "User Access Administrator" && \
-               echo "$active_roles" | grep -q "Managed Identity Contributor"; then # Ensure this role name matches the one activated by the third GUID
+               echo "$active_roles" | grep -q "Managed Identity Contributor"; then
               echo "All 3 PIM roles have been approved and inherited by the UAMI!"
               roles_activated=true
               break
