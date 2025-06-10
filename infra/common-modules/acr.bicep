@@ -12,12 +12,16 @@ param location string
 ])
 param sku string = 'Standard'
 
+@description('Tags for the ACR')
+param tags object = {}
+
 @description('Enable admin user for the ACR')
 param enableAdminUser bool = false
 
 resource acr 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
   name: acrName
   location: location
+  tags: tags
   sku: {
     name: sku
   }

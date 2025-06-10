@@ -1,0 +1,50 @@
+# Template for deploying shared infrastructure (ACR) using Azure Bicep templates
+# This workflow is triggered manually to deploy the Azure Container Registry
+name: 'CD - Shared Infrastructure (ACR)'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+      acrName:
+        description: 'Azure Container Registry name'
+        required: true
+        type: string
+
+jobs:
+  deploy-shared-infrastructure:
+    name: 'Deploy Shared Infrastructure'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+            
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.UAMI_SHARED_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          
+      - name: 'Deploy Shared Infrastructure bicep template'
+        env:
+          AZURE_PREFIX_SECRET: ${{ secrets.AZURE_PREFIX }}
+        run: |
+          az deployment group create \
+            --name "shared-infra-${{ inputs.environment }}-${{ github.run_id }}" \
+            --resource-group "rg-${{ env.AZURE_PREFIX_SECRET }}-${{ inputs.environment }}" \
+            --template-file ./infra/shared-infra.bicep \
+            --parameters acrName="${{ inputs.acrName }}" resourceLocation="${{ vars.AZURE_REGION }}" tags="environment=${{ inputs.environment }} project=${{ vars.PROJECT_NAME }} owner=GitHubActions runId=${{ github.run_id }}"
