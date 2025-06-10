@@ -29,17 +29,19 @@ jobs:
 
       # This step authenticates, requests PIM activation, and waits for your approval.
       - name: 'Request PIM Roles and Wait for Approval'
-        # This 'env' block makes secrets and variables available to the 'run' script below
+        # The 'env' block must be at the same level as 'name' and 'run'.
+        # This makes the secrets and variables available to the script below.
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_PRINCIPAL_ID: ${{ secrets.AZURE_PRINCIPAL_ID }}
           AZURE_GROUP_NAME: ${{ vars.AZURE_GROUP_NAME }}
+        
+        # The 'run' block contains only the shell script.
         run: |
-          # Step 1: Correct Azure Login with OIDC
+          # Step 1: Azure Login with OIDC
           echo "Logging into Azure tenant using OIDC..."
-          # The script can now correctly access $AZURE_CLIENT_ID and $AZURE_TENANT_ID
           az login --service-principal \
             -u $AZURE_CLIENT_ID \
             -t $AZURE_TENANT_ID \
@@ -55,15 +57,13 @@ jobs:
           echo "Found Group Object ID: $GROUP_OBJECT_ID"
           
           # Step 3: Submit PIM activation requests for the GROUP
-          # ... (This part of the script remains the same) ...
           echo "Submitting PIM activation requests for the group..."
           az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'b24988ac-6180-42a0-ab88-20f7382dd24c' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "GH Actions Run ${{ github.run_id }}"
           az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id '18d7d88d-d35e-4fb5-a5c3-7773c20a72d9' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "GH Actions Run ${{ github.run_id }}"
           az role eligibility schedule request create --principal-id $GROUP_OBJECT_ID --role-definition-id 'e4062425-51۱۰-4434-8464-414b433434d3' --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --justification "GH Actions Run ${{ github.run_id }}"
 
           # Step 4: Pause and wait for your manual approvals
-          # ... (This part of the script remains the same) ...
-          echo "Workflow is now paused, waiting for 3 manual PIM approvals..."
+          echo "Workflow is now paused, waiting for 3 manual PIM approvals for the group in the Azure Portal..."
           end_time=$((SECONDS+600))
           while [ $SECONDS -lt $end_time ]; do
             active_roles=$(az role assignment list --assignee $AZURE_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
@@ -76,7 +76,6 @@ jobs:
           done
           
           # Step 5: Final check
-          # ... (This part of the script remains the same) ...
           final_check=$(az role assignment list --assignee $AZURE_PRINCIPAL_ID --include-groups --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID" --query "[].roleDefinitionName" -o tsv)
           if ! (echo "$final_check" | grep -q "Contributor" && echo "$final_check" | grep -q "User Access Administrator" && echo "$final_check" | grep -q "Managed Identity Contributor"); then
             echo "::error::Timeout: Not all required PIM roles were approved or inherited within the 10-minute window."
