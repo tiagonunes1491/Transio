@@ -116,14 +116,14 @@ module acrPushGhFed 'common-modules/github-federation.bicep' = {
     UamiName: uamiSharedInfra.outputs.uamiNames[1]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    environmentName: environmentName
+    environmentName: gitHubSharedEnv // Changed from environmentName to gitHubSharedEnv
     fedType: 'environment' // Use environment federation for ACR
   }
 }
 
-// Assign the AcrPush role to the UAMI in the mgmt shared resource group
+// Assign the AcrPush role to the UAMI in the hub resource group
 module uamiAcrPush 'common-modules/uami-rbac.bicep'= {
-  scope: mgmtSharedRG
+  scope: hubRG // Changed from mgmtSharedRG to hubRG
   params: {
     uamiPrincipalId: uamiSharedInfra.outputs.uamiPrincipalIds[1]
     roleDefinitionId: acrPushRoleDefinitionId
