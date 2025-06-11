@@ -3,7 +3,7 @@ set -euo pipefail
 
 # build_dev.sh - Streamlined deployment for Secure Secret Sharer on AKS
 # Run inside any Ubuntu distro (e.g., WSL)
-# Usage: ./build_dev.sh [--skip-infra] [--skip-containers] [--full-rebuild]
+# Usage: ./build_dev.sh [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
 
 # Function to print timestamped messages
 log() {
@@ -19,6 +19,7 @@ FRONTEND_TAG="0.3.0"
 SKIP_INFRA=false
 SKIP_CONTAINERS=false
 FULL_REBUILD=false
+TEARDOWN_ONLY=false
 
 # Parse flags
 while [[ $# -gt 0 ]]; do
@@ -26,8 +27,9 @@ while [[ $# -gt 0 ]]; do
     --skip-infra) SKIP_INFRA=true; shift ;;  
     --skip-containers) SKIP_CONTAINERS=true; shift ;;  
     --full-rebuild) FULL_REBUILD=true; shift ;;
+    --teardown-only) TEARDOWN_ONLY=true; shift ;;
     -h|--help) 
-      echo "Usage: $0 [--skip-infra] [--skip-containers] [--full-rebuild]"; exit 0 ;;  
+      echo "Usage: $0 [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
     *) 
       echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -36,8 +38,8 @@ done
 # Configuration
 DEPLOYMENT_NAME="secure-secret-sharer-deploy"
 LOCATION="spaincentral"
-BICEP_FILE="infra/k8s-main.bicep"
-PARAMS_FILE="infra/k8s-main.bicep.dev.bicepparam"
+BICEP_FILE="../infra/k8s-main.bicep"
+PARAMS_FILE="../infra/k8s-main.bicep.dev.bicepparam"
 SERVICES=("backend" "frontend")
 
 # 1) Prerequisites
@@ -47,6 +49,41 @@ command -v docker >/dev/null || { log "ERROR" "docker not found"; exit 1; }
 command -v kubectl >/dev/null || { log "ERROR" "kubectl not found"; exit 1; }
 command -v helm >/dev/null || { log "ERROR" "helm not found"; exit 1; }
 log "INFO" "Prerequisites OK"
+
+# Teardown-only mode: delete resources and exit
+if [[ "$TEARDOWN_ONLY" == true ]]; then
+  log "INFO" "Teardown-only mode: deleting 'rg-secure-secret-sharer-dev' and purging Key Vault..."
+  
+  # Delete Helm deployment first (if exists)
+  log "INFO" "Checking for existing Helm deployment..."
+  if command -v helm >/dev/null && helm list --namespace default 2>/dev/null | grep -q "secret-sharer"; then
+    log "INFO" "Uninstalling Helm chart 'secret-sharer'..."
+    helm uninstall secret-sharer --namespace default
+    log "INFO" "Helm chart uninstalled"
+  else
+    log "INFO" "No Helm deployment found or helm not available, skipping..."
+  fi
+  
+  log "INFO" "Deleting resource group (this may take several minutes)..."
+  az group delete --name rg-secure-secret-sharer-dev --yes --verbose
+  
+  log "INFO" "Purging Key Vault (this may take a few minutes)..."
+  az keyvault purge --name kv-securesharer-dev --location spaincentral --verbose
+  
+  # Clean up local kubectl context (optional)
+  log "INFO" "Cleaning up local kubectl context..."
+  AKS_NAME="aks-secure-secret-sharer-dev"
+  if command -v kubectl >/dev/null && kubectl config get-contexts 2>/dev/null | grep -q "$AKS_NAME"; then
+    kubectl config delete-context "$AKS_NAME" 2>/dev/null || true
+    log "INFO" "Kubectl context for '$AKS_NAME' removed"
+  else
+    log "INFO" "No kubectl context found for '$AKS_NAME' or kubectl not available, skipping..."
+  fi
+  
+  log "INFO" "Teardown completed successfully"
+  log "INFO" "Exiting - no deployment performed"
+  exit 0
+fi
 
 # 1) Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
@@ -112,7 +149,7 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
     TAG_VALUE="${!TAG_VAR:-latest}"
     IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
-    docker build -t "$IMAGE" "./$svc" --progress=plain
+    docker build -t "$IMAGE" "../$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
     docker push "$IMAGE"
     IMAGES+=("$svc:$IMAGE")
@@ -166,7 +203,7 @@ done
 
 
 log "INFO" "Starting Helm deployment..."
-helm upgrade --install secret-sharer k8s/secret-sharer-app \
+helm upgrade --install secret-sharer ../k8s/secret-sharer-app \
   --namespace default --create-namespace \
   --set backend.keyVault.name="$KEY_VAULT_NAME" \
   --set backend.keyVault.tenantId="$TENANT_ID" \
