@@ -40,7 +40,7 @@ jobs:
             --template-file ./infra/shared-infra.bicep \
             --parameters acrName="${{ vars.ACR_NAME }}" \
                          resourceLocation="${{ vars.AZURE_REGION }}" \
-                         tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions","runId":"${{ github.run_id }}"}' \
+                         tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions"}' \
             --result-format FullResourcePayloads 2>&1)
           
           echo "What-if analysis completed"
