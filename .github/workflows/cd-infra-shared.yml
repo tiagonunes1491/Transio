@@ -22,7 +22,7 @@ jobs:
           
       - name: 'Debug Secret Existence'
         run: |
-          echo "Client ID secret is present: ${{ !empty(secrets.UAMI_SHARED_INFRA_CLIENT_ID) }}"
+          echo "Client ID secret is present: ${{ secrets.UAMI_SHARED_INFRA_CLIENT_ID != '' }}"
             
       - name: 'Login to Azure'
         uses: azure/login@v2
