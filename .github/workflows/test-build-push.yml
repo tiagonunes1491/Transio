@@ -10,6 +10,9 @@ jobs:
   # This job calls your reusable workflow
   test_the_build:
     name: Run Reusable Build and Push
+    permissions:
+      id-token: write   # Required to get the OIDC token for Azure login
+      contents: read    # Required by actions/checkout to read the repo
     uses: ./.github/workflows/reusable-build-push.yml
     with:
       dockerfile-path: 'backend/Dockerfile'
