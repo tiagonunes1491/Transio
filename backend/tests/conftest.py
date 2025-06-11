@@ -81,7 +81,7 @@ def app():
              return jsonify({"error": str(ve)}), 400
         except TypeError as te:
              current_app.logger.warning(f"TypeError during secret sharing: {te}")
-             return jsonify({"error": str(te)}), 400
+             return jsonify({"error": "Invalid input type provided."}), 400
         except Exception as e:
             current_app.logger.error(f"Error sharing secret: {e}", exc_info=True)
             return jsonify({"error": "Failed to store secret due to an internal server error."}), 500
