@@ -40,25 +40,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Log in to Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Azure Container Registry
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ inputs.acr-name }}.azurecr.io
-
-      - name: Build and push Docker image
+      - name: Get ACR access token
+        id: acr_token
         run: |
-          ACR_URL="${{ inputs.acr-name }}.azurecr.io"
-          
-          # Build and tag with the commit SHA
-          docker build -f ${{ inputs.dockerfile-path }} -t $ACR_URL/${{ inputs.image-name }}:${{ github.sha }} ${{ inputs.build-context }}
-          docker push $ACR_URL/${{ inputs.image-name }}:${{ github.sha }}
-          
-          # Also tag the same image as 'latest' and push
-          docker tag $ACR_URL/${{ inputs.image-name }}:${{ github.sha }} $ACR_URL/${{ inputs.image-name }}:latest
-          docker push $ACR_URL/${{ inputs.image-name }}:latest
+          ACR_TOKEN=$(az acr login --name ${{ inputs.acr-name }} --expose-token --output tsv --query accessToken)
+          echo "token=${ACR_TOKEN}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker with new token
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.acr-name }}.azurecr.io
+          username: 00000000-0000-0000-0000-000000000000
+          password: ${{ steps.acr_token.outputs.token }}
