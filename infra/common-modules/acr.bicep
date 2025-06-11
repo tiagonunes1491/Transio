@@ -27,6 +27,10 @@ resource acr 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
   }
   properties: {
     adminUserEnabled: enableAdminUser
+    dataEndpointEnabled: false
+    encryption: {
+      status: 'disabled'
+    }
   }
 }
 
