@@ -58,3 +58,17 @@ jobs:
           registry: ${{ inputs.acr-name }}.azurecr.io
           username: 00000000-0000-0000-0000-000000000000
           password: ${{ steps.acr_token.outputs.token }}
+      
+      - name: Build, tag, and push image to ACR
+        run: |
+          # Set the full image name variable
+          IMAGE_NAME="${{ inputs.acr-name }}.azurecr.io/${{ inputs.image-name }}"
+
+          # Build the image and tag it with the unique commit SHA for traceability
+          docker build -f ${{ inputs.dockerfile-path }} -t $IMAGE_NAME:${{ github.sha }} ${{ inputs.build-context }}
+          
+          # Also tag the same image as 'latest' for easy reference
+          docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
+          
+          # Push both tags (:latest and :<commit-sha>) to the registry
+          docker push --all-tags $IMAGE_NAME
