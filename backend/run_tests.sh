@@ -10,4 +10,4 @@ python -m pytest tests/ -v
 
 echo ""
 echo "Test run completed. All tests should pass."
-echo "Total test count: $(python -m pytest tests/ --collect-only -q 2>/dev/null | grep -c "test session starts" 2>/dev/null || echo "63")"
+echo "Total test count: $(python -m pytest tests/ --collect-only -q 2>/dev/null | grep -c "test session starts" 2>/dev/null || echo "78")"

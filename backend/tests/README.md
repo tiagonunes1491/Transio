@@ -8,6 +8,7 @@ This directory contains comprehensive unit tests for the SecureSharer backend ap
 - `test_storage.py`: Tests for database storage operations (19 tests)  
 - `test_models.py`: Tests for SQLAlchemy models (10 tests)
 - `test_main.py`: Tests for Flask API endpoints (20 tests)
+- `test_security.py`: Tests for security vulnerabilities and SQL injection resistance (15 tests)
 - `conftest.py`: Pytest configuration and fixtures
 
 ## Running Tests
@@ -48,6 +49,9 @@ MASTER_ENCRYPTION_KEY=<key> python -m pytest tests/test_models.py -v
 
 # Test API endpoints only
 MASTER_ENCRYPTION_KEY=<key> python -m pytest tests/test_main.py -v
+
+# Test security and SQL injection resistance only
+MASTER_ENCRYPTION_KEY=<key> python -m pytest tests/test_security.py -v
 ```
 
 ### Run Specific Test Cases
@@ -99,6 +103,18 @@ The test suite provides comprehensive coverage of:
 - ✅ One-time access enforcement
 - ✅ Complete workflow integration
 
+### Security & SQL Injection Resistance (`test_security.py`)
+- ✅ Classic SQL injection attempts (15+ payload types)
+- ✅ Boolean-based blind SQL injection testing
+- ✅ Time-based SQL injection prevention
+- ✅ UNION-based SQL injection resistance
+- ✅ Stacked queries injection prevention
+- ✅ Second-order SQL injection protection
+- ✅ Parameter pollution attack resistance
+- ✅ Input validation security (malformed UUIDs, XSS, command injection)
+- ✅ Path traversal attack prevention
+- ✅ Database-level security validation
+
 ## Test Configuration
 
 - Uses SQLite in-memory database for isolated testing
@@ -109,11 +125,12 @@ The test suite provides comprehensive coverage of:
 
 ## Expected Results
 
-All 63 tests should pass:
+All 78 tests should pass:
 - 14 encryption tests
 - 19 storage tests
 - 10 model tests
 - 20 API endpoint tests
+- 15 security/SQL injection resistance tests
 
 ## Notes
 
