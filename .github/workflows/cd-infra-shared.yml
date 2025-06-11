@@ -111,9 +111,11 @@ jobs:
       id-token: write
     environment: shared
     steps:
-      - name: 'Display What-If Results for Review'
+      - name: 'Display Approved Plan'
         run: |
-          echo "🔍 WHAT-IF ANALYSIS DETECTED CHANGES:"
+          echo "✅ Approval granted. Displaying approved changes before deployment."
+          echo ""
+          echo "🔍 WHAT-IF ANALYSIS CHANGES:"
           echo "================================"
           echo "${{ needs.what-if-analysis.outputs.what-if-results }}"
           echo "================================"
@@ -122,8 +124,6 @@ jobs:
           echo "• Target Resource Group: ${{ vars.SHARED_RG_NAME }}"
           echo "• ACR Name: ${{ vars.ACR_NAME }}"
           echo "• Environment: shared"
-          echo ""
-          echo "⚠️  WAITING FOR APPROVAL TO PROCEED WITH DEPLOYMENT..."
 
       - name: 'Checkout Code'
         uses: actions/checkout@v4
