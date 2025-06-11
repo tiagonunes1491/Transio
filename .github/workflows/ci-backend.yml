@@ -1,4 +1,4 @@
-name: "Backend CI Pipeline"
+name: "CI - Backend Workflows"
 on: 
   push:
     branches:
