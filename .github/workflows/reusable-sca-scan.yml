@@ -1,0 +1,38 @@
+name: 'Reusable SCA Scan'
+on:
+  workflow_call:
+    inputs:
+      paths:
+        required: false
+        type: string
+        description: 'Comma-separated list of paths to scan (optional)'
+
+jobs:
+  sca_analysis:
+    name: 'SCA Analysis'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner in repo mode
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          scan-type: 'fs'
+          # If inputs.paths is empty or contains a comma (indicating multiple paths),
+          # this setup will scan the current directory ('.').
+          # If inputs.paths is a single path (no commas), it will scan that specific path.
+          scan-ref: ${{ (inputs.paths == '' || contains(inputs.paths, ',')) && '.' || inputs.paths }}
+          ignore-unfixed: false
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'sca-scan' # Category for container image issues

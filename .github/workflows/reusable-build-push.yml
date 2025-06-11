@@ -1,0 +1,66 @@
+# .github/workflows/reusable-build-push.yml
+
+name: 'Reusable - Build and Push to ACR'
+
+on:
+  workflow_call:
+    inputs:
+      dockerfile-path:
+        required: true
+        type: string
+        description: 'Path to the Dockerfile'
+      image-name:
+        required: true
+        type: string
+        description: 'Name for the container image (e.g., backend-app)'
+      build-context:
+        required: true
+        type: string
+        description: 'Build context for the Docker build (e.g., ./backend)'
+      acr-name:
+        required: true
+        type: string
+        description: 'Name of the Azure Container Registry'
+    secrets:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+
+jobs:
+  build-and-push:
+    name: Build and Push Image
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ inputs.acr-name }}.azurecr.io
+
+      - name: Build and push Docker image
+        run: |
+          ACR_URL="${{ inputs.acr-name }}.azurecr.io"
+          
+          # Build and tag with the commit SHA
+          docker build -f ${{ inputs.dockerfile-path }} -t $ACR_URL/${{ inputs.image-name }}:${{ github.sha }} ${{ inputs.build-context }}
+          docker push $ACR_URL/${{ inputs.image-name }}:${{ github.sha }}
+          
+          # Also tag the same image as 'latest' and push
+          docker tag $ACR_URL/${{ inputs.image-name }}:${{ github.sha }} $ACR_URL/${{ inputs.image-name }}:latest
+          docker push $ACR_URL/${{ inputs.image-name }}:latest
