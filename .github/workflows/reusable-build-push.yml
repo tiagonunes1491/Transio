@@ -33,6 +33,7 @@ jobs:
   build-and-push:
     name: Build and Push Image
     runs-on: ubuntu-latest
+    environment: 'dev'
     permissions:
       id-token: write
       contents: read
