@@ -78,7 +78,7 @@ def app():
             return jsonify({"link_id": link_id, "message": "Secret stored. Use this ID to create your access link."}), 201
         except ValueError as ve:
              current_app.logger.warning(f"ValueError during secret sharing: {ve}")
-             return jsonify({"error": str(ve)}), 400
+             return jsonify({"error": "Invalid input provided."}), 400
         except TypeError as te:
              current_app.logger.warning(f"TypeError during secret sharing: {te}")
              return jsonify({"error": "Invalid input type provided."}), 400
