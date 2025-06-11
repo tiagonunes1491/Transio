@@ -16,7 +16,9 @@ jobs:
     name: 'Check for file changes'
     runs-on: ubuntu-latest
     outputs:
-      sca_scan_required: ${{ steps.changed-file-requirements.outputs.any_changed }}
+      sca_required: ${{ steps.changed-file-requirements.outputs.any_changed }}
+      lint_required: ${{ steps.changed-files-backend.outputs.all_changed_files }}
+      trivy_required: ${{ steps.changed-file-docker.outputs.any_changed }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,24 +30,95 @@ jobs:
         with:
           # We tell the action to ONLY look for changes in this specific file.
           files: backend/requirements.txt
+      
+      - uses: tj-actions/changed-files@v44
+        id: changed-files-backend
+        with:
+          # Get all changed Python files in backend directory
+          files: |
+            backend/**/*.py
+          # Output the files as a comma-separated list
+          separator: ','
+
+      - uses: tj-actions/changed-files@v44
+        id: changed-file-docker
+        with:
+          # Get all changed Python files in backend directory
+          files: |
+            backend/Dockerfile
+
+  format_and_lint:
+    needs: check_changes
+    name: 'Format and Lint Check'
+    if: needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-python-check.yml
+    with:
+      paths: ${{ needs.check_changes.outputs.lint_required }}
 
   static_analysis:
+    needs: check_changes
     name: 'Static Analysis (SAST Scan)'
+    if: needs.check_changes.outputs.lint_required != ''
     uses: ./.github/workflows/reusable-sast-scan.yml
     with:
       language: 'python'
+
   sca_analysis:
-    name: 'Software Composition Analysis (SCA Scan)'
     needs: check_changes
-    if: needs.check_changes.outputs.sca_scan_required == 'true'
+    name: 'Software Composition Analysis (SCA Scan)'
+    if: needs.check_changes.outputs.sca_required != ''
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       paths: 'backend/requirements.txt'
+
+  # If any changes that require a new build are detected, run the container build and analysis job
   container_analysis:
-    name: 'Container Analyis (Dockerfile Scan, Container Scan, Container build)'
     needs: check_changes
+    name: 'Container Analyis (Dockerfile Scan, Container Scan, Container build)'
+    if: needs.check_changes.outputs.sca_required != '' || needs.check_changes.outputs.lint_required != '' || needs.check_changes.outputs.trivy_required != ''  
     uses: ./.github/workflows/reusable-container-scan.yml
     with:
       path: 'backend/Dockerfile'
       container-name: 'backend-app'
       build-context: 'backend'
+
+
+  check_results:
+    name: Check Analysis Results
+    if: always() # This job must always run to check the outcomes
+    needs:
+      - format_and_lint
+      - static_analysis
+      - sca_analysis
+      - container_analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify that all required checks passed
+        run: |
+          # This script checks the result of each job this one needs.
+          # It fails if any of them have failed. 'success' and 'skipped' are considered passing states.
+          # You can add or remove jobs from this list as needed.
+          results="${{ needs.format_and_lint.result }} ${{ needs.static_analysis.result }} ${{ needs.sca_analysis.result }} ${{ needs.container_analysis.result }}"
+          echo "Job results: $results"
+          if [[ "${results,,}" =~ "failure" || "${results,,}" =~ "cancelled" ]]; then
+            echo "One or more required checks failed. Halting the pipeline."
+            exit 1
+          else
+            echo "All required checks passed or were skipped. Proceeding."
+          fi
+
+  build_and_push_image:
+    name: Build and Push Image to ACR
+    # This job depends on ALL previous checks. It will only start if they all succeed.
+    needs: check_results
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/reusable-build-push.yml
+    with:
+      dockerfile-path: 'backend/Dockerfile'
+      image-name: 'backend-app'
+      build-context: './backend'
+      acr-name: ${{ vars.ACR_NAME }}
+    secrets:
+      AZURE_CLIENT_ID: ${{ secrets.ClientID_Art_Cont }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
