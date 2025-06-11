@@ -20,16 +20,17 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: 'Debug Secret Existence'
+      - name: '✅ TEST: Check if Secrets are Accessible'
+        id: check_secrets
         run: |
-          echo "Client ID secret is present: ${{ secrets.UAMI_SHARED_CLIENT_ID }}"
-          echo "Tenant ID secret is present: ${{ secrets.AZURE_TENANT_ID }}"
-          echo "Subscription ID secret is present: ${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+          echo "Client ID secret is present: ${{ secrets.ClientID_Art_Cont != '' }}"
+          echo "Tenant ID secret is present: ${{ secrets.AZURE_TENANT_ID != '' }}"
+          echo "Subscription ID secret is present: ${{ secrets.AZURE_SUBSCRIPTION_ID != '' }}"
       
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.UAMI_SHARED_CLIENT_ID }}
+          client-id: ${{ secrets.ClientID_Art_Cont }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -139,7 +140,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.UAMI_SHARED_CLIENT_ID }}
+          client-id: ${{ secrets.ClientID_Art_Cont }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
