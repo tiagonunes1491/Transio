@@ -22,17 +22,22 @@ class TestSecretModel:
         
         assert secret.link_id == link_id
         assert secret.encrypted_secret == encrypted_data
-        assert secret.created_at is not None
-        assert isinstance(secret.created_at, datetime)
+        # created_at is set by SQLAlchemy default when saved to DB
+        # For an unsaved instance, it might be None
+        # Let's test this after adding to session
     
     def test_secret_default_created_at(self, app_context):
-        """Test that created_at is automatically set with timezone-aware UTC."""
+        """Test that created_at is automatically set with timezone-aware UTC when saved to DB."""
         secret = Secret(
             link_id=str(uuid.uuid4()),
             encrypted_secret=b"test_data"
         )
         
-        # The created_at should be set automatically
+        # Add to session and flush to trigger defaults
+        db.session.add(secret)
+        db.session.flush()  # This triggers the default value
+        
+        # The created_at should now be set
         assert secret.created_at is not None
         # Should be timezone-aware
         assert secret.created_at.tzinfo is not None

@@ -189,16 +189,20 @@ class TestCleanupExpiredSecrets:
         db.session.add(fresh_secret)
         db.session.commit()
         
+        # Store the link_ids before cleanup to avoid detached instance issues
+        expired_link_id = expired_secret.link_id
+        fresh_link_id = fresh_secret.link_id
+        
         # Run cleanup
         removed_count = cleanup_expired_secrets()
         
         assert removed_count == 1
         
         # Verify expired secret was removed
-        assert Secret.query.filter_by(link_id=expired_secret.link_id).first() is None
+        assert Secret.query.filter_by(link_id=expired_link_id).first() is None
         
         # Verify fresh secret remains
-        assert Secret.query.filter_by(link_id=fresh_secret.link_id).first() is not None
+        assert Secret.query.filter_by(link_id=fresh_link_id).first() is not None
     
     def test_cleanup_expired_secrets_no_expired(self, client, app_context):
         """Test cleanup when no expired secrets exist."""
