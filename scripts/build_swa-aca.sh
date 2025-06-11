@@ -39,8 +39,8 @@ done
 # Configuration
 DEPLOYMENT_NAME="Secure-Sharer-SWA-Dev"
 LOCATION="spaincentral"
-BICEP_FILE="infra/swa-aca-platform.bicep"
-PARAMS_FILE="infra/swa-aca-platform.dev.bicepparam"
+BICEP_FILE="../infra/swa-aca-platform.bicep"
+PARAMS_FILE="../infra/swa-aca-platform.dev.bicepparam"
 SERVICES=("backend")
 
 # 1) Prerequisites
@@ -123,7 +123,7 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
     TAG_VALUE="${!TAG_VAR:-latest}"
     IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
-    docker build -t "$IMAGE" "./$svc" --progress=plain
+    docker build -t "$IMAGE" "../$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
     docker push "$IMAGE"
     IMAGES+=("$svc:$IMAGE")
@@ -156,8 +156,8 @@ log "INFO" "Using parameter file and overriding empty parameters with platform d
 log "INFO" "Deploying backend container app with Bicep template..."
 az deployment group create \
   --resource-group "$RESOURCE_GROUP" \
-  --template-file "infra/swa-aca-app.bicep" \
-  --parameters "infra/swa-aca-app.dev.bicepparam" \
+  --template-file "../infra/swa-aca-app.bicep" \
+  --parameters "../infra/swa-aca-app.dev.bicepparam" \
   --name "$APP_DEPLOYMENT_NAME" \
   --parameters \
     containerImage="$BACKEND_CONTAINER_IMAGE" \
@@ -205,8 +205,8 @@ if [[ "$SKIP_FRONTEND" == false ]]; then
   FRONTEND_DEPLOYMENT_NAME="frontend-deployment"
   az deployment group create \
     --resource-group "$RESOURCE_GROUP" \
-    --template-file "infra/swa-aca-frontend.bicep" \
-    --parameters "infra/swa-aca-frontend.bicepparam" \
+    --template-file "../infra/swa-aca-frontend.bicep" \
+    --parameters "../infra/swa-aca-frontend.bicepparam" \
     --parameters backendApiResourceId="$BACKEND_RESOURCE_ID" \
     --name "$FRONTEND_DEPLOYMENT_NAME" \
     --verbose
@@ -271,7 +271,7 @@ if [[ "$SKIP_FRONTEND" == false ]]; then
   
   # Deploy static files using SWA CLI
   swa deploy \
-    --app-location "./frontend/static" \
+    --app-location "../frontend/static" \
     --deployment-token "$DEPLOYMENT_TOKEN" \
     --env "production"
   
