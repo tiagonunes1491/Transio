@@ -7,11 +7,26 @@ param GitHubOrganizationName string
 @description('Name of the GitHub repository to federate with')
 param GitHubRepositoryName string
 
-@description('GitHub environment, branch or pattern to federate with')
-param gitHubSubjectPattern string
+@description('GitHub branch name (e.g., main)')
+param branchName string = 'main'
+
+@description('GitHub environment to federate with')
+param environmentName string = 'production'
 
 @description('Name for the federated identity credential')
 param federatedCredentialName string = 'github-federation'
+
+@description('Type of federated identity credential. Can be "environment" or "branch".')
+@allowed([
+  'environment'
+  'branch'
+])
+param fedType string = 'branch'
+
+// Correctly constructs the subject filter based on the federation type.
+var subjectFilter = fedType == 'environment'
+  ? 'environment:${environmentName}'
+  : 'ref:refs/heads/${branchName}'
 
 // Reference the existing User Assigned Managed Identity (UAMI)
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -19,7 +34,7 @@ resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' exis
 }
 
 // Create the GitHub federation resource
-resource githubFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2024-11-30' = {
+resource githubFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2023-07-31-preview' = {
   name: federatedCredentialName
   parent: uami
   properties: {
@@ -27,7 +42,7 @@ resource githubFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/fede
     audiences: [
       'api://AzureADTokenExchange'
     ]
-    subject: 'repo:${GitHubOrganizationName}/${GitHubRepositoryName}:${gitHubSubjectPattern}'
+    subject: 'repo:${GitHubOrganizationName}/${GitHubRepositoryName}:${subjectFilter}'
   }
 }
 

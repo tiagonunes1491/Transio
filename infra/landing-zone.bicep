@@ -4,6 +4,10 @@ targetScope = 'subscription'
 @description('Environment for the deployment')
 param environmentName string = 'dev'
 
+
+@description('Environment for the shared resources')
+param gitHubSharedEnv string = 'shared'
+
 @description('Location for the resources')
 param location string = 'spaincentral' // Default location, can be overridden
 
@@ -21,9 +25,6 @@ param gitHubOrganizationName string
 
 @description('GitHub repository name to federate with')
 param gitHubRepositoryName string
-
-@description('GitHub subject pattern to federate with')
-param gitHubSubjectPattern string = 'environment:${environmentName}'
 
 // Variables for the role definition IDs
 
@@ -107,7 +108,8 @@ module acrPushGhFed 'common-modules/github-federation.bicep' = {
     UamiName: uamisManagement.outputs.uamiNames[0]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    gitHubSubjectPattern: gitHubSubjectPattern
+    environmentName: environmentName
+    fedType: 'environment' // Use environment federation for ACR
   }
 }
 
@@ -123,14 +125,32 @@ module uamiAcrPush 'common-modules/uami-rbac.bicep'= {
 
 // --- 1. User Assigned Managed Identity (UAMI) for Shared Infrastructure Creator ---
 
-// Federate UAMI with GitHub Actions for shared infrastructure creation
+// Federate UAMI with GitHub Actions for shared infrastructure creation with environment-specific parameters
 module sharedInfraCreatorGhFed 'common-modules/github-federation.bicep' = {
   scope: hubRG
   params: {
+    federatedCredentialName: 'github-env'
     UamiName: uamiSharedInfra.outputs.uamiNames[0]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    gitHubSubjectPattern: gitHubSubjectPattern
+    environmentName: gitHubSharedEnv
+    fedType: 'environment' // Use environment federation for ACR
+  }
+}
+
+// Federate UAMI with GitHub Actions for shared infrastructure creation for branch-specific parameters
+module sharedInfraCreatorGhBranchFed 'common-modules/github-federation.bicep' = {
+  scope: hubRG
+  dependsOn: [
+    sharedInfraCreatorGhFed
+  ]
+  params: {
+    federatedCredentialName: 'github-branch'
+    UamiName: uamiSharedInfra.outputs.uamiNames[0]
+    GitHubOrganizationName: gitHubOrganizationName
+    GitHubRepositoryName: gitHubRepositoryName
+    branchName: 'main' // Pass only the branch name, not a full ref or subject
+    fedType: 'branch'
   }
 }
 
@@ -152,7 +172,9 @@ module k8SpokeGhFed 'common-modules/github-federation.bicep' = {
     UamiName: uamisManagement.outputs.uamiNames[1]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    gitHubSubjectPattern: gitHubSubjectPattern
+    environmentName: environmentName
+    fedType: 'environment' // Use environment federation for ACR
+
   }
 }
 
@@ -186,7 +208,8 @@ module k8SpokeDeploymentGhFed 'common-modules/github-federation.bicep' = {
     UamiName: uamisManagement.outputs.uamiNames[2]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    gitHubSubjectPattern: gitHubSubjectPattern
+    environmentName: environmentName
+    fedType: 'environment' // Use environment federation for ACR
   }
 }
 
@@ -207,7 +230,8 @@ module uamiPaasGhFed 'common-modules/github-federation.bicep' = {
     UamiName: uamisManagement.outputs.uamiNames[3]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    gitHubSubjectPattern: gitHubSubjectPattern
+    environmentName: environmentName
+    fedType: 'environment' // Use environment federation for ACR
   }
 }
 
