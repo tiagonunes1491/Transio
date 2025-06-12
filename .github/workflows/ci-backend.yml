@@ -71,6 +71,16 @@ jobs:
     with:
       paths: 'backend/requirements.txt'
 
+  backend_tests:
+    needs: check_changes
+    name: 'Backend Unit Tests & Coverage'
+    if: needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-backend-test.yml
+    with:
+      python-version: '3.11'
+      coverage-threshold: 90
+      upload-coverage: true
+
   # If any changes that require a new build are detected, run the container build and analysis job
   container_analysis:
     needs: check_changes
@@ -90,6 +100,7 @@ jobs:
       - format_and_lint
       - static_analysis
       - sca_analysis
+      - backend_tests
       - container_analysis
     runs-on: ubuntu-latest
     steps:
@@ -98,7 +109,7 @@ jobs:
           # This script checks the result of each job this one needs.
           # It fails if any of them have failed. 'success' and 'skipped' are considered passing states.
           # You can add or remove jobs from this list as needed.
-          results="${{ needs.format_and_lint.result }} ${{ needs.static_analysis.result }} ${{ needs.sca_analysis.result }} ${{ needs.container_analysis.result }}"
+          results="${{ needs.format_and_lint.result }} ${{ needs.static_analysis.result }} ${{ needs.sca_analysis.result }} ${{ needs.backend_tests.result }} ${{ needs.container_analysis.result }}"
           echo "Job results: $results"
           if [[ "${results,,}" =~ "failure" || "${results,,}" =~ "cancelled" ]]; then
             echo "One or more required checks failed. Halting the pipeline."
