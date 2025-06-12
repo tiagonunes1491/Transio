@@ -46,9 +46,9 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_PUSH }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ env.CLIENTID }}
+          tenant-id: ${{ env.TENANTID }}
+          subscription-id: ${{ env.SUBSCRIPTIONID }}
 
         env:
           CLIENTID: ${{ secrets.CLIENTID_ART_PUSH }}
