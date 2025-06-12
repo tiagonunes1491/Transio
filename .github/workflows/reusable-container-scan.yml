@@ -73,10 +73,3 @@ jobs:
         with:
           sarif_file: 'trivy-container-results.sarif'
           category: 'container-image-scan' # Category for container image issues
-      
-      - name: Push container to registry
-        if: success()
-        run: |
-          echo "🚀 Container passed security scans - pushing to registry"
-          # Add authentication here if needed
-          # docker push ${{ inputs.container-name }}:${{ github.sha }}

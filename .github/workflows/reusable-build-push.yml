@@ -33,9 +33,7 @@ jobs:
   build-and-push:
     name: Build and Push Image
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+    environment: 'shared'
 
     steps:
       - name: Check out repository
@@ -48,19 +46,29 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Log in to Azure Container Registry
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ inputs.acr-name }}.azurecr.io
-
-      - name: Build and push Docker image
+      - name: Get ACR access token
+        id: acr_token
         run: |
-          ACR_URL="${{ inputs.acr-name }}.azurecr.io"
+          ACR_TOKEN=$(az acr login --name ${{ inputs.acr-name }} --expose-token --output tsv --query accessToken)
+          echo "token=${ACR_TOKEN}" >> $GITHUB_OUTPUT
+
+      - name: Log in to Docker with new token
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ inputs.acr-name }}.azurecr.io
+          username: 00000000-0000-0000-0000-000000000000
+          password: ${{ steps.acr_token.outputs.token }}
+      
+      - name: Build, tag, and push image to ACR
+        run: |
+          # Set the full image name variable
+          IMAGE_NAME="${{ inputs.acr-name }}.azurecr.io/${{ inputs.image-name }}"
+
+          # Build the image and tag it with the unique commit SHA for traceability
+          docker build -f ${{ inputs.dockerfile-path }} -t $IMAGE_NAME:${{ github.sha }} ${{ inputs.build-context }}
           
-          # Build and tag with the commit SHA
-          docker build -f ${{ inputs.dockerfile-path }} -t $ACR_URL/${{ inputs.image-name }}:${{ github.sha }} ${{ inputs.build-context }}
-          docker push $ACR_URL/${{ inputs.image-name }}:${{ github.sha }}
+          # Also tag the same image as 'latest' for easy reference
+          docker tag $IMAGE_NAME:${{ github.sha }} $IMAGE_NAME:latest
           
-          # Also tag the same image as 'latest' and push
-          docker tag $ACR_URL/${{ inputs.image-name }}:${{ github.sha }} $ACR_URL/${{ inputs.image-name }}:latest
-          docker push $ACR_URL/${{ inputs.image-name }}:latest
+          # Push both tags (:latest and :<commit-sha>) to the registry
+          docker push --all-tags $IMAGE_NAME
