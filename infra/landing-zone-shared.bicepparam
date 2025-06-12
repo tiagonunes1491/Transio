@@ -43,10 +43,10 @@ param workloadIdentities = {
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
-    reader: {
+    readerWithWhatIf: {
         UAMI: 'uami-ssharer-shared-infra-reader'
         ENV: 'shared'
-        ROLE: 'reader'
+        ROLE: 'readerWithWhatIf'
         federationTypes: 'environment'
     }
 }
