@@ -6,14 +6,16 @@
     "test": "jest",
     "test:watch": "jest --watch", 
     "test:coverage": "jest --coverage",
+    "test:coverage:ci": "jest --coverage --coverageReporters=text-lcov --coverageReporters=json-summary",
     "test:security": "jest --testNamePattern=\"OWASP|Advanced Security\"",
     "test:owasp": "jest owasp-pentesting.test.js",
     "test:pentesting": "jest advanced-security.test.js",
     "test:all-security": "jest --testNamePattern=\"Security|OWASP\"",
+    "test:unit": "jest utils-direct.test.js",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:debug": "playwright test --debug",
-    "test:all": "npm test && npm run test:e2e",
+    "test:all": "npm run test:unit && npm test && npm run test:e2e",
     "playwright:install": "playwright install"
   },
   "devDependencies": {
@@ -31,15 +33,28 @@
       "<rootDir>/tests/**/*.test.js"
     ],
     "collectCoverageFrom": [
-      "static/*.js",
-      "!static/index.html",
-      "!static/view.html"
+      "static/utils-testable.js",
+      "static/index.js", 
+      "static/view.js",
+      "!static/utils.js",
+      "!static/*.html"
     ],
     "coverageReporters": [
       "text",
       "lcov",
-      "html"
+      "html",
+      "json",
+      "json-summary"
     ],
+    "coverageThreshold": {
+      "static/utils-testable.js": {
+        "branches": 80,
+        "functions": 100,
+        "lines": 85,
+        "statements": 85
+      }
+    },
+    "coverageDirectory": "coverage",
     "verbose": true
   }
 }

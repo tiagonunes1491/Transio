@@ -3,6 +3,11 @@
  * Sets up JSDOM environment and global test utilities
  */
 
+// Add TextEncoder/TextDecoder for JSDOM compatibility
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
 // Mock console methods for cleaner test output
 global.console = {
   ...console,
