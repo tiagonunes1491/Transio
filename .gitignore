@@ -12,6 +12,11 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Frontend dependencies and build artifacts
+frontend/node_modules/
+frontend/coverage/
+frontend/*.log
+
 # IDE and OS specific
 .vscode/
 .idea/
