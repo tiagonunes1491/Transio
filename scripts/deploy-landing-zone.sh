@@ -32,8 +32,7 @@ set -e  # Exit on any error
 # Configuration Variables
 # =====================================================
 
-# Logging configuration
-LOG_FILE="deployment-$(date +%Y%m%d-%H%M%S).log"
+# Verbose output configuration
 VERBOSE=true
 
 # Deployment names with timestamps for uniqueness
@@ -62,17 +61,17 @@ SUBSCRIPTION_SCOPE="subscription"
 # Function to log messages with timestamp
 function log_info() {
   local message="$1"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $message" | tee -a "$LOG_FILE"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $message"
 }
 
 function log_error() {
   local message="$1"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $message" | tee -a "$LOG_FILE" >&2
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: $message" >&2
 }
 
 function log_warning() {
   local message="$1"
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $message" | tee -a "$LOG_FILE"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: $message"
 }
 
 # Function to validate template and parameters before deployment
@@ -88,7 +87,7 @@ function validate_deployment() {
     log_error "Bicep template file not found: $bicep_file"
     log_error "Current working directory: $(pwd)"
     log_error "Available .bicep files in ../infra/:"
-    ls -la ../infra/*.bicep 2>/dev/null | tee -a "$LOG_FILE" || log_error "No .bicep files found"
+    ls -la ../infra/*.bicep 2>/dev/null || log_error "No .bicep files found"
     return 1
   fi
   
@@ -96,7 +95,7 @@ function validate_deployment() {
     log_error "Parameters file not found: $params_file"
     log_error "Current working directory: $(pwd)"
     log_error "Available .bicepparam files in ../infra/:"
-    ls -la ../infra/*.bicepparam 2>/dev/null | tee -a "$LOG_FILE" || log_error "No .bicepparam files found"
+    ls -la ../infra/*.bicepparam 2>/dev/null || log_error "No .bicepparam files found"
     return 1
   fi
   
@@ -109,11 +108,10 @@ function validate_deployment() {
     --location "spaincentral" \
     --template-file "$bicep_file" \
     --parameters "$params_file" \
-    --output json >> "$LOG_FILE" 2>&1; then
+    --output json > /dev/null 2>&1; then
     log_error "Template validation failed for $description"
-    log_error "Check $LOG_FILE for detailed validation errors"
-    log_error "Last 20 lines of validation output:"
-    tail -20 "$LOG_FILE" | tee -a "$LOG_FILE"
+    log_error "Run the validation manually for detailed errors:"
+    log_error "az deployment sub validate --location spaincentral --template-file \"$bicep_file\" --parameters \"$params_file\""
     return 1
   fi
   
@@ -130,19 +128,12 @@ function analyze_common_issues() {
   
   # Check 1: Resource naming conflicts
   log_info "Checking for resource naming conflicts..."
-  if grep -q "already exists" "$LOG_FILE" 2>/dev/null; then
-    log_error "ISSUE FOUND: Resource naming conflict detected!"
-    log_error "Solution: Use unique resource names or delete existing resources"
-  fi
+  log_info "(Manual check - look for 'already exists' errors in deployment output)"
   
   # Check 2: Permission issues
   log_info "Checking for permission issues..."
-  if grep -qE "(Forbidden|Authorization|permission)" "$LOG_FILE" 2>/dev/null; then
-    log_error "ISSUE FOUND: Permission/Authorization issue detected!"
-    log_error "Solution: Ensure you have Contributor role on the subscription"
-    log_info "Current user roles:"
-    az role assignment list --assignee $(az account show --query user.name -o tsv) --output table | tee -a "$LOG_FILE"
-  fi
+  log_info "Current user roles:"
+  az role assignment list --assignee $(az account show --query user.name -o tsv) --output table
   
   # Check 3: Resource provider registration
   log_info "Checking resource provider registration..."
@@ -164,7 +155,7 @@ function analyze_common_issues() {
   else
     log_error "ISSUE FOUND: Bicep template syntax error!"
     log_error "Template validation output:"
-    az bicep build --file "$bicep_file" --outfile /dev/null 2>&1 | tee -a "$LOG_FILE"
+    az bicep build --file "$bicep_file" --outfile /dev/null 2>&1
   fi
   
   # Check 5: Subscription limits and quotas
@@ -192,28 +183,28 @@ function get_deployment_errors() {
   az deployment sub show \
     --name "$deployment_name" \
     --query "{name:name,state:properties.provisioningState,timestamp:properties.timestamp,error:properties.error}" \
-    --output table | tee -a "$LOG_FILE"
+    --output table
   
   # Get failed operations with more detail
   log_info "Failed operations:"
   az deployment sub operation list \
     --name "$deployment_name" \
     --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,Error:properties.statusMessage.error.message,Code:properties.statusMessage.error.code,Details:properties.statusMessage.error.details[0].message}" \
-    --output table | tee -a "$LOG_FILE"
+    --output table
   
   # Get the full error JSON for the failed operations
   log_info "Detailed error information (JSON):"
   az deployment sub operation list \
     --name "$deployment_name" \
     --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,FullError:properties.statusMessage}" \
-    --output json | tee -a "$LOG_FILE"
+    --output json
   
   # Get all operations for context
   log_info "All deployment operations:"
   az deployment sub operation list \
     --name "$deployment_name" \
     --query "[].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,State:properties.provisioningState,Timestamp:properties.timestamp}" \
-    --output table | tee -a "$LOG_FILE"
+    --output table
 }
 
 # Enhanced deployment function with comprehensive error handling
@@ -237,9 +228,6 @@ function deploy_with_logging() {
   local start_time=$(date +%s)
   log_info "Beginning Azure deployment..."
   
-  # Create a detailed deployment log file for this specific deployment
-  local deployment_log="${deployment_name}-$(date +%Y%m%d-%H%M%S).log"
-  
   # Attempt deployment with comprehensive logging
   if az deployment sub create \
     --name "$deployment_name" \
@@ -248,21 +236,20 @@ function deploy_with_logging() {
     --parameters "$params_file" \
     --verbose \
     --debug \
-    --output json > "$deployment_log" 2>&1; then
+    --output json > /dev/null 2>&1; then
     
     # Success case
     local end_time=$(date +%s)
     local duration=$((end_time - start_time))
     
     log_info "$description deployment completed successfully in ${duration} seconds"
-    log_info "Deployment output saved to: $deployment_log"
     
     # Show deployment outputs if any
     log_info "Deployment outputs:"
     az deployment sub show \
       --name "$deployment_name" \
       --query "properties.outputs" \
-      --output table | tee -a "$LOG_FILE"
+      --output table
     
     return 0
   else
@@ -271,11 +258,6 @@ function deploy_with_logging() {
     local duration=$((end_time - start_time))
     
     log_error "$description deployment failed after ${duration} seconds"
-    log_error "Deployment output saved to: $deployment_log"
-    
-    # Display the deployment output for immediate debugging
-    log_error "Deployment command output:"
-    cat "$deployment_log" | tee -a "$LOG_FILE"
     
     # Get detailed error information
     get_deployment_errors "$deployment_name"
@@ -288,15 +270,15 @@ function deploy_with_logging() {
     
     # Check Azure CLI version
     log_info "Azure CLI version:"
-    az version | tee -a "$LOG_FILE"
+    az version
     
     # Check current subscription context
     log_info "Current Azure context:"
-    az account show --query "{subscriptionId:id,subscriptionName:name,tenantId:tenantId,user:user.name}" --output table | tee -a "$LOG_FILE"
+    az account show --query "{subscriptionId:id,subscriptionName:name,tenantId:tenantId,user:user.name}" --output table
     
     # Check resource providers
     log_info "Resource provider registration status:"
-    az provider list --query "[?contains(['Microsoft.ManagedIdentity','Microsoft.ContainerRegistry','Microsoft.Resources'], namespace)].{Namespace:namespace,State:registrationState}" --output table | tee -a "$LOG_FILE"
+    az provider list --query "[?contains(['Microsoft.ManagedIdentity','Microsoft.ContainerRegistry','Microsoft.Resources'], namespace)].{Namespace:namespace,State:registrationState}" --output table
     
     return 1
   fi
@@ -424,33 +406,33 @@ function run_diagnostics() {
   
   # Check Azure CLI version
   log_info "Azure CLI version:"
-  az version | tee -a "$LOG_FILE"
+  az version
   
   # Check authentication status
   log_info "Current Azure authentication:"
-  az account show --output table | tee -a "$LOG_FILE"
+  az account show --output table
   
   # Check subscription access
   log_info "Available subscriptions:"
-  az account list --query "[].{Name:name,SubscriptionId:id,State:state,IsDefault:isDefault}" --output table | tee -a "$LOG_FILE"
+  az account list --query "[].{Name:name,SubscriptionId:id,State:state,IsDefault:isDefault}" --output table
   
   # Check resource provider registration
   log_info "Resource provider registration status:"
-  az provider list --query "[?contains(['Microsoft.ManagedIdentity','Microsoft.ContainerRegistry','Microsoft.Resources','Microsoft.ContainerInstance','Microsoft.App'], namespace)].{Namespace:namespace,State:registrationState}" --output table | tee -a "$LOG_FILE"
+  az provider list --query "[?contains(['Microsoft.ManagedIdentity','Microsoft.ContainerRegistry','Microsoft.Resources','Microsoft.ContainerInstance','Microsoft.App'], namespace)].{Namespace:namespace,State:registrationState}" --output table
   
   # Check recent deployments
   log_info "Recent subscription deployments:"
-  az deployment sub list --query "[].{Name:name,State:properties.provisioningState,Timestamp:properties.timestamp}" --output table | tee -a "$LOG_FILE"
+  az deployment sub list --query "[].{Name:name,State:properties.provisioningState,Timestamp:properties.timestamp}" --output table
   
   # Check resource groups
   log_info "Existing resource groups (filtered for secure-secret-sharer):"
-  az group list --query "[?contains(name, 'ssharer') || contains(name, 'secure-secret')].{Name:name,State:properties.provisioningState,Location:location}" --output table | tee -a "$LOG_FILE"
+  az group list --query "[?contains(name, 'ssharer') || contains(name, 'secure-secret')].{Name:name,State:properties.provisioningState,Location:location}" --output table
   
   # Check quotas for common resources
   log_info "Subscription quota information:"
-  az vm list-usage --location "spaincentral" --query "[?contains(name.value, 'cores') || contains(name.value, 'Core')].{Resource:name.localizedValue,Current:currentValue,Limit:limit}" --output table | tee -a "$LOG_FILE"
+  az vm list-usage --location "spaincentral" --query "[?contains(name.value, 'cores') || contains(name.value, 'Core')].{Resource:name.localizedValue,Current:currentValue,Limit:limit}" --output table
   
-  echo "✅ Diagnostics completed. Check $LOG_FILE for detailed output."
+  echo "✅ Diagnostics completed."
 }
 
 # =====================================================
@@ -614,13 +596,6 @@ echo "1. Verify resource groups are created in the Azure portal"
 echo "2. Update GitHub repository secrets with UAMI client IDs"
 echo "3. Deploy workload-specific infrastructure (AKS, Container Apps, etc.)"
 echo "4. Test GitHub Actions workflows with federated authentication"
-echo ""
-echo "📄 Generated logs and files:"
-echo "   Main log: $LOG_FILE"
-if ls *-$(date +%Y%m%d)*.log 1> /dev/null 2>&1; then
-  echo "   Deployment logs:"
-  ls -la *-$(date +%Y%m%d)*.log 2>/dev/null || true
-fi
 echo ""
 echo "💡 For troubleshooting: ./deploy-landing-zone.sh diagnostics"
 
