@@ -35,7 +35,16 @@ jobs:
         run: |
           echo "Running what-if analysis for resource group: ${{ env.SHARED_RG_NAME }}"
           echo "ACR Name: ${{ vars.ACR_NAME }}"
-            # Run what-if analysis
+          
+          # Check if resource group exists
+          if ! az group show --name "${{ env.SHARED_RG_NAME }}" &>/dev/null; then
+            echo "❌ Resource group '${{ env.SHARED_RG_NAME }}' does not exist"
+            echo "Creating resource group..."
+            az group create --name "${{ env.SHARED_RG_NAME }}" --location "${{ vars.AZURE_REGION }}"
+          fi
+          
+          # Run what-if analysis with better error handling
+          set +e  # Don't exit on error
           whatif_output=$(az deployment group what-if \
             --resource-group "${{ env.SHARED_RG_NAME }}" \
             --template-file ./infra/shared-infra.bicep \
@@ -43,6 +52,25 @@ jobs:
                          resourceLocation="${{ vars.AZURE_REGION }}" \
                          tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions"}' \
             --result-format FullResourcePayloads 2>&1)
+          exit_code=$?
+          set -e  # Re-enable exit on error
+          
+          if [ $exit_code -ne 0 ]; then
+            echo "❌ What-if analysis failed with exit code: $exit_code"
+            echo "Error output:"
+            echo "$whatif_output"
+            
+            # Check for common issues
+            if echo "$whatif_output" | grep -q "ResourceGroupNotFound"; then
+              echo "Issue: Resource group not found"
+            elif echo "$whatif_output" | grep -q "InvalidTemplate"; then
+              echo "Issue: Invalid Bicep template"
+            elif echo "$whatif_output" | grep -q "AuthorizationFailed"; then
+              echo "Issue: Insufficient permissions"
+            fi
+            
+            exit $exit_code
+          fi
           
           echo "What-if analysis completed"
           echo "$whatif_output"
