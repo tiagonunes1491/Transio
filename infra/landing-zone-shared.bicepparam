@@ -33,14 +33,20 @@ param gitHubRepositoryName = 'SecureSharer'
 param workloadIdentities = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'shared-infra'
+        ENV: 'shared-protected'
         ROLE: 'contributor'
-        federationTypes: 'branch,environment'
+        federationTypes: 'environment'
     }
     push: {
         UAMI: 'uami-ssharer-acr-push'
-        ENV: 'shared-artifacts'
+        ENV: 'shared'
         ROLE: 'AcrPush'
+        federationTypes: 'environment'
+    }
+    reader: {
+        UAMI: 'uami-ssharer-shared-infra-reader'
+        ENV: 'shared'
+        ROLE: 'reader'
         federationTypes: 'environment'
     }
 }

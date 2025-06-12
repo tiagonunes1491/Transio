@@ -8,6 +8,7 @@ jobs:
   what-if-analysis:
     name: 'What-If Analysis'
     runs-on: ubuntu-latest
+    environment: shared
     permissions:
       contents: read
       id-token: write
@@ -23,7 +24,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_CONT }}
+          client-id: ${{ secrets.CLIENTID_ART_READONLY }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -109,7 +110,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    environment: shared-infra
+    environment: shared-protected
     steps:
       - name: 'Display Approved Plan'
         run: |
@@ -133,7 +134,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.ClientID_Art_Cont }}
+          client-id: ${{ secrets.CLIENTID_ART_CONT }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
