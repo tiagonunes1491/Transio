@@ -9,7 +9,7 @@ on:
     paths:
       - 'infra/shared-infra.bicep'
       - 'infra/shared-infra-modules/**'
-      
+  workflow_dispatch:
 jobs:
   what-if-and-deploy:
     name: 'What-If Analysis and Deploy'
