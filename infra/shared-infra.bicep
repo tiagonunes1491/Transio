@@ -26,7 +26,7 @@ param acrSku string = 'Premium'
 param acrEnableAdminUser bool = false
 
 
-module acr 'common-modules/acr.bicep' = {
+module acr 'shared-infra-modules/acr.bicep' = {
   name: 'acr'
   params: {
     tags: tags

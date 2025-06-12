@@ -50,3 +50,6 @@ param workloadIdentities = {
         federationTypes: 'environment'
     }
 }
+
+@description('Custom Reader with What-If Role Definition GUID (for use with custom RBAC roles)')
+param ReaderWhatIfRoleDefinitionGuid = 'aee7b237-3e6a-47dc-a26e-4311ca4644ff'
