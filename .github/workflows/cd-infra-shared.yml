@@ -27,7 +27,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_CONT }}
+          client-id: ${{ secrets.CLIENTID_ART_READONLY }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -86,6 +86,7 @@ jobs:
           $whatif_output
           \`\`\`
           EOF
+
 
       - name: 'Review Period'
         if: steps.whatif.outputs.has-changes == 'true'
