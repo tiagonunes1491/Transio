@@ -46,10 +46,12 @@ param workloadIdentities object = {
 
 var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
 var AcrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
+var ReaderRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/acdd72a7-3385-48ef-bd42-f606fba81ae7' // Reader role definition ID
 
 var roleIdMap = {
   contributor: ContributorRoleDefinitionId
   AcrPush: AcrPushRoleDefinitionId
+  reader: ReaderRoleDefinitionId
 }
 
 // =====================
