@@ -1,0 +1,30 @@
+name: Called Workflow
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: environment to deploy to
+        required: true
+    secrets:
+      PASSWORD:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    
+    steps:
+    - name: Dump Password
+      run: |
+        echo Password is $PASSWORD
+        if [[ $PASSWORD == *"password"* ]]; then
+          echo "This is the UAT password!"
+        else
+          echo "This is NOT the UAT password!"
+        fi
+      env:
+        PASSWORD: ${{ secrets.PASSWORD }}
