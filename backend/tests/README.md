@@ -28,6 +28,14 @@ This directory contains comprehensive unit tests for the SecureSharer backend ap
 ### Prerequisites
 
 1. Install test dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+This includes:
+- `pytest==8.3.4` - Testing framework
+- `pytest-flask==1.3.0` - Flask testing utilities  
+- `pytest-cov==6.0.0` - Coverage measurement plugin
    ```bash
    pip install -r requirements.txt
    ```
@@ -40,11 +48,24 @@ This directory contains comprehensive unit tests for the SecureSharer backend ap
 ### Run All Tests
 
 ```bash
-# Using the provided script
+# Using the provided script (includes coverage measurement)
 ./run_tests.sh
 
 # Or manually
 MASTER_ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())") python -m pytest tests/ -v
+```
+
+### Run Tests with Coverage
+
+```bash
+# Full test suite with coverage report
+./run_tests.sh
+
+# Individual modules with coverage
+MASTER_ENCRYPTION_KEY=<key> python -m pytest tests/test_encryption.py -v --cov=app --cov-report=term-missing
+
+# Generate HTML coverage report
+MASTER_ENCRYPTION_KEY=<key> python -m pytest tests/ --cov=app --cov-report=html:htmlcov
 ```
 
 ### Run Specific Test Categories
@@ -61,6 +82,45 @@ python -m pytest tests/test_security.py -v  # SQL injection resistance
 python -m pytest tests/test_penetration.py -v  # Advanced penetration testing
 python -m pytest tests/test_comprehensive_owasp.py -v  # OWASP Top 10 coverage
 ```
+
+## Code Coverage
+
+The test suite includes comprehensive code coverage measurement using `pytest-cov`. 
+
+### Coverage Metrics
+- **Coverage Target**: 90% minimum threshold
+- **Coverage Scope**: All `app/` source code modules
+- **Reporting**: Terminal summary + detailed HTML reports
+
+### Coverage Reports
+
+#### Terminal Coverage Summary
+The test runner automatically generates a coverage summary showing:
+- Coverage percentage per module
+- Missing line numbers for uncovered code  
+- Overall coverage statistics
+
+```
+Name                Stmts   Miss  Cover   Missing
+-------------------------------------------------
+app/__init__.py         4      0   100%
+app/encryption.py      46      2    96%   23, 67
+app/main.py            72      1    99%   45
+app/models.py          10      0   100%
+app/storage.py         71      3    96%   89, 112, 134
+-------------------------------------------------
+TOTAL                 203      6    97%
+```
+
+#### HTML Coverage Report
+Detailed line-by-line coverage visualization available in `htmlcov/index.html`:
+- Interactive coverage visualization
+- Highlighted uncovered lines
+- Sortable coverage statistics
+- Detailed per-file analysis
+
+### Coverage Configuration
+See `pytest.ini` for coverage settings and `tests/COVERAGE_GUIDE.md` for detailed usage instructions.
 
 ## Test Coverage
 

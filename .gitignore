@@ -12,6 +12,11 @@ __pycache__/
 *.pyo
 *.pyd
 
+# Coverage reports
+htmlcov/
+.coverage
+coverage.xml
+
 # IDE and OS specific
 .vscode/
 .idea/
