@@ -8,31 +8,31 @@ The E2E testing suite provides complete user workflow validation using Playwrigh
 
 ## Test Suite Statistics
 
-- **Total E2E Tests**: 78 tests across 4 comprehensive test suites
+- **Total E2E Tests**: 69 tests across 4 comprehensive test suites
 - **Test Coverage**: Complete user workflows, error scenarios, and edge cases
 - **Browser Support**: Chromium, Firefox, WebKit, Mobile Chrome, Mobile Safari
 - **Test Categories**: 
-  - Secret Creation Workflow (16 tests)
-  - Secret Viewing Workflow (20 tests) 
-  - Navigation and UI Interactions (20 tests)
-  - Error Handling and Edge Cases (22 tests)
+  - Secret Creation Workflow (15 tests)
+  - Secret Viewing Workflow (19 tests) 
+  - Navigation and UI Interactions (15 tests)
+  - Error Handling and Edge Cases (20 tests)
 
 ## Test Files Structure
 
 ```
 frontend/e2e/
 ├── README.md                     # E2E testing documentation
-├── secret-creation.spec.js       # Secret creation workflow tests (16 tests)
-├── secret-viewing.spec.js        # Secret viewing workflow tests (20 tests)
-├── navigation.spec.js            # Navigation and UI interaction tests (20 tests)
-├── error-handling.spec.js        # Error scenarios and edge cases (22 tests)
+├── secret-creation.spec.js       # Secret creation workflow tests (15 tests)
+├── secret-viewing.spec.js        # Secret viewing workflow tests (19 tests)
+├── navigation.spec.js            # Navigation and UI interaction tests (15 tests)
+├── error-handling.spec.js        # Error scenarios and edge cases (20 tests)
 └── helpers/
     └── test-helpers.js           # Shared utilities and helper functions
 ```
 
 ## Key Testing Areas
 
-### 🔐 Secret Creation Workflow (16 tests)
+### 🔐 Secret Creation Workflow (15 tests)
 - **Valid Input Processing**: Testing successful secret creation with various input types
 - **Form Validation**: Empty input handling, whitespace validation
 - **Special Content**: Unicode, HTML, control characters, binary data
@@ -52,7 +52,7 @@ test('should show loading state during secret creation')
 test('should maintain secret history in localStorage')
 ```
 
-### 👁️ Secret Viewing Workflow (20 tests)
+### 👁️ Secret Viewing Workflow (19 tests)
 - **Access Flow**: Initial secret availability checking and reveal process
 - **Content Display**: Proper secret content rendering and security
 - **One-Time Access**: Ensuring secrets are deleted after viewing
@@ -72,7 +72,7 @@ test('should open and close help modal')
 test('should handle API errors during secret retrieval')
 ```
 
-### 🧭 Navigation and UI Interactions (20 tests)
+### 🧭 Navigation and UI Interactions (15 tests)
 - **Page Navigation**: Home ↔ View page transitions
 - **Scroll Behavior**: Floating buttons, section navigation
 - **Responsive Layout**: Multi-device compatibility testing
@@ -92,7 +92,7 @@ test('should handle keyboard navigation')
 test('should handle browser back/forward navigation')
 ```
 
-### ⚠️ Error Handling and Edge Cases (22 tests)
+### ⚠️ Error Handling and Edge Cases (20 tests)
 - **Network Scenarios**: Complete failures, slow connections, server errors, rate limiting
 - **Invalid Input**: Extremely long messages, whitespace-only, control characters, binary data
 - **Browser Compatibility**: Missing APIs (localStorage, clipboard, fetch)

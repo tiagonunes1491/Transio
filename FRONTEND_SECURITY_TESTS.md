@@ -3,6 +3,15 @@
 ## Overview
 Successfully implemented comprehensive security-focused unit tests for the SecureSharer frontend application, covering all JavaScript files with **complete OWASP Top 10 (2021) compliance** and extensive penetration testing scenarios.
 
+## Test Statistics
+
+**Total Security Tests: 120 tests** across 5 comprehensive test suites:
+- `utils.test.js` - 20 tests (Utility functions security)
+- `index.test.js` - 19 tests (Main page security) 
+- `view.test.js` - 22 tests (Secret viewing security)
+- `owasp-pentesting.test.js` - 40 tests (OWASP Top 10 + Advanced penetration testing)
+- `advanced-security.test.js` - 19 tests (DoS protection & advanced security)
+
 ## Implementation Details
 
 ### Test Framework Setup
