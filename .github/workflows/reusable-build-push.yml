@@ -46,14 +46,9 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ env.CLIENTID }}
-          tenant-id: ${{ env.TENANTID }}
-          subscription-id: ${{ env.SUBSCRIPTIONID }}
-
-        env:
-          CLIENTID: ${{ secrets.CLIENTID }}
-          TENANTID: ${{ secrets.TENANTID }}
-          SUBSCRIPTIONID: ${{ secrets.SUBSCRIPTIONID }}
+          client-id: ${{ secrets.CLIENTID }}
+          tenant-id: ${{ secrets.TENANTID }}
+          subscription-id: ${{ secrets.SUBSCRIPTIONID }}
           
       - name: Get ACR access token
         id: acr_token
