@@ -2,6 +2,14 @@ name: 'CD - Release backend container to ACR'
 on:
     push:
         branches: [main]
+        paths:
+        # --- TRIGGER on changes to these files ---
+        - 'backend/**/*.py'
+        - 'backend/requirements.txt'
+        - 'backend/Dockerfile'
+
+        # --- IGNORE changes in this subdirectory ---
+        - '!backend/tests/**'
 jobs:
   build_and_push_image:
     name: Build and Push Image to ACR
