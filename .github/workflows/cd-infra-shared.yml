@@ -21,45 +21,13 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: 'Echo Client ID'
-        run: echo "CLIENTID_ART_READONLY=${{ secrets.CLIENTID_ART_READONLY }}"
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_ART_READONLY }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      ##- name: 'Login to Azure'
-      ##  uses: azure/login@v2
-      ##  with:
-      ##    client-id: ${{ secrets.CLIENTID_ART_READONLY }}
-      ##   tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-      ##    subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      
-      - name: 'Manual Azure Login'
-        env:
-          AZURE_CLIENT_ID: ${{ secrets.CLIENTID_ART_READONLY }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_FEDERATED_TOKEN_FILE: ${{ runner.temp }}/azure-federated-token
-        run: |
-          # Get the OIDC token from GitHub
-          echo "Getting OIDC token from GitHub..."
-          
-          # Request OIDC token
-          OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=api://AzureADTokenExchange" | jq -r '.value')
-          
-          # Save token to file
-          echo $OIDC_TOKEN > $AZURE_FEDERATED_TOKEN_FILE
-          
-          # Login to Azure using federated identity
-          echo "Logging in to Azure..."
-          az login --service-principal \
-            --username $AZURE_CLIENT_ID \
-            --tenant $AZURE_TENANT_ID \
-            --federated-token $OIDC_TOKEN
-          
-          # Set the subscription
-          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          
-          # Verify login
-          echo "Current Azure account:"
-          az account show
       - name: 'Run What-If Analysis'
         id: whatif
         env:
@@ -67,7 +35,31 @@ jobs:
         run: |
           echo "Running what-if analysis for resource group: ${{ env.SHARED_RG_NAME }}"
           echo "ACR Name: ${{ vars.ACR_NAME }}"
-            # Run what-if analysis
+          
+          # First, let's verify the resource group exists
+          echo "Checking if resource group exists..."
+          if az group show --name "${{ env.SHARED_RG_NAME }}" 2>/dev/null; then
+            echo "✅ Resource group '${{ env.SHARED_RG_NAME }}' exists"
+          else
+            echo "❌ Resource group '${{ env.SHARED_RG_NAME }}' does not exist"
+            echo "Creating resource group..."
+            az group create --name "${{ env.SHARED_RG_NAME }}" --location "${{ vars.AZURE_REGION }}"
+          fi
+          
+          # Check if the bicep file exists
+          if [ -f "./infra/shared-infra.bicep" ]; then
+            echo "✅ Bicep file exists at ./infra/shared-infra.bicep"
+          else
+            echo "❌ Bicep file not found at ./infra/shared-infra.bicep"
+            echo "Current directory: $(pwd)"
+            echo "Files in infra directory:"
+            ls -la ./infra/ || echo "infra directory not found"
+            exit 1
+          fi
+          
+          # Run what-if analysis with better error handling
+          echo "Running what-if analysis..."
+          set +e  # Don't exit on error
           whatif_output=$(az deployment group what-if \
             --resource-group "${{ env.SHARED_RG_NAME }}" \
             --template-file ./infra/shared-infra.bicep \
@@ -75,6 +67,15 @@ jobs:
                          resourceLocation="${{ vars.AZURE_REGION }}" \
                          tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions"}' \
             --result-format FullResourcePayloads 2>&1)
+          exit_code=$?
+          set -e  # Re-enable exit on error
+          
+          if [ $exit_code -ne 0 ]; then
+            echo "❌ What-if analysis failed with exit code: $exit_code"
+            echo "Error output:"
+            echo "$whatif_output"
+            exit 1
+          fi
           
           echo "What-if analysis completed"
           echo "$whatif_output"
@@ -142,7 +143,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    environment: shared-protected
+    environment: shared-infra
     steps:
       - name: 'Display Approved Plan'
         run: |
@@ -163,9 +164,6 @@ jobs:
         with:
           fetch-depth: 0
             
-      - name: 'Echo Client ID'
-        run: echo "CLIENTID_ART_CONT=${{ secrets.CLIENTID_ART_CONT }}"
-
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
