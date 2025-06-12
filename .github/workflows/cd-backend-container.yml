@@ -23,6 +23,5 @@ jobs:
       build-context: './backend'
       acr-name: ${{ vars.ACR_NAME }}
     secrets:
-      AZURE_CLIENT_ID: ${{ secrets.CLIENTID_ART_PUSH }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
