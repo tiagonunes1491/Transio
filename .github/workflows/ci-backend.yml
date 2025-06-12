@@ -1,11 +1,5 @@
-name: "CI - Backend Workflows"
+name: "CI - Backend PR Validation"
 on: 
-  push:
-    branches:
-      - '**'
-    paths:
-      - 'backend/**'
-
   pull_request:
     branches:
       - 'main'
@@ -70,7 +64,7 @@ jobs:
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
       paths: 'backend/requirements.txt'
-
+    
   backend_tests:
     needs: check_changes
     name: 'Backend Unit Tests & Coverage'
@@ -117,22 +111,3 @@ jobs:
           else
             echo "All required checks passed or were skipped. Proceeding."
           fi
-
-  build_and_push_image:
-    name: Build and Push Image to ACR
-    # This job depends on ALL previous checks. It will only start if they all succeed.
-    needs: check_results
-    permissions:
-      id-token: write   # Required to get the OIDC token for Azure login
-      contents: read    # Required by actions/checkout to read the repo
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/reusable-build-push.yml
-    with:
-      dockerfile-path: 'backend/Dockerfile'
-      image-name: 'backend-app'
-      build-context: './backend'
-      acr-name: ${{ vars.ACR_NAME }}
-    secrets:
-      AZURE_CLIENT_ID: ${{ secrets.ClientID_Art_Cont }}
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
