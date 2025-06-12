@@ -10,4 +10,4 @@ python -m pytest tests/ -v
 
 echo ""
 echo "Test run completed. All tests should pass."
-echo "Total test count: $(python -m pytest tests/ --collect-only -q 2>/dev/null | grep -c "test session starts" 2>/dev/null || echo "78")"
+echo "Total test count: $(python -c "import subprocess; result = subprocess.run(['python', '-m', 'pytest', 'tests/', '--collect-only', '-q'], capture_output=True, text=True); print(len([line for line in result.stdout.split('\n') if '::' in line and 'test_' in line]))")"
