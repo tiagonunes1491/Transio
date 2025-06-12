@@ -1,0 +1,17 @@
+az role definition create --role-definition '{
+  "Name": "ResourceGroupWhatIfReader",
+  "Description": "Read access to resource group with what-if deployment capability",
+  "Actions": [
+    "Microsoft.Resources/subscriptions/resourceGroups/read",
+    "Microsoft.Resources/subscriptions/resourceGroups/resources/read",
+    "*/read",
+    "Microsoft.Resources/deployments/read",
+    "Microsoft.Resources/deployments/whatIf/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": [
+    "/subscriptions/YOUR_SUBSCRIPTION_ID"
+  ]
+}'
