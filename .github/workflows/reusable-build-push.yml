@@ -21,6 +21,11 @@ on:
         required: true
         type: string
         description: 'Name of the Azure Container Registry'
+      environment:
+        required: true
+        type: string
+        description: 'GitHub environment to use'
+        default: 'shared'
     secrets:
       AZURE_TENANT_ID:
         required: true
@@ -30,8 +35,8 @@ on:
 jobs:
   build-and-push:
     name: Build and Push Image
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    environment: shared
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
