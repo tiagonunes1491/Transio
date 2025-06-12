@@ -43,12 +43,6 @@ param workloadIdentities = {
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
-    readerWithWhatIf: {
-        UAMI: 'uami-ssharer-shared-infra-reader'
-        ENV: 'shared'
-        ROLE: 'readerWithWhatIf'
-        federationTypes: 'environment'
-    }
 }
 
 @description('Custom Reader with What-If Role Definition GUID (for use with custom RBAC roles)')

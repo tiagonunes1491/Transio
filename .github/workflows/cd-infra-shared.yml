@@ -5,16 +5,13 @@ name: 'CD - Shared Infrastructure (ACR)'
 on:
   workflow_dispatch:
 jobs:
-  what-if-analysis:
-    name: 'What-If Analysis'
+  what-if-and-deploy:
+    name: 'What-If Analysis and Deploy'
     runs-on: ubuntu-latest
-    environment: shared
+    environment: shared-protected
     permissions:
       contents: read
       id-token: write
-    outputs:
-      what-if-results: ${{ steps.whatif.outputs.results }}
-      has-changes: ${{ steps.check-changes.outputs.has-changes }}
     steps:
       - name: 'Checkout Code'
         uses: actions/checkout@v4
@@ -24,7 +21,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_READONLY }}
+          client-id: ${{ secrets.CLIENTID_ART_CONT }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -33,33 +30,16 @@ jobs:
         env:
           SHARED_RG_NAME: ${{ vars.SHARED_RG_NAME }}
         run: |
-          echo "Running what-if analysis for resource group: ${{ env.SHARED_RG_NAME }}"
-          echo "ACR Name: ${{ vars.ACR_NAME }}"
+          echo "Running what-if analysis..."
           
-          # First, let's verify the resource group exists
-          echo "Checking if resource group exists..."
-          if az group show --name "${{ env.SHARED_RG_NAME }}" 2>/dev/null; then
-            echo "✅ Resource group '${{ env.SHARED_RG_NAME }}' exists"
-          else
-            echo "❌ Resource group '${{ env.SHARED_RG_NAME }}' does not exist"
+          # Ensure resource group exists
+          if ! az group show --name "${{ env.SHARED_RG_NAME }}" 2>/dev/null; then
             echo "Creating resource group..."
             az group create --name "${{ env.SHARED_RG_NAME }}" --location "${{ vars.AZURE_REGION }}"
           fi
           
-          # Check if the bicep file exists
-          if [ -f "./infra/shared-infra.bicep" ]; then
-            echo "✅ Bicep file exists at ./infra/shared-infra.bicep"
-          else
-            echo "❌ Bicep file not found at ./infra/shared-infra.bicep"
-            echo "Current directory: $(pwd)"
-            echo "Files in infra directory:"
-            ls -la ./infra/ || echo "infra directory not found"
-            exit 1
-          fi
-          
-          # Run what-if analysis with better error handling
-          echo "Running what-if analysis..."
-          set +e  # Don't exit on error
+          # Run what-if analysis
+          set +e
           whatif_output=$(az deployment group what-if \
             --resource-group "${{ env.SHARED_RG_NAME }}" \
             --template-file ./infra/shared-infra.bicep \
@@ -68,7 +48,7 @@ jobs:
                          tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions"}' \
             --result-format FullResourcePayloads 2>&1)
           exit_code=$?
-          set -e  # Re-enable exit on error
+          set -e
           
           if [ $exit_code -ne 0 ]; then
             echo "❌ What-if analysis failed with exit code: $exit_code"
@@ -77,133 +57,92 @@ jobs:
             exit 1
           fi
           
-          echo "What-if analysis completed"
           echo "$whatif_output"
           
-          # Save results for next job
-          echo "results<<EOF" >> $GITHUB_OUTPUT
-          echo "$whatif_output" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: 'Check for Changes'
-        id: check-changes
-        run: |
-          # Check if what-if output contains any changes
-          whatif_output="${{ steps.whatif.outputs.results }}"
-          
-          # Look for indicators of changes in the what-if output
-          if echo "$whatif_output" | grep -q "No changes detected"; then
-            echo "No changes detected in what-if analysis"
+          # Check for changes
+          if echo "$whatif_output" | grep -E -q "(Create|Modify|Delete|Deploy)"; then
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "⚠️ CHANGES DETECTED - Deployment will proceed after review period"
+          else
             echo "has-changes=false" >> $GITHUB_OUTPUT
-          elif echo "$whatif_output" | grep -E -q "(Create|Modify|Delete|Deploy)"; then
-            echo "Changes detected in what-if analysis"
-            echo "has-changes=true" >> $GITHUB_OUTPUT
-          else
-            # Default to true if we can't determine
-            echo "Unable to determine changes, defaulting to deployment"
-            echo "has-changes=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 'Create What-If Summary'
-        env:
-          SHARED_RG_NAME: ${{ vars.SHARED_RG_NAME }}
-        run: |
-          if [[ "${{ steps.check-changes.outputs.has-changes }}" == "true" ]]; then
-            deployment_status="🚀 **Deployment Required** - Changes detected"
-          else
-            deployment_status="✅ **No Deployment Needed** - No changes detected"
+            echo "✅ No changes detected"
           fi
           
+          # Save to summary
           cat << EOF >> $GITHUB_STEP_SUMMARY
           ## 🔍 What-If Analysis Results
-            **Target Resource Group:** \`${{ env.SHARED_RG_NAME }}\`
-          **ACR Name:** \`${{ vars.ACR_NAME }}\`
-          **Environment:** \`shared\`
           
-          ### Status: $deployment_status
+          **Target Resource Group:** \`${{ env.SHARED_RG_NAME }}\`
+          **ACR Name:** \`${{ vars.ACR_NAME }}\`
           
           ### Changes Preview:
           \`\`\`
-          ${{ steps.whatif.outputs.results }}
+          $whatif_output
           \`\`\`
-          
           EOF
-          
-          if [[ "${{ steps.check-changes.outputs.has-changes }}" == "true" ]]; then
-            echo "**Next Step:** Review the changes above and approve the deployment job to proceed." >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Next Step:** No action required. Infrastructure is already up to date." >> $GITHUB_STEP_SUMMARY
-          fi
 
-  deploy-shared-infrastructure:
-    name: 'Deploy Shared Infrastructure'
-    runs-on: ubuntu-latest
-    needs: what-if-analysis
-    if: needs.what-if-analysis.outputs.has-changes == 'true'
-    permissions:
-      contents: read
-      id-token: write
-    environment: shared-infra
-    steps:
-      - name: 'Display Approved Plan'
+      - name: 'Review Period'
+        if: steps.whatif.outputs.has-changes == 'true'
         run: |
-          echo "✅ Approval granted. Displaying approved changes before deployment."
+          echo "::warning::⏱️ REVIEW PERIOD: You have 5 minutes to review and cancel this workflow"
           echo ""
-          echo "🔍 WHAT-IF ANALYSIS CHANGES:"
-          echo "================================"
-          echo "${{ needs.what-if-analysis.outputs.what-if-results }}"
-          echo "================================"
+          echo "🛑 TO CANCEL: Click 'Cancel workflow' in the GitHub Actions UI"
           echo ""
-          echo "📋 DEPLOYMENT DETAILS:"
-          echo "• Target Resource Group: ${{ vars.SHARED_RG_NAME }}"
+          echo "📋 Changes to be deployed:"
+          echo "• Resource Group: ${{ vars.SHARED_RG_NAME }}"
           echo "• ACR Name: ${{ vars.ACR_NAME }}"
           echo "• Environment: shared"
+          echo ""
+          
+          # Countdown timer with better visibility
+          for i in {300..1}; do
+            if [ $((i % 60)) -eq 0 ]; then
+              echo "⏰ Time remaining: $((i / 60)) minutes"
+            elif [ $i -eq 30 ]; then
+              echo "::warning::⏰ Time remaining: 30 seconds"
+            elif [ $i -le 10 ]; then
+              echo "::warning::⏰ Time remaining: $i seconds"
+            fi
+            sleep 1
+          done
+          
+          echo "✅ Review period complete. Proceeding with deployment..."
 
-      - name: 'Checkout Code'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-            
-      - name: 'Login to Azure'
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.CLIENTID_ART_CONT }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
-      - name: 'Deploy Shared Infrastructure bicep template'
+      - name: 'Deploy Infrastructure'
+        if: steps.whatif.outputs.has-changes == 'true'
         env:
           SHARED_RG_NAME: ${{ vars.SHARED_RG_NAME }}
         run: |
-          echo "Deploying to resource group: ${{ env.SHARED_RG_NAME }}"
+          echo "🚀 Deploying infrastructure..."
+          
+          # Add deployment metadata
+          deployment_name="shared-infra-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
           
           az deployment group create \
-            --name "shared-infra-shared-${{ github.run_id }}" \
+            --name "$deployment_name" \
             --resource-group "${{ env.SHARED_RG_NAME }}" \
             --template-file ./infra/shared-infra.bicep \
             --parameters acrName="${{ vars.ACR_NAME }}" \
                          resourceLocation="${{ vars.AZURE_REGION }}" \
-                         tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions","runId":"${{ github.run_id }}"}' \
+                         tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions","runId":"${{ github.run_id }}","deploymentTime":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' \
             --verbose
-
-      - name: 'Deployment Summary'
-        env:
-          SHARED_RG_NAME: ${{ vars.SHARED_RG_NAME }}
-        run: |          
+          
           echo "✅ Deployment completed successfully!"
-          echo "Resource Group: ${{ env.SHARED_RG_NAME }}"
-          echo "ACR Name: ${{ vars.ACR_NAME }}"
-          echo "Environment: shared"
+          
+          # Show deployment outputs
+          echo "Deployment outputs:"
+          az deployment group show \
+            --name "$deployment_name" \
+            --resource-group "${{ env.SHARED_RG_NAME }}" \
+            --query properties.outputs
 
-  no-changes-summary:
-    name: 'No Changes Required'
-    runs-on: ubuntu-latest
-    needs: what-if-analysis
-    if: needs.what-if-analysis.outputs.has-changes == 'false'
-    steps:
-      - name: 'Summary'
+      - name: 'No Changes Summary'
+        if: steps.whatif.outputs.has-changes == 'false'
         run: |
-          echo "✅ Infrastructure is already up to date!"          
-          echo "No changes detected in what-if analysis."
-          echo "ACR Name: ${{ vars.ACR_NAME }}"
-          echo "Environment: shared"
+          echo "✅ Infrastructure is already up to date!"
+          echo "No deployment needed."
+          
+          # Still show current state
+          echo ""
+          echo "Current ACR state:"
+          az acr show --name "${{ vars.ACR_NAME }}" --resource-group "${{ vars.SHARED_RG_NAME }}" --query "{name:name,sku:sku.name,status:provisioningState}" -o table || echo "ACR not found"
