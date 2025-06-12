@@ -27,7 +27,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_READONLY }}
+          client-id: ${{ secrets.CLIENTID_ART_CONT }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -131,7 +131,7 @@ jobs:
             --template-file ./infra/shared-infra.bicep \
             --parameters acrName="${{ vars.ACR_NAME }}" \
                          resourceLocation="${{ vars.AZURE_REGION }}" \
-                         tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions","runId":"${{ github.run_id }}","deploymentTime":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}' \
+                         tags='{"environment":"shared","project":"${{ vars.PROJECT_NAME }}","owner":"GitHubActions"}' \
             --verbose
           
           echo "✅ Deployment completed successfully!"
