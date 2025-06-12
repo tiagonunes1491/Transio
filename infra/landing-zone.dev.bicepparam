@@ -5,10 +5,6 @@ using 'landing-zone.bicep'
 param environmentName = 'dev'
 
 
-@description('Environment name for shared resources')
-param gitHubSharedEnv = 'shared'
-
-
 @description('Location for the resources')
 param location = 'spaincentral' // Default location, can be overridden
 

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# build_dev.sh - Streamlined deployment for Secure Secret Sharer on AKS
+# build_k8s.sh - Streamlined deployment for Secure Secret Sharer on AKS
+# This script leverages the modular landing zone deployment for K8S infrastructure
 # Run inside any Ubuntu distro (e.g., WSL)
-# Usage: ./build_dev.sh [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
+# Usage: ./build_k8s.sh [--skip-landing-zone] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
 
 # Function to print timestamped messages
 log() {
@@ -16,6 +17,7 @@ log() {
 BACKEND_TAG="0.3.0"
 FRONTEND_TAG="0.3.0"
 
+SKIP_LANDING_ZONE=false
 SKIP_INFRA=false
 SKIP_CONTAINERS=false
 FULL_REBUILD=false
@@ -24,22 +26,23 @@ TEARDOWN_ONLY=false
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --skip-landing-zone) SKIP_LANDING_ZONE=true; shift ;;
     --skip-infra) SKIP_INFRA=true; shift ;;  
     --skip-containers) SKIP_CONTAINERS=true; shift ;;  
     --full-rebuild) FULL_REBUILD=true; shift ;;
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
     -h|--help) 
-      echo "Usage: $0 [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
+      echo "Usage: $0 [--skip-landing-zone] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
     *) 
       echo "Unknown option: $1"; exit 1 ;;
   esac
 done
 
 # Configuration
-DEPLOYMENT_NAME="secure-secret-sharer-deploy"
+K8S_DEPLOYMENT_NAME="secure-secret-sharer-k8s-deploy"
 LOCATION="spaincentral"
-BICEP_FILE="../infra/k8s-main.bicep"
-PARAMS_FILE="../infra/k8s-main.bicep.dev.bicepparam"
+K8S_BICEP_FILE="../infra/k8s-main.bicep"
+K8S_PARAMS_FILE="../infra/k8s-main.bicep.dev.bicepparam"
 SERVICES=("backend" "frontend")
 
 # 1) Prerequisites
@@ -52,7 +55,7 @@ log "INFO" "Prerequisites OK"
 
 # Teardown-only mode: delete resources and exit
 if [[ "$TEARDOWN_ONLY" == true ]]; then
-  log "INFO" "Teardown-only mode: deleting 'rg-secure-secret-sharer-dev' and purging Key Vault..."
+  log "INFO" "Teardown-only mode: deleting K8S resources and landing zone..."
   
   # Delete Helm deployment first (if exists)
   log "INFO" "Checking for existing Helm deployment..."
@@ -64,11 +67,9 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
     log "INFO" "No Helm deployment found or helm not available, skipping..."
   fi
   
-  log "INFO" "Deleting resource group (this may take several minutes)..."
-  az group delete --name rg-secure-secret-sharer-dev --yes --verbose
-  
-  log "INFO" "Purging Key Vault (this may take a few minutes)..."
-  az keyvault purge --name kv-securesharer-dev --location spaincentral --verbose
+  # Use the landing zone teardown functionality
+  log "INFO" "Tearing down K8S landing zone and resources..."
+  ./deploy-landing-zone.sh teardown
   
   # Clean up local kubectl context (optional)
   log "INFO" "Cleaning up local kubectl context..."
@@ -85,26 +86,35 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
   exit 0
 fi
 
-# 1) Full rebuild teardown
+# Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
-  log "INFO" "Full rebuild requested: tearing down 'rg-secure-secret-sharer-dev'..."
-  log "INFO" "Deleting resource group (this may take several minutes)..."
-  az group delete --name rg-secure-secret-sharer-dev --yes --verbose
+  log "INFO" "Full rebuild requested: tearing down K8S landing zone and resources..."
   
-  log "INFO" "Purging Key Vault (this may take a few minutes)..."
-  az keyvault purge --name kv-securesharer-dev --location spaincentral --verbose
+  # Use the landing zone teardown functionality
+  ./deploy-landing-zone.sh teardown
   log "INFO" "Teardown completed"
 fi
 
-# 2) Deploy infrastructure
-if [[ "$SKIP_INFRA" == false ]]; then
-  log "INFO" "Deploying Bicep infrastructure (this may take 10-15 minutes)..."
-  log "INFO" "You will see detailed deployment progress below..."
-  az deployment sub create --template-file "$BICEP_FILE" --parameters "$PARAMS_FILE" --location "$LOCATION" \
-    --name "$DEPLOYMENT_NAME" --verbose
-  log "INFO" "Infrastructure deployment completed"
+# 1) Deploy K8S landing zone infrastructure
+if [[ "$SKIP_LANDING_ZONE" == false ]]; then
+  log "INFO" "Deploying K8S landing zone (shared + K8S spoke)..."
+  log "INFO" "This includes user-assigned managed identities and GitHub federation..."
+  ./deploy-landing-zone.sh k8s
+  log "INFO" "K8S landing zone deployment completed"
 else
-  log "INFO" "Skipping infrastructure deployment"
+  log "INFO" "Skipping K8S landing zone deployment"
+fi
+
+# 2) Deploy K8S infrastructure (AKS, networking, etc.)
+if [[ "$SKIP_INFRA" == false ]]; then
+  log "INFO" "Deploying K8S infrastructure (AKS, networking, etc.)..."
+  log "INFO" "This may take 10-15 minutes..."
+  log "INFO" "You will see detailed deployment progress below..."
+  az deployment sub create --template-file "$K8S_BICEP_FILE" --parameters "$K8S_PARAMS_FILE" --location "$LOCATION" \
+    --name "$K8S_DEPLOYMENT_NAME" --verbose
+  log "INFO" "K8S infrastructure deployment completed"
+else
+  log "INFO" "Skipping K8S infrastructure deployment"
 fi
 
 # 3) Retrieve outputs from Bicep deployment
@@ -112,18 +122,18 @@ log "INFO" "Retrieving deployment outputs from Azure..."
 log "INFO" "This may take a moment while querying the deployment state..."
 
 # Core infrastructure outputs
-AKS_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.aksName.value -o tsv)
-RESOURCE_GROUP=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.resourceGroupName.value -o tsv)
-ACR_LOGIN_SERVER=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
-APP_GW_IP=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.appGwPublicIp.value -o tsv)
+AKS_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.aksName.value -o tsv)
+RESOURCE_GROUP=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.resourceGroupName.value -o tsv)
+ACR_LOGIN_SERVER=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
+APP_GW_IP=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.appGwPublicIp.value -o tsv)
 
 # Azure configuration outputs for Helm
-TENANT_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.tenantId.value -o tsv)
-KEY_VAULT_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.keyvaultName.value -o tsv)
-BACKEND_UAMI_CLIENT_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.backendUamiClientId.value -o tsv)
-DATABASE_UAMI_CLIENT_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.dbInitUamiClientId.value -o tsv)
-BACKEND_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.backendK8sServiceAccountName.value -o tsv)
-DATABASE_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.databaseInitK8sServiceAccountName.value -o tsv)
+TENANT_ID=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.tenantId.value -o tsv)
+KEY_VAULT_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.keyvaultName.value -o tsv)
+BACKEND_UAMI_CLIENT_ID=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.backendUamiClientId.value -o tsv)
+DATABASE_UAMI_CLIENT_ID=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.dbInitUamiClientId.value -o tsv)
+BACKEND_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.backendK8sServiceAccountName.value -o tsv)
+DATABASE_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.databaseInitK8sServiceAccountName.value -o tsv)
 
 log "INFO" "Successfully retrieved deployment outputs:"
 log "INFO" "AKS_NAME=$AKS_NAME"

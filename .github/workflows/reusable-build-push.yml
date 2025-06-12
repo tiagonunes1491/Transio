@@ -5,6 +5,10 @@ name: 'Reusable - Build and Push to ACR'
 on:
   workflow_call:
     inputs:
+      environment:
+        type: string
+        description: environment to deploy to
+        required: true
       dockerfile-path:
         required: true
         type: string
@@ -22,19 +26,19 @@ on:
         type: string
         description: 'Name of the Azure Container Registry'
     secrets:
-      AZURE_CLIENT_ID:
+      CLIENTID:
         required: true
-      AZURE_TENANT_ID:
+      TENANTID: 
         required: true
-      AZURE_SUBSCRIPTION_ID:
+      SUBSCRIPTIONID:
         required: true
+
 
 jobs:
   build-and-push:
     name: Build and Push Image
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    environment: 'shared'
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -42,10 +46,10 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
+          client-id: ${{ secrets.CLIENTID }}
+          tenant-id: ${{ secrets.TENANTID }}
+          subscription-id: ${{ secrets.SUBSCRIPTIONID }}
+          
       - name: Get ACR access token
         id: acr_token
         run: |

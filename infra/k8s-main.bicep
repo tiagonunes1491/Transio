@@ -7,7 +7,7 @@ param tenantId string = subscription().tenantId
 param resourceLocation string = 'spaincentral'
 
 @description('Name of the resource group')
-param rgName string = 'rg-secure-secret-sharer'
+param rgName string = 'rg-ssharer-k8s-spoke-dev'
 
 @description('Tags for the resources')
 param tags object = {
@@ -34,10 +34,9 @@ param federationConfigs array = [
   }
 ]
 
-resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
+// Use existing resource group from landing zone deployment
+resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' existing = {
   name: rgName
-  location: resourceLocation
-  tags: tags
 }
 
 // NSG

@@ -1,20 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# build_swa-aca.sh - Streamlined deployment for Secure Secret Sharer on Azure Container Apps
-# Run inside any Ubuntu distro (e.g., WSL)
-# Usage: ./build_swa-aca.sh [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]
+# build_swa-aca.sh - PaaS deployment for Secure Secret Sharer on Azure Container Apps + Static Web Apps
+# This script leverages the modular landing zone deployment for PaaS infrastructure
+# Usage: ./build_swa-aca.sh [--skip-landing-zone] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]
 
-# Function to print timestamped messages
+# =====================
+# Utility Functions
+# =====================
 log() {
   local level="$1"
   shift
   echo "[$(date '+%Y-%m-%dT%H:%M:%S') $level] $*"
 }
 
-# Default image tags (independent)
-BACKEND_TAG="0.3.0"
+# Function to get detailed deployment error information
+get_deployment_errors() {
+  local deployment_name="$1"
+  local resource_group="${2:-}"
+  
+  log "ERROR" "Deployment failed. Retrieving detailed error information..."
+  
+  if [[ -n "$resource_group" ]]; then
+    # Resource group deployment
+    log "INFO" "Getting resource group deployment errors for: $deployment_name in $resource_group"
+    az deployment group show --name "$deployment_name" --resource-group "$resource_group" --query 'properties.error' -o json 2>/dev/null || true
+    az deployment group operation list --name "$deployment_name" --resource-group "$resource_group" --query '[?properties.provisioningState==`Failed`].{Operation:properties.targetResource.resourceName, Error:properties.statusMessage.error.message}' -o table 2>/dev/null || true
+  else
+    # Subscription deployment  
+    log "INFO" "Getting subscription deployment errors for: $deployment_name"
+    az deployment sub show --name "$deployment_name" --query 'properties.error' -o json 2>/dev/null || true
+    az deployment sub operation list --name "$deployment_name" --query '[?properties.provisioningState==`Failed`].{Operation:properties.targetResource.resourceName, Error:properties.statusMessage.error.message}' -o table 2>/dev/null || true
+  fi
+}
 
+# =====================
+# Configurable Variables
+# =====================
+BACKEND_TAG="0.3.0"
+SKIP_LANDING_ZONE=false
 SKIP_INFRA=false
 SKIP_CONTAINERS=false
 SKIP_FRONTEND=false
@@ -24,94 +48,116 @@ TEARDOWN_ONLY=false
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --skip-infra) SKIP_INFRA=true; shift ;;  
-    --skip-containers) SKIP_CONTAINERS=true; shift ;;  
+    --skip-landing-zone) SKIP_LANDING_ZONE=true; shift ;;
+    --skip-infra) SKIP_INFRA=true; shift ;;
+    --skip-containers) SKIP_CONTAINERS=true; shift ;;
     --skip-frontend) SKIP_FRONTEND=true; shift ;;
     --full-rebuild) FULL_REBUILD=true; shift ;;
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
-    -h|--help) 
-      echo "Usage: $0 [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
-    *) 
+    -h|--help)
+      echo "Usage: $0 [--skip-landing-zone] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;
+    *)
       echo "Unknown option: $1"; exit 1 ;;
   esac
-done
+  done
 
-# Configuration
-DEPLOYMENT_NAME="Secure-Sharer-SWA-Dev"
+# =====================
+# Deployment Names & Paths
+# =====================
+PAAS_DEPLOYMENT_NAME="Secure-Sharer-PaaS"
 LOCATION="spaincentral"
-BICEP_FILE="../infra/swa-aca-platform.bicep"
-PARAMS_FILE="../infra/swa-aca-platform.dev.bicepparam"
+PAAS_BICEP_FILE="../infra/swa-aca-platform.bicep"
+PAAS_PARAMS_FILE="../infra/swa-aca-platform.dev.bicepparam"
 SERVICES=("backend")
 
-# 1) Prerequisites
+# =====================
+# Prerequisites
+# =====================
 log "INFO" "Checking prerequisites..."
 command -v az >/dev/null || { log "ERROR" "az CLI not found"; exit 1; }
 command -v docker >/dev/null || { log "ERROR" "docker not found"; exit 1; }
 command -v swa >/dev/null || { log "ERROR" "swa CLI not found. Install with: npm install -g @azure/static-web-apps-cli"; exit 1; }
 log "INFO" "Prerequisites OK"
 
-# Teardown-only mode: delete resources and exit
+# =====================
+# Teardown Logic
+# =====================
 if [[ "$TEARDOWN_ONLY" == true ]]; then
-  log "INFO" "Teardown-only mode: deleting 'rg-secure-sharer-swa-dev' and purging Key Vault..."
-  log "INFO" "Deleting resource group (this may take several minutes)..."
-  az group delete --name rg-secure-sharer-swa-dev --yes --verbose
+  log "INFO" "Teardown-only mode: deleting PaaS resources and landing zone..."
   
-  log "INFO" "Purging Key Vault (this may take a few minutes)..."
-  az keyvault purge --name kv-securesharer-swa-dev --verbose
+  # Use the landing zone teardown functionality
+  ./deploy-landing-zone.sh teardown
   log "INFO" "Teardown completed successfully"
-  log "INFO" "Exiting - no deployment performed"
   exit 0
 fi
 
-# 1) Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
-  log "INFO" "Full rebuild requested: tearing down 'rg-secure-sharer-swa-dev'..."
-  log "INFO" "Deleting resource group (this may take several minutes)..."
-  az group delete --name rg-secure-sharer-swa-dev --yes --verbose
+  log "INFO" "Full rebuild requested: tearing down PaaS landing zone and resources..."
   
-  log "INFO" "Purging Key Vault (this may take a few minutes)..."
-  az keyvault purge --name kv-securesharer-swa-dev --verbose
+  # Use the landing zone teardown functionality
+  ./deploy-landing-zone.sh teardown
   log "INFO" "Teardown completed"
 fi
 
-# 2) Deploy infrastructure
-if [[ "$SKIP_INFRA" == false ]]; then
-  log "INFO" "Deploying Bicep infrastructure (this may take 10-15 minutes)..."
-  log "INFO" "You will see detailed deployment progress below..."
-  az deployment sub create --template-file "$BICEP_FILE" --parameters "$PARAMS_FILE" --location "$LOCATION" \
-    --name "$DEPLOYMENT_NAME" --verbose
-  log "INFO" "Infrastructure deployment completed"
+# =====================
+# 1. Deploy PaaS Landing Zone
+# =====================
+if [[ "$SKIP_LANDING_ZONE" == false ]]; then
+  log "INFO" "Deploying PaaS landing zone (shared + PaaS spoke)..."
+  log "INFO" "This includes user-assigned managed identities and GitHub federation..."
+  ./deploy-landing-zone.sh paas
+  log "INFO" "PaaS landing zone deployment completed"
 else
-  log "INFO" "Skipping infrastructure deployment"
+  log "INFO" "Skipping PaaS landing zone deployment"
 fi
 
-# 3) Retrieve outputs from Bicep deployment
-log "INFO" "Retrieving deployment outputs from Azure..."
-log "INFO" "This may take a moment while querying the deployment state..."
+# =====================
+# 2. Deploy PaaS Infrastructure (Container Apps, Static Web Apps, etc.)
+# =====================
+if [[ "$SKIP_INFRA" == false ]]; then
+  log "INFO" "Deploying PaaS infrastructure (Container Apps Environment, PostgreSQL, etc.)..."
+  log "INFO" "This may take 10-15 minutes..."
+  if ! az deployment sub create \
+    --template-file "$PAAS_BICEP_FILE" \
+    --parameters "$PAAS_PARAMS_FILE" \
+    --location "$LOCATION" \
+    --name "$PAAS_DEPLOYMENT_NAME" \
+    --verbose; then
+    log "ERROR" "PaaS infrastructure deployment failed"
+    get_deployment_errors "$PAAS_DEPLOYMENT_NAME"
+    exit 1
+  fi
+  log "INFO" "PaaS infrastructure deployment completed"
+else
+  log "INFO" "Skipping PaaS infrastructure deployment"
+fi
 
-# Core infrastructure outputs
-ACA_ENVIRONMENT_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.acaEnvironmentId.value -o tsv)
-RESOURCE_GROUP="rg-secure-sharer-swa-dev"
-ACR_LOGIN_SERVER=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
-KEY_VAULT_URI=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.keyVaultUri.value -o tsv)
-SQL_SERVER_FQDN=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.sqlServerFqdn.value -o tsv)
-SQL_DATABASE_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.sqlDatabaseName.value -o tsv)
-UAMI_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.uamiId.value -o tsv)
+# =====================
+# 3. Retrieve PaaS Infrastructure Outputs
+# =====================
+log "INFO" "Retrieving outputs from PaaS infrastructure deployment..."
+RESOURCE_GROUP=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.resourceGroupName.value -o tsv)
+ACA_ENVIRONMENT_ID=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.acaEnvironmentId.value -o tsv)
+UAMI_ID=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.uamiId.value -o tsv)
+ACR_LOGIN_SERVER=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
+KEY_VAULT_URI=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.keyVaultUri.value -o tsv)
+KEY_VAULT_NAME=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.keyVaultName.value -o tsv)
+SQL_SERVER_FQDN=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.postgresqlServerFqdn.value -o tsv)
+SQL_DATABASE_NAME=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.databaseName.value -o tsv)
 
-# Extract key vault name from URI
-KEY_VAULT_NAME=$(echo "$KEY_VAULT_URI" | sed 's|https://||' | sed 's|\.vault\.azure\.net/||')
-
-log "INFO" "Successfully retrieved deployment outputs:"
-log "INFO" "ACA_ENVIRONMENT_ID=$ACA_ENVIRONMENT_ID"
+log "INFO" "Successfully retrieved PaaS infrastructure outputs:"
 log "INFO" "RESOURCE_GROUP=$RESOURCE_GROUP"
+log "INFO" "ACA_ENVIRONMENT_ID=$ACA_ENVIRONMENT_ID"
+log "INFO" "UAMI_ID=$UAMI_ID"
 log "INFO" "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
-log "INFO" "KEY_VAULT_NAME=$KEY_VAULT_NAME"
 log "INFO" "KEY_VAULT_URI=$KEY_VAULT_URI"
+log "INFO" "KEY_VAULT_NAME=$KEY_VAULT_NAME"
 log "INFO" "SQL_SERVER_FQDN=$SQL_SERVER_FQDN"
 log "INFO" "SQL_DATABASE_NAME=$SQL_DATABASE_NAME"
-log "INFO" "UAMI_ID=$UAMI_ID"
 
-# 4) Build & push container images
+# =====================
+# 4. Build & Push Container Images
+# =====================
 if [[ "$SKIP_CONTAINERS" == false ]]; then
   log "INFO" "Logging into Azure Container Registry..."
   ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
@@ -141,7 +187,9 @@ else
   done
 fi
 
-# 5) Deploy Azure Container App using Bicep
+# =====================
+# 5. Deploy Azure Container App and Static Web App
+# =====================
 log "INFO" "Deploying Azure Container App using Bicep template (this may take a few minutes)..."
 
 # Deploy backend container app using Bicep
@@ -154,7 +202,7 @@ log "INFO" "Deploying backend container app with image: $BACKEND_CONTAINER_IMAGE
 log "INFO" "Using parameter file and overriding empty parameters with platform deployment outputs..."
 
 log "INFO" "Deploying backend container app with Bicep template..."
-az deployment group create \
+if ! az deployment group create \
   --resource-group "$RESOURCE_GROUP" \
   --template-file "../infra/swa-aca-app.bicep" \
   --parameters "../infra/swa-aca-app.dev.bicepparam" \
@@ -167,7 +215,11 @@ az deployment group create \
     keyVaultUri="$KEY_VAULT_URI" \
     postgresqlServerFqdn="$SQL_SERVER_FQDN" \
     databaseName="$SQL_DATABASE_NAME" \
-  --verbose
+  --verbose; then
+  log "ERROR" "Container app deployment failed"
+  get_deployment_errors "$APP_DEPLOYMENT_NAME" "$RESOURCE_GROUP"
+  exit 1
+fi
 
 # Get the actual app name from the deployment output and then get backend FQDN
 log "INFO" "Retrieving container app details..."
@@ -199,17 +251,21 @@ log "INFO" "Backend Resource ID: $BACKEND_RESOURCE_ID"
 # ensure BACKEND_URL is set for summary
 export BACKEND_URL="$BACKEND_FQDN"
 
-# 6) Deploy Static Web App with backend linking via Bicep module
+# 6b) Deploy Static Web App with backend linking via Bicep module
 if [[ "$SKIP_FRONTEND" == false ]]; then
   log "INFO" "Deploying Static Web App with linked backend (this may take a few minutes)..."
   FRONTEND_DEPLOYMENT_NAME="frontend-deployment"
-  az deployment group create \
+  if ! az deployment group create \
     --resource-group "$RESOURCE_GROUP" \
     --template-file "../infra/swa-aca-frontend.bicep" \
-    --parameters "../infra/swa-aca-frontend.bicepparam" \
+    --parameters "../infra/swa-aca-frontend.dev.bicepparam" \
     --parameters backendApiResourceId="$BACKEND_RESOURCE_ID" \
     --name "$FRONTEND_DEPLOYMENT_NAME" \
-    --verbose
+    --verbose; then
+    log "ERROR" "Static Web App deployment failed"
+    get_deployment_errors "$FRONTEND_DEPLOYMENT_NAME" "$RESOURCE_GROUP"
+    exit 1
+  fi
   # retrieve outputs using --query and tsv
   STATIC_WEB_APP_URL=$(az deployment group show \
     --name "$FRONTEND_DEPLOYMENT_NAME" \
@@ -226,6 +282,9 @@ else
   STATIC_WEB_APP_NAME="(skipped)"
 fi
 
+# =====================
+# 6) Summary
+# =====================
 echo ""
 echo "=============================================="
 echo "DEPLOYMENT SUMMARY"
@@ -249,7 +308,7 @@ echo "✅ Backend is linked to Static Web App"
 echo "✅ API requests to /api/* will route to your Container App"
 echo "=============================================="
 
-# 7) Deploy frontend static files to Static Web App production environment
+# 6b) Deploy frontend static files to Static Web App production environment
 if [[ "$SKIP_FRONTEND" == false ]]; then
   echo ""
   log "INFO" "Deploying frontend static files to Static Web App production environment..."

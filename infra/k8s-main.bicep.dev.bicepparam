@@ -3,7 +3,7 @@ using 'k8s-main.bicep'
 
 // Parameters for deployment scope
 param resourceLocation  = 'spaincentral'
-param rgName = 'rg-secure-secret-sharer-dev'
+param rgName = 'rg-ssharer-k8s-spoke-dev'
 param tags  = {
   environment: 'dev'
   project: 'secure-secret-sharer'
