@@ -26,11 +26,11 @@ on:
         type: string
         description: 'Name of the Azure Container Registry'
     secrets:
-      client-id:
+      CLIENTID:
         required: true
-      tenant-id: 
+      TENANTID: 
         required: true
-      subscription-id:
+      SUBSCRIPTIONID:
         required: true
 
 
@@ -49,6 +49,11 @@ jobs:
           client-id: ${{ secrets.CLIENTID_ART_PUSH }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+        env:
+          CLIENTID: ${{ secrets.CLIENTID_ART_PUSH }}
+          TENANTID: ${{ secrets.AZURE_TENANT_ID }}
+          SUBSCRIPTIONID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
       - name: Get ACR access token
         id: acr_token
