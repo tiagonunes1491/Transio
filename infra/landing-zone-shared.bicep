@@ -1,5 +1,10 @@
 //  The Orchestrator for landing zone deployment for Secure Sharer shared resources
+// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure.
 targetScope = 'subscription'
+
+// =====================
+// Parameters
+// =====================
 
 @description('Location for the resources')
 param location string = 'spaincentral' // Default location, can be overridden
@@ -19,7 +24,7 @@ param gitHubOrganizationName string
 @description('GitHub repository name to federate with')
 param gitHubRepositoryName string
 
-@description('GitHub workload identities for the shared resources infrastructure')
+@description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
 param workloadIdentities object = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
@@ -35,7 +40,10 @@ param workloadIdentities object = {
     }
 }
 
-// Variables for the role definition IDs
+// =====================
+// Role Definition IDs
+// =====================
+
 var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
 var AcrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
 
@@ -44,8 +52,11 @@ var roleIdMap = {
   AcrPush: AcrPushRoleDefinitionId
 }
 
-// Create the management resource group
+// =====================
+// Resource Groups
+// =====================
 
+// Create the shared artifacts resource group
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: 'rg-ssharer-artifacts-hub'
   location: location
@@ -55,8 +66,7 @@ resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   }
 }
 
-// Create the artifact resource group
-
+// Create the management resource group for shared infrastructure
 resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: managementResourceGroupName
   location: location
@@ -66,7 +76,11 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   }
 }
 
-// Dynamically create UAMIs for each workload identity
+// =====================
+// Managed Identities and Federated Credentials
+// =====================
+
+// Dynamically create UAMIs for each workload identity in the management resource group
 module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: mgmtSharedRG
@@ -77,7 +91,7 @@ module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloa
   }
 }]
 
-// Create Environment Federated Credentials for each UAMI
+// Create Environment Federated Credentials for each UAMI if specified in federationTypes
 module envFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
   scope: mgmtSharedRG
@@ -107,7 +121,11 @@ module branchFederationModules 'common-modules/github-federation.bicep' = [for (
   dependsOn: [uamiModules[i], envFederationModules[i]]
 }]
 
-// Assign RBAC roles to all UAMIs in hubRG
+// =====================
+// RBAC Assignments
+// =====================
+
+// Assign RBAC roles to all UAMIs in the shared artifacts resource group
 module rbacAssignments 'common-modules/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
@@ -118,11 +136,15 @@ module rbacAssignments 'common-modules/uami-rbac.bicep' = [for (item, i) in item
   dependsOn: [uamiModules[i]]
 }]
 
-output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiNames[0]]
-output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiPrincipalIds[0]]
+// =====================
+// Outputs
+// =====================
+
+output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiNames[0]] // All UAMI names
+output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiPrincipalIds[0]] // All UAMI principal IDs
 output federatedCredentialNames array = [for (item, i) in items(workloadIdentities): {
   env: contains(split(item.value.federationTypes, ','), 'environment') ? envFederationModules[i].outputs.federatedCredentialName : null
   branch: contains(split(item.value.federationTypes, ','), 'branch') ? branchFederationModules[i].outputs.federatedCredentialName : null
-}]
-output managementResourceGroupName string = mgmtSharedRG.name
-output artifactsResourceGroupName string = hubRG.name
+}] // Federated credential names for each identity
+output managementResourceGroupName string = mgmtSharedRG.name // Management RG name
+output artifactsResourceGroupName string = hubRG.name // Shared artifacts RG name

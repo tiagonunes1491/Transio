@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# build_swa-aca.sh - Streamlined deployment for Secure Secret Sharer on Azure Container Apps
-# Run inside any Ubuntu distro (e.g., WSL)
+# build_swa-aca.sh - Modular deployment for Secure Secret Sharer on Azure
+# Orchestrates shared and environment-specific infra using modular Bicep files
 # Usage: ./build_swa-aca.sh [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]
 
-# Function to print timestamped messages
+# =====================
+# Utility Functions
+# =====================
 log() {
   local level="$1"
   shift
   echo "[$(date '+%Y-%m-%dT%H:%M:%S') $level] $*"
 }
 
-# Default image tags (independent)
+# =====================
+# Configurable Variables
+# =====================
 BACKEND_TAG="0.3.0"
-
 SKIP_INFRA=false
 SKIP_CONTAINERS=false
 SKIP_FRONTEND=false
@@ -24,94 +27,125 @@ TEARDOWN_ONLY=false
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --skip-infra) SKIP_INFRA=true; shift ;;  
-    --skip-containers) SKIP_CONTAINERS=true; shift ;;  
+    --skip-infra) SKIP_INFRA=true; shift ;;
+    --skip-containers) SKIP_CONTAINERS=true; shift ;;
     --skip-frontend) SKIP_FRONTEND=true; shift ;;
     --full-rebuild) FULL_REBUILD=true; shift ;;
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
-    -h|--help) 
-      echo "Usage: $0 [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
-    *) 
+    -h|--help)
+      echo "Usage: $0 [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;
+    *)
       echo "Unknown option: $1"; exit 1 ;;
   esac
-done
+  done
 
-# Configuration
-DEPLOYMENT_NAME="Secure-Sharer-SWA-Dev"
+# =====================
+# Deployment Names & Paths
+# =====================
+SHARED_DEPLOYMENT_NAME="Secure-Sharer-Shared"
+ENV_DEPLOYMENT_NAME="Secure-Sharer-Env"
 LOCATION="spaincentral"
-BICEP_FILE="../infra/swa-aca-platform.bicep"
-PARAMS_FILE="../infra/swa-aca-platform.dev.bicepparam"
+SHARED_BICEP_FILE="../infra/landing-zone-shared.bicep"
+SHARED_PARAMS_FILE="../infra/landing-zone.dev.bicepparam" # Adjust if you have a shared param file
+ENV_BICEP_FILE="../infra/landing-zone.bicep"
+ENV_PARAMS_FILE="../infra/landing-zone.dev.bicepparam"
 SERVICES=("backend")
 
-# 1) Prerequisites
+# =====================
+# Prerequisites
+# =====================
 log "INFO" "Checking prerequisites..."
 command -v az >/dev/null || { log "ERROR" "az CLI not found"; exit 1; }
 command -v docker >/dev/null || { log "ERROR" "docker not found"; exit 1; }
 command -v swa >/dev/null || { log "ERROR" "swa CLI not found. Install with: npm install -g @azure/static-web-apps-cli"; exit 1; }
 log "INFO" "Prerequisites OK"
 
-# Teardown-only mode: delete resources and exit
+# =====================
+# Teardown Logic
+# =====================
 if [[ "$TEARDOWN_ONLY" == true ]]; then
-  log "INFO" "Teardown-only mode: deleting 'rg-secure-sharer-swa-dev' and purging Key Vault..."
-  log "INFO" "Deleting resource group (this may take several minutes)..."
-  az group delete --name rg-secure-sharer-swa-dev --yes --verbose
-  
-  log "INFO" "Purging Key Vault (this may take a few minutes)..."
-  az keyvault purge --name kv-securesharer-swa-dev --verbose
+  log "INFO" "Teardown-only mode: deleting all resource groups..."
+  az group delete --name rg-ssharer-artifacts-hub --yes --verbose || true
+  az group delete --name rg-ssharer-mgmt-shared --yes --verbose || true
+  az group delete --name rg-ssharer-mgmt-dev --yes --verbose || true
+  az group delete --name rg-ssharer-k8s-spoke-dev --yes --verbose || true
+  az group delete --name rg-ssharer-paas-spoke-dev --yes --verbose || true
+  az keyvault purge --name kv-securesharer-swa-dev --verbose || true
   log "INFO" "Teardown completed successfully"
-  log "INFO" "Exiting - no deployment performed"
   exit 0
 fi
 
-# 1) Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
-  log "INFO" "Full rebuild requested: tearing down 'rg-secure-sharer-swa-dev'..."
-  log "INFO" "Deleting resource group (this may take several minutes)..."
-  az group delete --name rg-secure-sharer-swa-dev --yes --verbose
-  
-  log "INFO" "Purging Key Vault (this may take a few minutes)..."
-  az keyvault purge --name kv-securesharer-swa-dev --verbose
+  log "INFO" "Full rebuild requested: tearing down all resource groups..."
+  az group delete --name rg-ssharer-artifacts-hub --yes --verbose || true
+  az group delete --name rg-ssharer-mgmt-shared --yes --verbose || true
+  az group delete --name rg-ssharer-mgmt-dev --yes --verbose || true
+  az group delete --name rg-ssharer-k8s-spoke-dev --yes --verbose || true
+  az group delete --name rg-ssharer-paas-spoke-dev --yes --verbose || true
+  az keyvault purge --name kv-securesharer-swa-dev --verbose || true
   log "INFO" "Teardown completed"
 fi
 
-# 2) Deploy infrastructure
+# =====================
+# 1. Deploy Shared Infrastructure
+# =====================
 if [[ "$SKIP_INFRA" == false ]]; then
-  log "INFO" "Deploying Bicep infrastructure (this may take 10-15 minutes)..."
-  log "INFO" "You will see detailed deployment progress below..."
-  az deployment sub create --template-file "$BICEP_FILE" --parameters "$PARAMS_FILE" --location "$LOCATION" \
-    --name "$DEPLOYMENT_NAME" --verbose
-  log "INFO" "Infrastructure deployment completed"
+  log "INFO" "Deploying shared infrastructure (landing-zone-shared.bicep)..."
+  az deployment sub create \
+    --template-file "$SHARED_BICEP_FILE" \
+    --parameters "$SHARED_PARAMS_FILE" \
+    --location "$LOCATION" \
+    --name "$SHARED_DEPLOYMENT_NAME" \
+    --verbose
+  log "INFO" "Shared infrastructure deployment completed"
 else
-  log "INFO" "Skipping infrastructure deployment"
+  log "INFO" "Skipping shared infrastructure deployment"
 fi
 
-# 3) Retrieve outputs from Bicep deployment
-log "INFO" "Retrieving deployment outputs from Azure..."
-log "INFO" "This may take a moment while querying the deployment state..."
+# =====================
+# 2. Retrieve Shared Outputs
+# =====================
+log "INFO" "Retrieving outputs from shared deployment..."
+SHARED_MGMT_RG=$(az deployment sub show --name "$SHARED_DEPLOYMENT_NAME" --query properties.outputs.managementResourceGroupName.value -o tsv)
+SHARED_ARTIFACTS_RG=$(az deployment sub show --name "$SHARED_DEPLOYMENT_NAME" --query properties.outputs.artifactsResourceGroupName.value -o tsv)
+SHARED_UAMI_NAMES=$(az deployment sub show --name "$SHARED_DEPLOYMENT_NAME" --query properties.outputs.uamiNames.value -o tsv)
 
-# Core infrastructure outputs
-ACA_ENVIRONMENT_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.acaEnvironmentId.value -o tsv)
-RESOURCE_GROUP="rg-secure-sharer-swa-dev"
-ACR_LOGIN_SERVER=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
-KEY_VAULT_URI=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.keyVaultUri.value -o tsv)
-SQL_SERVER_FQDN=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.sqlServerFqdn.value -o tsv)
-SQL_DATABASE_NAME=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.sqlDatabaseName.value -o tsv)
-UAMI_ID=$(az deployment sub show --name "$DEPLOYMENT_NAME" --query properties.outputs.uamiId.value -o tsv)
+log "INFO" "Shared Management RG: $SHARED_MGMT_RG"
+log "INFO" "Shared Artifacts RG: $SHARED_ARTIFACTS_RG"
 
-# Extract key vault name from URI
-KEY_VAULT_NAME=$(echo "$KEY_VAULT_URI" | sed 's|https://||' | sed 's|\.vault\.azure\.net/||')
+# =====================
+# 3. Deploy Environment Infrastructure
+# =====================
+if [[ "$SKIP_INFRA" == false ]]; then
+  log "INFO" "Deploying environment infrastructure (landing-zone.bicep)..."
+  az deployment sub create \
+    --template-file "$ENV_BICEP_FILE" \
+    --parameters "$ENV_PARAMS_FILE" \
+    --parameters sharedArtifactsResourceGroupName="$SHARED_ARTIFACTS_RG" \
+    --location "$LOCATION" \
+    --name "$ENV_DEPLOYMENT_NAME" \
+    --verbose
+  log "INFO" "Environment infrastructure deployment completed"
+else
+  log "INFO" "Skipping environment infrastructure deployment"
+fi
 
-log "INFO" "Successfully retrieved deployment outputs:"
-log "INFO" "ACA_ENVIRONMENT_ID=$ACA_ENVIRONMENT_ID"
-log "INFO" "RESOURCE_GROUP=$RESOURCE_GROUP"
-log "INFO" "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
-log "INFO" "KEY_VAULT_NAME=$KEY_VAULT_NAME"
-log "INFO" "KEY_VAULT_URI=$KEY_VAULT_URI"
-log "INFO" "SQL_SERVER_FQDN=$SQL_SERVER_FQDN"
-log "INFO" "SQL_DATABASE_NAME=$SQL_DATABASE_NAME"
-log "INFO" "UAMI_ID=$UAMI_ID"
+# =====================
+# 4. Retrieve Environment Outputs
+# =====================
+log "INFO" "Retrieving outputs from environment deployment..."
+MGMT_RG=$(az deployment sub show --name "$ENV_DEPLOYMENT_NAME" --query properties.outputs.managementResourceGroupName.value -o tsv)
+K8S_RG=$(az deployment sub show --name "$ENV_DEPLOYMENT_NAME" --query properties.outputs.k8sResourceGroupName.value -o tsv)
+PAAS_RG=$(az deployment sub show --name "$ENV_DEPLOYMENT_NAME" --query properties.outputs.paasResourceGroupName.value -o tsv)
+UAMI_NAMES=$(az deployment sub show --name "$ENV_DEPLOYMENT_NAME" --query properties.outputs.uamiNames.value -o tsv)
 
-# 4) Build & push container images
+log "INFO" "Environment Management RG: $MGMT_RG"
+log "INFO" "K8s RG: $K8S_RG"
+log "INFO" "PaaS RG: $PAAS_RG"
+
+# =====================
+# 5. Build & Push Container Images
+# =====================
 if [[ "$SKIP_CONTAINERS" == false ]]; then
   log "INFO" "Logging into Azure Container Registry..."
   ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
@@ -141,7 +175,9 @@ else
   done
 fi
 
-# 5) Deploy Azure Container App using Bicep
+# =====================
+# 6. Deploy Azure Container App and Static Web App
+# =====================
 log "INFO" "Deploying Azure Container App using Bicep template (this may take a few minutes)..."
 
 # Deploy backend container app using Bicep
@@ -199,14 +235,14 @@ log "INFO" "Backend Resource ID: $BACKEND_RESOURCE_ID"
 # ensure BACKEND_URL is set for summary
 export BACKEND_URL="$BACKEND_FQDN"
 
-# 6) Deploy Static Web App with backend linking via Bicep module
+# 6b) Deploy Static Web App with backend linking via Bicep module
 if [[ "$SKIP_FRONTEND" == false ]]; then
   log "INFO" "Deploying Static Web App with linked backend (this may take a few minutes)..."
   FRONTEND_DEPLOYMENT_NAME="frontend-deployment"
   az deployment group create \
     --resource-group "$RESOURCE_GROUP" \
     --template-file "../infra/swa-aca-frontend.bicep" \
-    --parameters "../infra/swa-aca-frontend.bicepparam" \
+    --parameters "../infra/swa-aca-frontend.dev.bicepparam" \
     --parameters backendApiResourceId="$BACKEND_RESOURCE_ID" \
     --name "$FRONTEND_DEPLOYMENT_NAME" \
     --verbose
@@ -226,6 +262,9 @@ else
   STATIC_WEB_APP_NAME="(skipped)"
 fi
 
+# =====================
+# 7) Summary
+# =====================
 echo ""
 echo "=============================================="
 echo "DEPLOYMENT SUMMARY"
@@ -249,7 +288,7 @@ echo "✅ Backend is linked to Static Web App"
 echo "✅ API requests to /api/* will route to your Container App"
 echo "=============================================="
 
-# 7) Deploy frontend static files to Static Web App production environment
+# 7b) Deploy frontend static files to Static Web App production environment
 if [[ "$SKIP_FRONTEND" == false ]]; then
   echo ""
   log "INFO" "Deploying frontend static files to Static Web App production environment..."

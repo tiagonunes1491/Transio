@@ -1,12 +1,13 @@
 // main.bicep - The Orchestrator for landing zone deployment for one environment
+// Provisions resource groups, managed identities, federated credentials, and RBAC for a single environment.
 targetScope = 'subscription'
+
+// =====================
+// Parameters
+// =====================
 
 @description('Environment for the deployment')
 param environmentName string = 'dev'
-
-
-@description('Environment for the shared resources')
-param gitHubSharedEnv string = 'shared'
 
 @description('Location for the resources')
 param location string = 'spaincentral' // Default location, can be overridden
@@ -26,41 +27,64 @@ param gitHubOrganizationName string
 @description('GitHub repository name to federate with')
 param gitHubRepositoryName string
 
-// Variables for the role definition IDs
+@description('Resource group for shared artifacts')
+param sharedArtifactsResourceGroupName string = 'rg-ssharer-artifacts-hub'
 
-var acrPullRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull role definition ID
-var acrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
-var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
-
-// Create all resource groups for landing zone
-resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ssharer-artifacts-hub'
-  location: location
-  tags: {
-    Application: 'Secure Sharer'
-    environment: 'Shared Artifacts' 
+@description('GitHub workload identities for the environment. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
+param workloadIdentities object = {
+  k8s: {
+    UAMI: 'uami-ssharer-k8s-${environmentName}'
+    ENV: environmentName
+    ROLE: 'contributor'
+    federationTypes: 'environment'
+  }
+  k8sDeploy: {
+    UAMI: 'uami-ssharer-k8s-deploy-${environmentName}'
+    ENV: environmentName
+    ROLE: 'AcrPull'
+    federationTypes: 'environment'
+  }
+  paas: {
+    UAMI: 'uami-ssharer-paas-${environmentName}'
+    ENV: environmentName
+    ROLE: 'contributor'
+    federationTypes: 'environment'
   }
 }
 
+// =====================
+// Role Definition IDs
+// =====================
+
+var AcrPullRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull role definition ID
+var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
+
+var roleIdMap = {
+  contributor: ContributorRoleDefinitionId
+  AcrPull: AcrPullRoleDefinitionId
+}
+
+// =====================
+// Resource Groups
+// =====================
+
+// Reference existing hub resource group for shared artifacts
+resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
+  name: sharedArtifactsResourceGroupName
+}
+
+// Create resource group for Kubernetes workloads
 resource k8sRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: 'rg-ssharer-k8s-spoke-${environmentName}'
   location: location
   tags: tags
 }
 
+// Create resource group for PaaS workloads
 resource paasRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: 'rg-ssharer-paas-spoke-${environmentName}'
   location: location
   tags: tags
-}
-
-resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ssharer-mgmt-shared'
-  location: location
-  tags: {
-    Application: 'Secure Sharer'
-    environment: 'Shared Management'
-  }
 }
 
 // Create or reference existing management resource group
@@ -74,216 +98,102 @@ resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   }
 }
 
+// =====================
+// Managed Identities and Federated Credentials
+// =====================
 
-// Create the UAMIs - Split creation between resource groups
-
-// Create UAMIs for workload-specific identities in management RG
-module uamisManagement 'common-modules/uami.bicep' = {
+// Dynamically create UAMIs for each workload identity in the management resource group
+module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloadIdentities): {
+  name: 'deploy-uami-${item.key}'
   scope: managementRg
   params: {
     uamiLocation: location
-    uamiNames: [
-      'uami-ssharer-k8s-${environmentName}'
-      'uami-ssharer-k8s-deploy-${environmentName}'
-      'uami-ssharer-paas-${environmentName}'
-    ]
+    uamiNames: [item.value.UAMI]
     tags: tags
   }
-}
+}]
 
-// Create shared infra creator UAMI and universal ACR push UAMI in mgmt shared resource group
-module uamiSharedInfra 'common-modules/uami.bicep' = {
-  scope: mgmtSharedRG
+// Create Environment Federated Credentials for each UAMI if specified in federationTypes
+module envFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
+  name: 'deploy-env-fed-${item.key}'
+  scope: managementRg
   params: {
-    uamiLocation: location
-    uamiNames: [
-      'uami-ssharer-shared-infra-creator'
-      'uami-ssharer-acr-push'
-    ]
-    tags: tags
-  }
-}
-
-// Create workload UAMI to federate with GitHub Actions
-// Assigns the required permissions to the UAMI to do operations
-
-// --- 0. User Assigned Managed Identity (UAMI) for ACR ---
-
-// Federate UAMI with GitHub Actions
-module acrPushGhFed 'common-modules/github-federation.bicep' = {
-  scope: mgmtSharedRG
-  params: {
-    UamiName: uamiSharedInfra.outputs.uamiNames[1]
+    UamiName: uamiModules[i].outputs.uamiNames[0]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    environmentName: gitHubSharedEnv // Changed from environmentName to gitHubSharedEnv
-    fedType: 'environment' // Use environment federation for ACR
+    environmentName: item.value.ENV
+    fedType: 'environment'
+    federatedCredentialName: 'gh-env-${item.value.ENV}-${item.key}'
   }
-}
+  dependsOn: [uamiModules[i]]
+}]
 
-// Assign the AcrPush role to the UAMI in the hub resource group
-module uamiAcrPush 'common-modules/uami-rbac.bicep'= {
-  scope: hubRG // Changed from mgmtSharedRG to hubRG
+// Create Branch Federated Credentials for all workload identities that specify 'branch' in federationTypes
+module branchFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'branch')) {
+  name: 'deploy-branch-fed-${item.key}'
+  scope: managementRg
   params: {
-    uamiPrincipalId: uamiSharedInfra.outputs.uamiPrincipalIds[1]
-    roleDefinitionId: acrPushRoleDefinitionId
-  }
-}
-
-// --- 1. User Assigned Managed Identity (UAMI) for Shared Infrastructure Creator ---
-
-// Federate UAMI with GitHub Actions for shared infrastructure creation with environment-specific parameters
-module sharedInfraCreatorGhFed 'common-modules/github-federation.bicep' = {
-  scope: mgmtSharedRG
-  params: {
-    federatedCredentialName: 'github-env'
-    UamiName: uamiSharedInfra.outputs.uamiNames[0]
+    UamiName: uamiModules[i].outputs.uamiNames[0]
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    environmentName: gitHubSharedEnv
-    fedType: 'environment' // Use environment federation for ACR
-  }
-}
-
-// Federate UAMI with GitHub Actions for shared infrastructure creation for branch-specific parameters
-module sharedInfraCreatorGhBranchFed 'common-modules/github-federation.bicep' = {
-  scope: mgmtSharedRG
-  dependsOn: [
-    sharedInfraCreatorGhFed
-  ]
-  params: {
-    federatedCredentialName: 'github-branch'
-    UamiName: uamiSharedInfra.outputs.uamiNames[0]
-    GitHubOrganizationName: gitHubOrganizationName
-    GitHubRepositoryName: gitHubRepositoryName
-    branchName: 'main' // Pass only the branch name, not a full ref or subject
+    branchName: 'main'
     fedType: 'branch'
+    federatedCredentialName: 'gh-branch-main-${item.value.UAMI}'
   }
-}
+  dependsOn: [uamiModules[i], envFederationModules[i]]
+}]
 
-// Assign the Contributor role to the UAMI for shared infrastructure creation in the mgmt shared resource group
-module uamiSharedInfraCreatorContributor 'common-modules/uami-rbac.bicep'= {
-  scope: mgmtSharedRG
-  params: {
-    uamiPrincipalId: uamiSharedInfra.outputs.uamiPrincipalIds[0]
-    roleDefinitionId: ContributorRoleDefinitionId
-  }
-}
+// =====================
+// RBAC Assignments
+// =====================
 
-// --- 2. Create User Assigned Managed Identity (UAMI) for K8S Spoke ---
-
-// Federate UAMI with GitHub Actions
-module k8SpokeGhFed 'common-modules/github-federation.bicep' = {
-  scope: managementRg
-  params: {
-    UamiName: uamisManagement.outputs.uamiNames[0]
-    GitHubOrganizationName: gitHubOrganizationName
-    GitHubRepositoryName: gitHubRepositoryName
-    environmentName: environmentName
-    fedType: 'environment' // Use environment federation for ACR
-
-  }
-}
-
-// Assign the Contributor role to the UAMI in the k8s resource group
-module uamiK8sContributor 'common-modules/uami-rbac.bicep'= {
+// Assign RBAC roles to UAMIs in k8sRG
+module rbacAssignmentsK8s 'common-modules/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): if (contains(item.key, 'k8s')) {
+  name: 'deploy-rbac-${item.key}'
   scope: k8sRG
   params: {
-    uamiPrincipalId: uamisManagement.outputs.uamiPrincipalIds[0]
-    roleDefinitionId: ContributorRoleDefinitionId
+    uamiPrincipalId: uamiModules[i].outputs.uamiPrincipalIds[0]
+    roleDefinitionId: roleIdMap[item.value.ROLE]
   }
-}
+  dependsOn: [uamiModules[i]]
+}]
 
-//Assign the ACR Pull role to the UAMI in the k8s resource group
-module uamiK8sAcrPull 'common-modules/uami-rbac.bicep'= {
-  scope: hubRG
-  params: {
-    uamiPrincipalId: uamisManagement.outputs.uamiPrincipalIds[0]
-    roleDefinitionId: acrPullRoleDefinitionId
-  }
-}
-
-// --- 3. Create User Assigned Managed Identity (UAMI) for K8S Deployment ---
-
-// Federate UAMI with GitHub Actions
-module k8SpokeDeploymentGhFed 'common-modules/github-federation.bicep' = {
-  scope: managementRg
-  params: {
-    UamiName: uamisManagement.outputs.uamiNames[1]
-    GitHubOrganizationName: gitHubOrganizationName
-    GitHubRepositoryName: gitHubRepositoryName
-    environmentName: environmentName
-    fedType: 'environment' // Use environment federation for ACR
-  }
-}
-
-//Assign the ACR Pull role to the UAMI for k8s deployment
-module uamiK8DeploymentsAcrPull 'common-modules/uami-rbac.bicep'= {
-  scope: hubRG
-  params: {
-    uamiPrincipalId: uamisManagement.outputs.uamiPrincipalIds[1]
-    roleDefinitionId: acrPullRoleDefinitionId
-  }
-}
-
-// --- 4. Create User Assigned Managed Identity (UAMI) for PaaS resource group ---
-
-// Federate UAMI with GitHub Actions
-module uamiPaasGhFed 'common-modules/github-federation.bicep' = {
-  scope: managementRg
-  params: {
-    UamiName: uamisManagement.outputs.uamiNames[2]
-    GitHubOrganizationName: gitHubOrganizationName
-    GitHubRepositoryName: gitHubRepositoryName
-    environmentName: environmentName
-    fedType: 'environment' // Use environment federation for ACR
-  }
-}
-
-//Assign the Contributor role to the UAMI for PaaS workload
-module uamiPaasContributor 'common-modules/uami-rbac.bicep'= {
+// Assign RBAC roles to UAMIs in paasRG
+module rbacAssignmentsPaas 'common-modules/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): if (contains(item.key, 'paas')) {
+  name: 'deploy-rbac-${item.key}'
   scope: paasRG
   params: {
-    uamiPrincipalId: uamisManagement.outputs.uamiPrincipalIds[2]
-    roleDefinitionId: ContributorRoleDefinitionId
+    uamiPrincipalId: uamiModules[i].outputs.uamiPrincipalIds[0]
+    roleDefinitionId: roleIdMap[item.value.ROLE]
   }
-}
+  dependsOn: [uamiModules[i]]
+}]
 
-// Assign the AcrPull role to the UAMI for the PaaS workload
-module uamiPaasAcrPull 'common-modules/uami-rbac.bicep'= {
-  scope: hubRG 
+// Assign RBAC roles to any other UAMIs in hubRG
+module rbacAssignmentsHub 'common-modules/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): if (!contains(item.key, 'k8s') && !contains(item.key, 'paas')) {
+  name: 'deploy-rbac-${item.key}'
+  scope: hubRG
   params: {
-    uamiPrincipalId: uamisManagement.outputs.uamiPrincipalIds[2]
-    roleDefinitionId: acrPullRoleDefinitionId
+    uamiPrincipalId: uamiModules[i].outputs.uamiPrincipalIds[0]
+    roleDefinitionId: roleIdMap[item.value.ROLE]
   }
-}
+  dependsOn: [uamiModules[i]]
+}]
 
-// Outputs for reference information
-output managementResourceGroupName string = managementRg.name
-output hubResourceGroupName string = hubRG.name
-output k8sResourceGroupName string = k8sRG.name
-output paasResourceGroupName string = paasRG.name
-output tenantId string = subscription().tenantId
-output subscriptionId string = subscription().subscriptionId
-output environmentName string = environmentName
+// =====================
+// Outputs
+// =====================
 
-// UAMI Outputs
-output acrUamiName string = uamiSharedInfra.outputs.uamiNames[1]
-output acrUamiPrincipalId string = uamiSharedInfra.outputs.uamiPrincipalIds[1]
-output acrUamiClientId string = uamiSharedInfra.outputs.uamiClientIds[1]
-
-output sharedInfraCreatorUamiName string = uamiSharedInfra.outputs.uamiNames[0]
-output sharedInfraCreatorUamiPrincipalId string = uamiSharedInfra.outputs.uamiPrincipalIds[0]
-output sharedInfraCreatorUamiClientId string = uamiSharedInfra.outputs.uamiClientIds[0]
-
-output k8sUamiName string = uamisManagement.outputs.uamiNames[0]
-output k8sUamiPrincipalId string = uamisManagement.outputs.uamiPrincipalIds[0]
-output k8sUamiClientId string = uamisManagement.outputs.uamiClientIds[0]
-
-output k8sDeployUamiName string = uamisManagement.outputs.uamiNames[1]
-output k8sDeployUamiPrincipalId string = uamisManagement.outputs.uamiPrincipalIds[1]
-output k8sDeployUamiClientId string = uamisManagement.outputs.uamiClientIds[1]
-
-output paasUamiName string = uamisManagement.outputs.uamiNames[2]
-output paasUamiPrincipalId string = uamisManagement.outputs.uamiPrincipalIds[2]
-output paasUamiClientId string = uamisManagement.outputs.uamiClientIds[2]
+output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiNames[0]] // All UAMI names
+output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiPrincipalIds[0]] // All UAMI principal IDs
+output federatedCredentialNames array = [for (item, i) in items(workloadIdentities): {
+  env: contains(split(item.value.federationTypes, ','), 'environment') ? envFederationModules[i].outputs.federatedCredentialName : null
+  branch: contains(split(item.value.federationTypes, ','), 'branch') ? branchFederationModules[i].outputs.federatedCredentialName : null
+}] // Federated credential names for each identity
+output managementResourceGroupName string = managementRg.name // Management RG name
+output hubResourceGroupName string = hubRG.name // Shared artifacts RG name
+output k8sResourceGroupName string = k8sRG.name // K8s RG name
+output paasResourceGroupName string = paasRG.name // PaaS RG name
+output tenantId string = subscription().tenantId // Azure tenant ID
+output subscriptionId string = subscription().subscriptionId // Azure subscription ID
+output environmentName string = environmentName // Environment name
