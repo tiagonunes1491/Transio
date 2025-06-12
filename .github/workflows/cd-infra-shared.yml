@@ -3,7 +3,13 @@
 name: 'CD - Shared Infrastructure (ACR)'
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/shared-infra.bicep'
+      - 'infra/shared-infra-modules/**'
+      
 jobs:
   what-if-and-deploy:
     name: 'What-If Analysis and Deploy'
