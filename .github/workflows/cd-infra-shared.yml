@@ -21,6 +21,9 @@ jobs:
         with:
           fetch-depth: 0
           
+      - name: 'Echo Client ID'
+        run: echo "CLIENTID_ART_READONLY=${{ secrets.CLIENTID_ART_READONLY }}"
+
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
@@ -131,6 +134,9 @@ jobs:
         with:
           fetch-depth: 0
             
+      - name: 'Echo Client ID'
+        run: echo "CLIENTID_ART_CONT=${{ secrets.CLIENTID_ART_CONT }}"
+
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
