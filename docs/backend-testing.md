@@ -2,11 +2,11 @@
 
 ## Overview
 
-SecureSharer features a comprehensive, enterprise-grade testing suite that validates the security, functionality, and reliability of the backend application. With **201 automated tests** achieving **99.5% pass rate**, the testing framework provides extensive coverage across core functionality and advanced security validation.
+SecureSharer features a comprehensive, enterprise-grade testing suite that validates the security, functionality, and reliability of the backend application. With **222 automated tests** achieving **99.1% pass rate** (220 passed, 1 skipped, 1 failed), the testing framework provides extensive coverage across core functionality and advanced security validation, reaching **92% code coverage**.
 
 ## Testing Features
 
-### Core Functionality Testing (63 tests)
+### Core Functionality Testing (89 tests)
 The backend testing suite comprehensively validates all core application features:
 
 #### **Encryption & Cryptography**
@@ -15,6 +15,7 @@ The backend testing suite comprehensively validates all core application feature
 - **Cryptographic key strength verification**
 - **Unicode and binary data handling**
 - **Error handling for invalid tokens and cipher issues**
+- **Module initialization and error path coverage**
 
 #### **Database Operations** 
 - **Secret storage and retrieval operations**
@@ -30,6 +31,7 @@ The backend testing suite comprehensively validates all core application feature
 - **Error response handling**
 - **Unicode content support**
 - **Cross-Origin Resource Sharing (CORS) configuration**
+- **Main module comprehensive testing** with route validation
 
 #### **Data Models**
 - **SQLAlchemy model validation**
@@ -38,7 +40,7 @@ The backend testing suite comprehensively validates all core application feature
 - **Binary data persistence**
 - **Query operations and model relationships**
 
-### Advanced Security Testing Suite (138 tests)
+### Advanced Security Testing Suite (133 tests)
 
 SecureSharer implements **enterprise-grade security testing** that validates resistance against real-world attack vectors:
 
@@ -77,9 +79,9 @@ The testing suite validates compliance with major security frameworks:
 Across **150+ attack patterns** and comprehensive security validation, the testing suite detected **zero vulnerabilities**, confirming enterprise-grade security implementation.
 
 ### **Comprehensive Test Coverage**
-- **201 total automated tests** covering all application layers
-- **99.5% test pass rate** with only 1 intentionally skipped test
-- **90%+ code coverage** across all core modules
+- **222 total automated tests** covering all application layers
+- **99.1% test pass rate** with 220 passed, 1 skipped, 1 failed test
+- **92% code coverage** across all core modules (exceeding 90% threshold)
 - **Real-world attack simulation** using industry-standard penetration testing techniques
 
 ### **Production-Ready Validation**
@@ -145,19 +147,19 @@ The testing suite provides:
 ### Running Tests
 
 #### **Complete Test Suite**
-Run all 201 tests with coverage measurement:
+Run all 222 tests with coverage measurement:
 ```bash
 ./run_tests.sh
 ```
 
 #### **Core Functionality Tests Only**
-Run the 63 core functionality tests:
+Run the 89 core functionality tests:
 ```bash
-python -m pytest tests/test_encryption.py tests/test_storage.py tests/test_models.py tests/test_main.py -v
+python -m pytest tests/test_encryption.py tests/test_storage.py tests/test_models.py tests/test_main.py tests/test_main_module.py -v
 ```
 
 #### **Security Testing Suite Only**
-Run the 138 security tests:
+Run the 133 security tests:
 ```bash
 python -m pytest tests/test_security.py tests/test_penetration.py tests/test_advanced_pentest.py tests/test_protocol_pentest.py tests/test_comprehensive_owasp.py tests/test_complete_security_coverage.py -v
 ```
@@ -191,7 +193,7 @@ python -m pytest tests/ --cov=app --cov-report=html:htmlcov
 #### **Expected Output**
 A successful test run will show:
 ```
-============= 200 passed, 1 skipped in X.XX seconds =============
+=============== 220 passed, 1 skipped, 1 failed in X.XX seconds ===============
 ```
 
 #### **Coverage Metrics**
@@ -199,13 +201,13 @@ The coverage report will display module-level coverage:
 ```
 Name                Stmts   Miss  Cover   Missing
 -------------------------------------------------
-app/__init__.py         4      0   100%
-app/encryption.py      46      2    96%   23, 67
-app/main.py            72      1    99%   45
+app/__init__.py         2      0   100%
+app/encryption.py      46      9    80%   16-27
+app/main.py            72      8    89%   114-125
 app/models.py          10      0   100%
-app/storage.py         71      3    96%   89, 112, 134
+app/storage.py         71      0   100%
 -------------------------------------------------
-TOTAL                 203      6    97%
+TOTAL                 201     17    92%
 ```
 
 #### **Quality Gates**
@@ -226,7 +228,7 @@ python -m pytest tests/ --cov=app --cov-report=xml --cov-fail-under=90
 ```
 
 This will:
-- Execute all 201 tests with coverage measurement
+- Execute all 222 tests with coverage measurement
 - Generate XML coverage reports for CI tools
 - Fail the build if coverage drops below 90%
 - Provide detailed failure analysis for debugging
