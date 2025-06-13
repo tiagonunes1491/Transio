@@ -38,9 +38,15 @@ jobs:
       # 4. Runs the ruff formatter in "check" mode
       - name: Check formatting with Ruff
         if: ${{ inputs.paths != '' }} # Only run if paths are provided
-        run: ruff format --check ${{ inputs.paths }}
+        run: |
+          # Convert comma-separated paths to space-separated for ruff
+          paths="${{ inputs.paths }}"
+          ruff format --check ${paths//,/ }
 
       # 5. Runs the ruff linter
       - name: Lint code with Ruff
         if: ${{ inputs.paths != '' }} # Only run if paths are provided
-        run: ruff check ${{ inputs.paths }}
+        run: |
+          # Convert comma-separated paths to space-separated for ruff
+          paths="${{ inputs.paths }}"
+          ruff check ${paths//,/ }
