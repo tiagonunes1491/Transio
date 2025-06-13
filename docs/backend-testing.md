@@ -235,13 +235,11 @@ This will:
 
 ## Additional Resources
 
-### Detailed Technical Documentation
-For in-depth technical details, refer to the comprehensive documentation in the `backend/tests/` directory:
+### Additional Resources
+For technical implementation details:
 
-- **`backend/tests/README.md`** - Complete technical testing documentation
-- **`backend/tests/FINAL_TESTING_REVIEW.md`** - Detailed testing implementation review
+- **`backend/tests/README.md`** - Quick start guide for developers
 - **`backend/tests/COVERAGE_GUIDE.md`** - Coverage measurement and optimization guide
-- **`backend/tests/PENETRATION_TESTING_SUMMARY.md`** - Security testing methodology
 
 ### Support and Troubleshooting
 - **Test isolation**: All tests use isolated in-memory databases
