@@ -1,6 +1,6 @@
 # .github/workflows/reusable-backend-test.yml
 
-name: Backend Test Suite with Coverage
+name: Reusable - Backend Test Suite with Coverage
 
 # Controls when the workflow will run
 on:
