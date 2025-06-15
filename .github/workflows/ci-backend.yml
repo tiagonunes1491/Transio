@@ -2,7 +2,7 @@ name: "CI - Backend PR Validation"
 on: 
   pull_request:
     branches:
-      - 'main'
+      - 'development'
     paths:
       - 'backend/**'
 jobs:
