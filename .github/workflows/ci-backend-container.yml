@@ -1,7 +1,7 @@
 name: 'CD - Release backend container to ACR'
 on:
     push:
-        branches: [main]
+        branches: [development]
         paths:
         # --- TRIGGER on changes to these files ---
         - 'backend/**/*.py'
