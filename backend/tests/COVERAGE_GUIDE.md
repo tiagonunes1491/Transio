@@ -68,13 +68,13 @@ Shows coverage summary directly in the terminal with missing line numbers:
 ```
 Name                Stmts   Miss  Cover   Missing
 -------------------------------------------------
-app/__init__.py         4      0   100%
-app/encryption.py      46      2    96%   23, 67
-app/main.py            72      1    99%   45
+app/__init__.py         2      0   100%
+app/encryption.py      46      9    80%   16-27
+app/main.py            72      8    89%   114-125
 app/models.py          10      0   100%
-app/storage.py         71      3    96%   89, 112, 134
+app/storage.py         71      0   100%
 -------------------------------------------------
-TOTAL                 203      6    97%
+TOTAL                 201     17    92%
 ```
 
 #### HTML Report
