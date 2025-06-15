@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const isDevelopment = window.location.hostname === 'localhost' ||
                          window.location.hostname === '127.0.0.1' ||
                          window.location.protocol === 'file:';
-    const shareApiEndpoint = isDevelopment ? 'http://127.0.0.1:5000/share' : '/api/share';
+    const shareApiEndpoint = isDevelopment ? 'http://127.0.0.1:5000/api/share' : '/api/share';
     const revealLinkBasePath = `${window.location.origin}/view.html#`;
 
     async function createSecret(buttonTrigger) {
