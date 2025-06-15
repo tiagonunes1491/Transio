@@ -1,4 +1,5 @@
 # backend/app/encryption.py
+# 2 Trigger
 import logging
 from cryptography.fernet import Fernet, InvalidToken
 from config import Config
