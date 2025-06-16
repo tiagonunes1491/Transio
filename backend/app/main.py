@@ -75,7 +75,7 @@ def share_secret_api():
         return jsonify({"error": "Invalid input provided."}), 400
     except TypeError as te:  # Catch type errors from encryption/storage
         current_app.logger.warning(f"TypeError during secret sharing: {te}")
-        return jsonify({"error": str(te)}), 400
+        return jsonify({"error": "Invalid input provided."}), 400
     except Exception as e:
         # Log the full exception for debugging on the server.
         current_app.logger.error(f"Error sharing secret: {e}", exc_info=True)
