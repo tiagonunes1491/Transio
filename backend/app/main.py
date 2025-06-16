@@ -72,7 +72,7 @@ def share_secret_api():
         ValueError
     ) as ve:  # Catch specific errors like empty secret from encryption/storage
         current_app.logger.warning(f"ValueError during secret sharing: {ve}")
-        return jsonify({"error": str(ve)}), 400
+        return jsonify({"error": "Invalid input provided."}), 400
     except TypeError as te:  # Catch type errors from encryption/storage
         current_app.logger.warning(f"TypeError during secret sharing: {te}")
         return jsonify({"error": str(te)}), 400
