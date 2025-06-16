@@ -1,0 +1,25 @@
+{
+  "name": "securesharer-frontend",
+  "version": "1.0.0",
+  "description": "Frontend tests for SecureSharer application",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": ["<rootDir>/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "static/*.js",
+      "!static/index.html",
+      "!static/view.html",
+      "!static/err.html"
+    ]
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}
