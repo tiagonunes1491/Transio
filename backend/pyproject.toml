@@ -1,0 +1,15 @@
+[tool.ruff]
+# Existing Ruff settings might be here, if any.
+# For example:
+# line-length = 88
+# lint.select = ["E", "F", "I"]
+
+# List of paths to exclude from linting and formatting
+exclude = [
+    "tests",          # Ignores the 'tests' directory
+    "venv",           # Ruff often ignores this by default, but good to be explicit
+    ".git",           # Another common default exclusion
+    "__pycache__",
+    "build",
+    "dist",
+]

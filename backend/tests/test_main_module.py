@@ -269,19 +269,16 @@ class TestMainModuleErrorHandling:
     def test_share_secret_encryption_error(self, mock_encrypt, main_app):
         """Test handling of encryption errors in main.py route."""
         with main_app.test_client() as client:
-            # Mock encryption to raise ValueError
             mock_encrypt.side_effect = ValueError("Encryption error")
-
             secret_data = {"secret": "Test secret"}
             response = client.post(
                 "/api/share",
                 data=json.dumps(secret_data),
                 content_type="application/json",
             )
-
             assert response.status_code == 400
             data = json.loads(response.data)
-            assert "Encryption error" in data["error"]
+            assert data["error"] == "Invalid input provided."
 
     @patch("backend.app.main.encrypt_secret")
     def test_share_secret_type_error(self, mock_encrypt, main_app):
@@ -299,7 +296,7 @@ class TestMainModuleErrorHandling:
 
             assert response.status_code == 400
             data = json.loads(response.data)
-            assert "Type error" in data["error"]
+            assert data["error"] == "Invalid input provided."
 
     @patch("backend.app.main.encrypt_secret")
     def test_share_secret_general_error(self, mock_encrypt, main_app):

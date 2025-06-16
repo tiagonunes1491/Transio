@@ -37,7 +37,7 @@ def store_encrypted_secret(encrypted_secret_data: bytes) -> str | None:
     link_id = generate_unique_link_id()
     new_secret = Secret(
         link_id=link_id,
-        encrypted_secret=encrypted_secret_data
+        encrypted_secret=encrypted_secret_data,
         # created_at is handled by the model's default
     )
 
@@ -59,14 +59,18 @@ def retrieve_and_delete_secret(link_id: str) -> bytes | None:
     Returns the encrypted secret data (bytes) or None if not found or if an error occurs.
     """
     if not link_id or not isinstance(link_id, str):
-        logger.warning(f"Attempt to retrieve secret with invalid link_id type or empty: {link_id}")
+        logger.warning(
+            f"Attempt to retrieve secret with invalid link_id type or empty: {link_id}"
+        )
         return None
 
     try:
         secret_entry = db.session.query(Secret).filter_by(link_id=link_id).first()
 
         if not secret_entry:
-            logger.info(f"Secret with link_id: {link_id} not found in database (it may have been already accessed or never existed).")
+            logger.info(
+                f"Secret with link_id: {link_id} not found in database (it may have been already accessed or never existed)."
+            )
             return None
 
         encrypted_data = secret_entry.encrypted_secret
@@ -74,12 +78,17 @@ def retrieve_and_delete_secret(link_id: str) -> bytes | None:
         # CRITICAL: Delete the secret immediately after retrieval for one-time access.
         db.session.delete(secret_entry)
         db.session.commit()
-        logger.info(f"Retrieved and deleted secret with link_id: {link_id} from database.")
+        logger.info(
+            f"Retrieved and deleted secret with link_id: {link_id} from database."
+        )
         return encrypted_data
 
     except Exception as e:
         db.session.rollback()  # Rollback in case of database error
-        logger.error(f"Database error retrieving/deleting secret for link_id {link_id}: {e}", exc_info=True)
+        logger.error(
+            f"Database error retrieving/deleting secret for link_id {link_id}: {e}",
+            exc_info=True,
+        )
         return None
 
 
@@ -96,24 +105,34 @@ def cleanup_expired_secrets() -> int:
 
         # Efficiently delete expired secrets and get the count of deleted rows.
         # The delete() method on a query returns the number of rows deleted.
-        num_deleted = db.session.query(Secret).filter(Secret.created_at < expiry_threshold).delete(synchronize_session='fetch')
+        num_deleted = (
+            db.session.query(Secret)
+            .filter(Secret.created_at < expiry_threshold)
+            .delete(synchronize_session="fetch")
+        )
         # synchronize_session='fetch' or False can be used. 'fetch' tries to update the session.
         # False is often simpler for bulk deletes if you don't need the session to be aware of specific instances deleted.
-        
+
         db.session.commit()
         removed_count = num_deleted
 
         if removed_count > 0:
-            logger.info(f"Cleaned up {removed_count} expired (unaccessed) secrets from the database.")
+            logger.info(
+                f"Cleaned up {removed_count} expired (unaccessed) secrets from the database."
+            )
         else:
-            logger.info("Cleanup_expired_secrets found no expired secrets to remove from the database.")
-        
+            logger.info(
+                "Cleanup_expired_secrets found no expired secrets to remove from the database."
+            )
+
         return removed_count
-        
+
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Database error during cleanup_expired_secrets: {e}", exc_info=True)
-        return 0 # Return 0 on error, as per original return type expectation
+        logger.error(
+            f"Database error during cleanup_expired_secrets: {e}", exc_info=True
+        )
+        return 0  # Return 0 on error, as per original return type expectation
 
 
 def check_secret_exists(link_id: str) -> bool:
@@ -125,20 +144,22 @@ def check_secret_exists(link_id: str) -> bool:
     if not link_id:
         logger.warning("Attempt to check existence of a secret with empty link_id")
         return False
-    
+
     try:
         # Check if there's an unexpired secret with this link_id
         current_time = datetime.now(timezone.utc)
         expiry_time = current_time - timedelta(minutes=_SECRET_EXPIRY_MINUTES)
-        
+
         # Query for unexpired secret with matching link_id
         secret = Secret.query.filter(
-            Secret.link_id == link_id,
-            Secret.created_at > expiry_time
+            Secret.link_id == link_id, Secret.created_at > expiry_time
         ).first()
-        
+
         return secret is not None
-    
+
     except Exception as e:
-        logger.error(f"Error checking for existence of secret with link_id {link_id}: {e}", exc_info=True)
+        logger.error(
+            f"Error checking for existence of secret with link_id {link_id}: {e}",
+            exc_info=True,
+        )
         return False
