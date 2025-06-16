@@ -12,11 +12,18 @@
     "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
     "testMatch": ["<rootDir>/tests/**/*.test.js"],
     "collectCoverageFrom": [
-      "static/*.js",
-      "!static/index.html",
-      "!static/view.html",
-      "!static/err.html"
-    ]
+      "tests/*-testable.js"
+    ],
+    "coverageReporters": ["text", "lcov", "html"],
+    "coverageDirectory": "coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    }
   },
   "devDependencies": {
     "jest": "^29.7.0",

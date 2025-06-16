@@ -1,6 +1,9 @@
 // Test setup file for frontend tests
 // This file is run before each test file
 
+const fs = require('fs');
+const path = require('path');
+
 // Mock global objects that might not be available in test environment
 global.console = {
   ...console,
@@ -48,6 +51,13 @@ Object.defineProperty(navigator, 'clipboard', {
   },
   writable: true
 });
+
+// Mock document.execCommand
+document.execCommand = jest.fn();
+
+// Mock alert and prompt
+global.alert = jest.fn();
+global.prompt = jest.fn();
 
 // Clean up after each test
 afterEach(() => {
