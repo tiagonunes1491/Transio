@@ -15,6 +15,7 @@
 // Usage:
 // az deployment sub create --location spaincentral --template-file landing-zone-k8s.bicep --parameters landing-zone-k8s.bicepparam
 //
+
 targetScope = 'subscription'
 
 // =====================================================
