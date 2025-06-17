@@ -5,10 +5,10 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint static/**/*.js tests/**/*.js",
-    "lint:fix": "eslint --fix static/**/*.js tests/**/*.js",
-    "format": "prettier --write static/**/*.js tests/**/*.js static/**/*.css static/**/*.html",
-    "format:check": "prettier --check static/**/*.js tests/**/*.js static/**/*.css static/**/*.html",
+    "lint": "eslint static/**/*.js",
+    "lint:fix": "eslint --fix static/**/*.js",
+    "format": "prettier --write static/**/*.js static/**/*.css static/**/*.html",
+    "format:check": "prettier --check static/**/*.js static/**/*.css static/**/*.html",
     "validate:html": "html-validate --config .htmlvalidaterc.json static/*.html"
   },
   "jest": {

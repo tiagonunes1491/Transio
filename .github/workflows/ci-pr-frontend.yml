@@ -4,12 +4,9 @@ on:
     branches:
       - 'development'
     paths:
-      - 'frontend/**/*.js'
-      - 'frontend/**/*.html'
-      - 'frontend/**/*.css'
+      - 'frontend/static/**'
       - 'frontend/Dockerfile'
       - 'frontend/nginx.conf'
-      - 'frontend/static/**'
 jobs:
   check_changes:
     name: 'Check for file changes'
@@ -26,11 +23,9 @@ jobs:
       - uses: tj-actions/changed-files@v44
         id: changed-files-frontend
         with:
-          # Get all changed JavaScript and HTML files in frontend directory
+          # Get all changed files in frontend static directory (production files only)
           files: |
-            frontend/**/*.js
-            frontend/**/*.html
-            frontend/**/*.css
+            frontend/static/**
           # Output the files as a comma-separated list
           separator: ','
 
@@ -57,6 +52,14 @@ jobs:
     uses: ./.github/workflows/reusable-sast-scan.yml
     with:
       language: 'javascript'
+  
+  sca_analysis:
+    needs: check_changes
+    name: 'SCA Analysis (Dependencies & Vulnerabilities)'
+    if: needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-sca-scan.yml
+    with:
+      paths: 'frontend/static'
     
   frontend_tests:
     needs: check_changes
@@ -79,7 +82,7 @@ jobs:
       
   post-comment:
     name: 'Post Validation Results Comment'
-    needs: [check_changes, format_and_lint, static_analysis, frontend_tests, build_and_scan]
+    needs: [check_changes, format_and_lint, static_analysis, sca_analysis, frontend_tests, build_and_scan]
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
     permissions:
@@ -91,6 +94,7 @@ jobs:
           (needs.check_changes.outputs.lint_required != '' && 
            needs.format_and_lint.result == 'success' && 
            needs.static_analysis.result == 'success' && 
+           needs.sca_analysis.result == 'success' && 
            needs.frontend_tests.result == 'success' &&
            (needs.build_and_scan.result == 'success' || needs.build_and_scan.result == 'skipped')) ||
           (needs.check_changes.outputs.lint_required == '' && 
@@ -108,12 +112,14 @@ jobs:
             **Validation Results:**
             - 🎨 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🛡️ SCA Analysis: ${{ needs.sca_analysis.result == 'success' && '✅ Passed' || needs.sca_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🧪 Unit Tests: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔨 Build & Container Scan: ${{ needs.build_and_scan.result == 'success' && '✅ Passed' || needs.build_and_scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
 
             **What was validated:**
-            - 🎨 JavaScript/CSS code formatting and linting
+            - 🎨 JavaScript/CSS code formatting and linting (production files only)
             - 🔍 Static Application Security Testing (SAST) for your JavaScript code
+            - 🛡️ Software Composition Analysis (SCA) for dependencies and vulnerabilities (production files only)
             - 🧪 Unit tests
             - 🔨 Docker build and container security scanning
 
@@ -125,6 +131,7 @@ jobs:
           needs.check_changes.outputs.lint_required != '' && 
           (needs.format_and_lint.result != 'success' || 
            needs.static_analysis.result != 'success' || 
+           needs.sca_analysis.result != 'success' || 
            needs.frontend_tests.result != 'success' ||
            (needs.build_and_scan.result != 'success' && needs.build_and_scan.result != 'skipped'))
         uses: peter-evans/create-or-update-comment@v4
@@ -141,18 +148,20 @@ jobs:
             **Validation Results:**
             - 🎨 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🛡️ SCA Analysis: ${{ needs.sca_analysis.result == 'success' && '✅ Passed' || needs.sca_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🧪 Unit Tests: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔨 Build & Container Scan: ${{ needs.build_and_scan.result == 'success' && '✅ Passed' || needs.build_and_scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
 
             **What was checked:**
-            - 🎨 JavaScript/CSS code formatting and linting
+            - 🎨 JavaScript/CSS code formatting and linting (production files only)
             - 🔍 Static Application Security Testing (SAST) for your JavaScript code
+            - 🛡️ Software Composition Analysis (SCA) for dependencies and vulnerabilities (production files only)
             - 🧪 Unit tests
             - 🔨 Docker build and container security scanning
 
             **Common fixes:**
-            - **Linting issues**: Run `npx eslint --fix static/*.js tests/*.js` in the frontend directory
-            - **Formatting issues**: Run `npx prettier --write static/*.js tests/*.js` in the frontend directory
+            - **Linting issues**: Run `npx eslint --fix static/*.js` in the frontend directory
+            - **Formatting issues**: Run `npx prettier --write static/*.js static/*.css static/*.html` in the frontend directory
             - **Test failures**: Check test output and fix failing tests
 
             Please fix the issues and push your changes.

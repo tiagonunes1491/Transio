@@ -40,16 +40,16 @@ jobs:
       - name: Validate HTML files
         working-directory: frontend
         run: |
-          echo "Validating HTML files..."
+          echo "Validating HTML files in static directory..."
           npm run validate:html
 
       - name: Check JavaScript syntax
         working-directory: frontend
         run: |
-          echo "Checking JavaScript syntax..."
+          echo "Checking JavaScript syntax for production files..."
           
-          # Check all JavaScript files for syntax errors
-          find static tests -name "*.js" -exec echo "Checking syntax: {}" \; -exec node -c {} \;
+          # Check only JavaScript files in static directory for syntax errors
+          find static -name "*.js" -exec echo "Checking syntax: {}" \; -exec node -c {} \;
 
       - name: Run ESLint
         working-directory: frontend
@@ -82,19 +82,19 @@ jobs:
           FILES="${{ inputs.paths }}"
           FILES_ARRAY=(${FILES//,/ })
           
-          echo "Running Prettier check on supported files..."
+          echo "Running Prettier check on production files..."
           
-          # Run Prettier check on supported file types (JS, CSS, HTML)
+          # Run Prettier check only on production files in static directory
           for file in "${FILES_ARRAY[@]}"; do
             if [[ "$file" == frontend/* ]]; then
               # Remove frontend/ prefix since we're already in frontend directory
               file_path="${file#frontend/}"
-              # Run Prettier on JS, CSS, and HTML files
-              if [[ "$file_path" == *.js || "$file_path" == *.css || "$file_path" == *.html ]]; then
+              # Run Prettier only on production files in static directory
+              if [[ "$file_path" == static/*.js || "$file_path" == static/*.css || "$file_path" == static/*.html ]]; then
                 echo "Checking format: $file_path"
                 npx prettier --check "$file_path"
               else
-                echo "Skipping unsupported file type: $file_path"
+                echo "Skipping non-production file: $file_path"
               fi
             fi
           done
@@ -135,11 +135,11 @@ jobs:
           echo ""
           echo "To fix formatting issues, run:"
           echo "  cd frontend"
-          echo "  npx prettier --write static/*.js tests/*.js static/*.css static/*.html"
+          echo "  npx prettier --write static/*.js static/*.css static/*.html"
           echo ""
           echo "To fix linting issues, run:"
           echo "  cd frontend"
-          echo "  npx eslint --fix static/*.js tests/*.js"
+          echo "  npx eslint --fix static/*.js"
           echo ""
           echo "To validate HTML, run:"
           echo "  cd frontend"

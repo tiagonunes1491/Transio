@@ -54,8 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(apiEndpoint, {
         method: 'HEAD', // Only check headers, don't retrieve content
         headers: {
-          Accept: 'application/json'
-        }
+          Accept: 'application/json',
+        },
       });
 
       // Always hide loading state when response comes back
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Add click event listener to the reveal button
       const revealButton = document.getElementById('revealButton');
       if (revealButton) {
-        revealButton.addEventListener('click', async() => {
+        revealButton.addEventListener('click', async () => {
           resetUI();
           loadingContainer.classList.remove('hidden');
           headerTitle.textContent = 'Loading...';
@@ -109,8 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Fetch the secret
       const response = await fetch(apiEndpoint, {
         headers: {
-          Accept: 'application/json'
-        }
+          Accept: 'application/json',
+        },
       });
 
       // Always hide loading state
