@@ -52,9 +52,6 @@ npm test
 # Run tests in watch mode (re-runs on file changes)
 npm run test:watch
 
-# Run tests with coverage report
-npm run test:coverage
-
 # Run specific test file
 npm test -- --testPathPattern=utils.test.js
 ```
