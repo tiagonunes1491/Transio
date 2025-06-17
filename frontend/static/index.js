@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(shareApiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secretText }),
+        body: JSON.stringify({ secret: secretText })
       });
       let responseData;
       try {
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newLinkData = {
           url: secretLink,
           timestamp: new Date().toISOString(),
-          id: responseData.link_id,
+          id: responseData.link_id
         };
         generatedLinks.unshift(newLinkData);
         if (generatedLinks.length > 10) {
