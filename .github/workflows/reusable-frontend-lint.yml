@@ -58,15 +58,20 @@ jobs:
           FILES="${{ inputs.paths }}"
           FILES_ARRAY=(${FILES//,/ })
           
-          echo "Running ESLint on files: ${FILES_ARRAY[@]}"
+          echo "Running ESLint on JavaScript files..."
           
-          # Run ESLint on the specified files
+          # Run ESLint only on JavaScript files
           for file in "${FILES_ARRAY[@]}"; do
             if [[ "$file" == frontend/* ]]; then
               # Remove frontend/ prefix since we're already in frontend directory
               file_path="${file#frontend/}"
-              echo "Linting: $file_path"
-              npx eslint "$file_path"
+              # Only lint JavaScript files, not HTML or CSS
+              if [[ "$file_path" == *.js ]]; then
+                echo "Linting: $file_path"
+                npx eslint "$file_path"
+              else
+                echo "Skipping non-JS file: $file_path"
+              fi
             fi
           done
 
@@ -77,15 +82,20 @@ jobs:
           FILES="${{ inputs.paths }}"
           FILES_ARRAY=(${FILES//,/ })
           
-          echo "Running Prettier check on files: ${FILES_ARRAY[@]}"
+          echo "Running Prettier check on supported files..."
           
-          # Run Prettier check on the specified files
+          # Run Prettier check on supported file types (JS, CSS, HTML)
           for file in "${FILES_ARRAY[@]}"; do
             if [[ "$file" == frontend/* ]]; then
               # Remove frontend/ prefix since we're already in frontend directory
               file_path="${file#frontend/}"
-              echo "Checking format: $file_path"
-              npx prettier --check "$file_path"
+              # Run Prettier on JS, CSS, and HTML files
+              if [[ "$file_path" == *.js || "$file_path" == *.css || "$file_path" == *.html ]]; then
+                echo "Checking format: $file_path"
+                npx prettier --check "$file_path"
+              else
+                echo "Skipping unsupported file type: $file_path"
+              fi
             fi
           done
 
