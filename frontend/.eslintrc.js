@@ -19,7 +19,7 @@ module.exports = {
     'no-unused-vars': 'error',
     'prefer-const': 'error',
     // Override standard style to match existing codebase
-    'semi': ['error', 'always'],
+    semi: ['error', 'always'],
     'space-before-function-paren': ['error', 'never'],
     'comma-dangle': ['error', 'never'],
     'no-trailing-spaces': 'error',
@@ -27,9 +27,9 @@ module.exports = {
   },
   globals: {
     // Add any global variables used in your frontend
-    'crypto': 'readonly',
-    'TextEncoder': 'readonly',
-    'TextDecoder': 'readonly'
+    crypto: 'readonly',
+    TextEncoder: 'readonly',
+    TextDecoder: 'readonly'
   },
   overrides: [
     {
@@ -40,4 +40,4 @@ module.exports = {
       }
     }
   ]
-}
+};

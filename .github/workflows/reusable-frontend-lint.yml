@@ -60,17 +60,17 @@ jobs:
           
           echo "Running ESLint on JavaScript files..."
           
-          # Run ESLint only on JavaScript files
+          # Run ESLint only on JavaScript files in static directory (production files)
           for file in "${FILES_ARRAY[@]}"; do
             if [[ "$file" == frontend/* ]]; then
               # Remove frontend/ prefix since we're already in frontend directory
               file_path="${file#frontend/}"
-              # Only lint JavaScript files, not HTML or CSS
-              if [[ "$file_path" == *.js ]]; then
+              # Only lint JavaScript files in static directory, not config files
+              if [[ "$file_path" == static/*.js ]]; then
                 echo "Linting: $file_path"
                 npx eslint "$file_path"
               else
-                echo "Skipping non-JS file: $file_path"
+                echo "Skipping non-production file: $file_path"
               fi
             fi
           done
