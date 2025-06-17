@@ -1,4 +1,4 @@
-/* 
+/*
  * Test wrapper for utils.js
  * This file makes the utility functions available for testing with proper coverage
  */
@@ -8,7 +8,7 @@ const path = require('path');
 
 // Read the original utils.js file
 const utilsPath = path.join(__dirname, '..', 'static', 'utils.js');
-let utilsContent = fs.readFileSync(utilsPath, 'utf8');
+const utilsContent = fs.readFileSync(utilsPath, 'utf8');
 
 // Create a module-compatible version by evaluating the functions
 const vm = require('vm');
@@ -19,7 +19,7 @@ const context = vm.createContext({
       if (tag === 'div') {
         return {
           get textContent() { return this._textContent || ''; },
-          set textContent(value) { 
+          set textContent(value) {
             this._textContent = value;
             // Simulate HTML escaping - only escape < > and &
             this.innerHTML = value
@@ -48,7 +48,7 @@ const context = vm.createContext({
   },
   window: global.window || {},
   navigator: global.navigator || {},
-  console: console,
+  console,
   alert: () => {},
   prompt: () => '',
   setTimeout: (fn, delay) => setTimeout(fn, delay),

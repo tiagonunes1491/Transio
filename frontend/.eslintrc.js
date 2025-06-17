@@ -17,7 +17,13 @@ module.exports = {
     'no-console': 'warn',
     'no-debugger': 'error',
     'no-unused-vars': 'error',
-    'prefer-const': 'error'
+    'prefer-const': 'error',
+    // Override standard style to match existing codebase
+    'semi': ['error', 'always'],
+    'space-before-function-paren': ['error', 'never'],
+    'comma-dangle': ['error', 'never'],
+    'no-trailing-spaces': 'error',
+    'eol-last': 'error'
   },
   globals: {
     // Add any global variables used in your frontend

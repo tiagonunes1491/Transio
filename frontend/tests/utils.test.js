@@ -89,7 +89,7 @@ describe('Utils Functions', () => {
     test('should format minutes ago correctly', () => {
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       expect(formatDate(fiveMinutesAgo)).toBe('5 mins ago');
-      
+
       const oneMinuteAgo = new Date(Date.now() - 1 * 60 * 1000).toISOString();
       expect(formatDate(oneMinuteAgo)).toBe('1 min ago');
     });
@@ -97,7 +97,7 @@ describe('Utils Functions', () => {
     test('should format hours ago correctly', () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       expect(formatDate(twoHoursAgo)).toBe('2 hrs ago');
-      
+
       const oneHourAgo = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString();
       expect(formatDate(oneHourAgo)).toBe('1 hr ago');
     });
@@ -105,7 +105,7 @@ describe('Utils Functions', () => {
     test('should format days ago correctly', () => {
       const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
       expect(formatDate(threeDaysAgo)).toBe('3 days ago');
-      
+
       const oneDayAgo = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString();
       expect(formatDate(oneDayAgo)).toBe('1 day ago');
     });
@@ -134,7 +134,7 @@ describe('Utils Functions', () => {
         }
         return {};
       });
-      
+
       document.body.appendChild = jest.fn();
       document.body.removeChild = jest.fn();
       document.execCommand = jest.fn();
@@ -142,9 +142,9 @@ describe('Utils Functions', () => {
 
     test('should create textarea and attempt copy', () => {
       document.execCommand.mockReturnValue(true);
-      
+
       const result = copyToClipboardFallback('test text');
-      
+
       expect(document.createElement).toHaveBeenCalledWith('textarea');
       expect(document.execCommand).toHaveBeenCalledWith('copy');
       expect(result).toBe(true);
@@ -152,9 +152,9 @@ describe('Utils Functions', () => {
 
     test('should return false when execCommand fails', () => {
       document.execCommand.mockReturnValue(false);
-      
+
       const result = copyToClipboardFallback('test text');
-      
+
       expect(result).toBe(false);
     });
 
@@ -162,9 +162,9 @@ describe('Utils Functions', () => {
       document.execCommand.mockImplementation(() => {
         throw new Error('Copy failed');
       });
-      
+
       const result = copyToClipboardFallback('test text');
-      
+
       expect(result).toBe(false);
     });
   });
@@ -185,14 +185,14 @@ describe('Utils Functions', () => {
 
       // Use real timers for this test
       jest.useRealTimers();
-      
+
       showCopySuccess(mockButton);
-      
+
       // Check immediate changes
       expect(mockButton.classList.add).toHaveBeenCalledWith('copying');
       expect(mockButton.innerHTML).toContain('svg'); // Success checkmark SVG
       expect(mockButton.style.backgroundColor).toBe('#2d7d6e');
-      
+
       // Check that it reverts after 2 seconds
       setTimeout(() => {
         expect(mockButton.innerHTML).toBe('<original>');
@@ -220,7 +220,7 @@ describe('Utils Functions', () => {
 
       jest.useRealTimers();
       showCopySuccess(mockButton);
-      
+
       // Should not call removeProperty when there's an existing background
       setTimeout(() => {
         expect(mockButton.style.removeProperty).not.toHaveBeenCalled();
@@ -242,7 +242,7 @@ describe('Utils Functions', () => {
 
       jest.useRealTimers();
       showCopySuccess(mockButton);
-      
+
       // Should call removeProperty when no existing background
       setTimeout(() => {
         expect(mockButton.style.removeProperty).toHaveBeenCalledWith('background-color');
@@ -254,9 +254,9 @@ describe('Utils Functions', () => {
     test('should call prompt with correct message', () => {
       const mockPrompt = jest.fn();
       global.prompt = mockPrompt;
-      
+
       showManualCopyDialog('test text');
-      
+
       expect(mockPrompt).toHaveBeenCalledWith(
         'Auto-copy to clipboard is not available. Please manually copy this text:\n\n' +
         '(The text is pre-selected for you)',
@@ -266,13 +266,13 @@ describe('Utils Functions', () => {
   });
 
   describe('copyToClipboard', () => {
-    test('should exist and be callable', async () => {
+    test('should exist and be callable', async() => {
       expect(typeof copyToClipboard).toBe('function');
-      
+
       // Test with mock navigator
       global.navigator = {};
       global.prompt = jest.fn();
-      
+
       const mockButton = { innerHTML: 'Copy' };
       await expect(copyToClipboard('test text', mockButton)).resolves.not.toThrow();
     });
@@ -285,7 +285,7 @@ describe('Utils Functions', () => {
         if (tagName === 'div') {
           return {
             get textContent() { return this._textContent || ''; },
-            set textContent(value) { 
+            set textContent(value) {
               this._textContent = value;
               this.innerHTML = value
                 .replace(/&/g, '&amp;')
@@ -303,7 +303,7 @@ describe('Utils Functions', () => {
           setSelectionRange: jest.fn()
         };
       });
-      
+
       // Mock document.body methods without replacing the body itself
       document.body.appendChild = jest.fn();
       document.body.removeChild = jest.fn();
@@ -381,21 +381,21 @@ describe('Utils Functions', () => {
         const now = Date.now();
         const exactly59Seconds = new Date(now - 59 * 1000).toISOString();
         const exactly60Seconds = new Date(now - 60 * 1000).toISOString();
-        
+
         expect(formatDate(exactly59Seconds)).toBe('Just now');
         expect(formatDate(exactly60Seconds)).toBe('1 min ago');
-        
+
         // Test hour boundary
         const exactly59Minutes = new Date(now - 59 * 60 * 1000).toISOString();
         const exactly60Minutes = new Date(now - 60 * 60 * 1000).toISOString();
-        
+
         expect(formatDate(exactly59Minutes)).toBe('59 mins ago');
         expect(formatDate(exactly60Minutes)).toBe('1 hr ago');
-        
+
         // Test day boundary
         const exactly23Hours = new Date(now - 23 * 60 * 60 * 1000).toISOString();
         const exactly24Hours = new Date(now - 24 * 60 * 60 * 1000).toISOString();
-        
+
         expect(formatDate(exactly23Hours)).toBe('23 hrs ago');
         expect(formatDate(exactly24Hours)).toBe('1 day ago');
       });
@@ -404,17 +404,17 @@ describe('Utils Functions', () => {
     describe('A07:2021 – Identification and Authentication (Safe Clipboard)', () => {
       test('copyToClipboardFallback should not expose sensitive operations', () => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-        
+
         // Mock createElement to throw error
         const originalCreateElement = document.createElement;
         document.createElement = jest.fn().mockImplementation(() => {
           throw new Error('Blocked for security');
         });
-        
+
         const result = copyToClipboardFallback('test');
         expect(result).toBe(false);
         expect(consoleSpy).toHaveBeenCalled();
-        
+
         document.createElement = originalCreateElement;
         consoleSpy.mockRestore();
       });
@@ -423,10 +423,10 @@ describe('Utils Functions', () => {
     describe('A08:2021 – Software and Data Integrity (Input Sanitization)', () => {
       test('showManualCopyDialog should handle special characters safely', () => {
         global.prompt = jest.fn();
-        
+
         const specialChars = '\\n\\r\\t<>&"\'';
         showManualCopyDialog(specialChars);
-        
+
         expect(global.prompt).toHaveBeenCalledWith(
           expect.stringContaining('manually copy'),
           specialChars
@@ -435,23 +435,23 @@ describe('Utils Functions', () => {
     });
 
     describe('A09:2021 – Security Logging (Error Handling)', () => {
-      test('copyToClipboard should log errors appropriately', async () => {
+      test('copyToClipboard should log errors appropriately', async() => {
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-        
+
         global.navigator = {
           clipboard: {
             writeText: jest.fn().mockRejectedValue(new Error('Test error'))
           }
         };
         global.prompt = jest.fn();
-        
+
         await copyToClipboard('test', { innerHTML: 'Copy' });
-        
+
         expect(consoleSpy).toHaveBeenCalledWith(
           'Failed to copy to clipboard:',
           expect.any(Error)
         );
-        
+
         consoleSpy.mockRestore();
       });
     });
@@ -464,7 +464,7 @@ describe('Utils Functions', () => {
           'gopher://example.com',
           'ldap://internal-ldap'
         ];
-        
+
         dangerousUrls.forEach(url => {
           const result = truncateLink(url);
           // Should either truncate safely or fall back to safe handling

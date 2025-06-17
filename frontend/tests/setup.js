@@ -1,9 +1,6 @@
 // Test setup file for frontend tests
 // This file is run before each test file
 
-const fs = require('fs');
-const path = require('path');
-
 // Mock global objects that might not be available in test environment
 global.console = {
   ...console,
@@ -17,7 +14,7 @@ const localStorageMock = {
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
-  clear: jest.fn(),
+  clear: jest.fn()
 };
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock
