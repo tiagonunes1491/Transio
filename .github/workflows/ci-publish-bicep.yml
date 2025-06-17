@@ -51,16 +51,32 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           ACR_NAME: ${{ vars.ACR_NAME }} 
-          CHANGED_FILES_JSON: ${{ toJSON(steps.changed-files.outputs.all_changed_files) }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           sudo apt-get install -y jq
-          for file in $(echo $CHANGED_FILES_JSON | jq -r '.[]'); do
+          
+          # Convert space-separated files to array and process each file
+          for file in $CHANGED_FILES; do
+            echo "Processing file: $file"
             base_path=$(echo "$file" | sed 's|^infra/||');
-            if [[ "$base_path" == */* ]]; then artifact_name=$(echo "$base_path" | sed 's|.bicep$||'); else artifact_name=$(basename "$base_path" .bicep); fi;
-            if [[ "$base_path" == */* ]]; then publish_path="modules/$artifact_name"; else publish_path="templates/$artifact_name"; fi;
             
-            current_version=$(jq -r ".[\"$artifact_name\"]" infra/versions.json)
-            if [ "$current_version" == "null" ]; then current_version="1.0.0"; fi
+            if [[ "$base_path" == */* ]]; then 
+              artifact_name=$(echo "$base_path" | sed 's|.bicep$||'); 
+            else 
+              artifact_name=$(basename "$base_path" .bicep); 
+            fi;
+            
+            if [[ "$base_path" == */* ]]; then 
+              publish_path="modules/$artifact_name"; 
+            else 
+              publish_path="templates/$artifact_name"; 
+            fi;
+            
+            echo "Artifact name: $artifact_name"
+            echo "Publish path: $publish_path"
+            
+            current_version=$(jq -r ".[\"$artifact_name\"] // \"1.0.0\"" infra/versions.json)
+            echo "Current version: $current_version"
             
             # Always bump the patch version for a stable release
             new_version=$(echo $current_version | awk -F. -v OFS=. '{$NF++;print}')
