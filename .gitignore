@@ -18,6 +18,12 @@ coverage.xml
 .idea/
 *.DS_Store
 Thumbs.db
+
+# Node.js dependencies and build artifacts
+node_modules/
+frontend/node_modules/
+frontend/coverage/
+
 k8s/secret-sharer-app/values.yaml
 k8s/secret-sharer-app/template.txt
 k8s/secret-sharer-app/debug.txt
