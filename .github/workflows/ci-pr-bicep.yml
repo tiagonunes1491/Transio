@@ -13,15 +13,18 @@ permissions:
   pull-requests: write
 
 jobs:
-  validate-bicep:
-    name: 'Validate Changed Bicep Files'
+  check_changes:
+    name: 'Check for file changes'
     runs-on: ubuntu-latest
+    outputs:
+      bicep_required: ${{ steps.changed-files.outputs.any_changed }}
+      changed_files: ${{ steps.changed-files.outputs.all_changed_files }}
     steps:
-      - name: 'Checkout Code'
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
+          fetch-depth: 0  # Fetch full history for changed-files to work properly
+      
       - name: 'Find changed Bicep files'
         id: changed-files
         uses: tj-actions/changed-files@v46 
@@ -30,8 +33,18 @@ jobs:
             infra/**/*.bicep
             infra/**/*.bicepparam
 
+  validate-bicep:
+    needs: check_changes
+    name: 'Validate Changed Bicep Files'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: 'Setup Azure CLI and Bicep'
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: needs.check_changes.outputs.bicep_required == 'true'
         shell: bash
         run: |
           echo "🔧 Setting up Azure CLI and Bicep..."
@@ -63,7 +76,7 @@ jobs:
           AZURE_CORE_NO_COLOR: true
 
       - name: 'Validate Changed Bicep Files'
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: needs.check_changes.outputs.bicep_required == 'true'
         shell: bash
         env:
           # Use custom Azure config directory
@@ -75,13 +88,13 @@ jobs:
           AZURE_CORE_ONLY_SHOW_ERRORS: true
           AZURE_CORE_NO_COLOR: true
         run: |
-          echo "🔍 Found changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          echo "🔍 Found changed files: ${{ needs.check_changes.outputs.changed_files }}"
 
           # Ensure custom Azure config directory exists
           mkdir -p "${AZURE_CONFIG_DIR}"
           
           # Convert space-separated files to array
-          IFS=' ' read -ra files <<< "${{ steps.changed-files.outputs.all_changed_files }}"
+          IFS=' ' read -ra files <<< "${{ needs.check_changes.outputs.changed_files }}"
 
           failed_files=()
           
@@ -280,33 +293,32 @@ jobs:
             echo "💡 Check Security tab for any lint recommendations"
           fi
 
+      - name: 'No Bicep Changes - Validation Skipped'
+        if: needs.check_changes.outputs.bicep_required != 'true'
+        run: |
+          echo "ℹ️ No Bicep files changed - validation skipped"
+          echo "If you expected validation to run, check that changes are in infra/ directory with .bicep or .bicepparam extensions"
+
       - name: 'Upload Bicep Lint SARIF'
-        if: always() && steps.changed-files.outputs.any_changed == 'true'
+        if: always() && needs.check_changes.outputs.bicep_required == 'true'
         uses: github/codeql-action/upload-sarif@v3
         with:
           category: bicep-lint-analysis
           sarif_file: bicep-validation-results.sarif
           
   security-scan:
+      needs: check_changes
       name: 'Security Scan Bicep Files'
       runs-on: ubuntu-latest
       steps:
         - name: 'Checkout Code'
           uses: actions/checkout@v4
 
-        - name: 'Find changed Bicep files'
-          id: changed-files
-          uses: tj-actions/changed-files@v46 
-          with:
-            files: |
-              infra/**/*.bicep
-              infra/**/*.bicepparam
-
         - name: 'Run Security Scan with Checkov'
-          if: steps.changed-files.outputs.any_changed == 'true'
+          if: needs.check_changes.outputs.bicep_required == 'true'
           uses: bridgecrewio/checkov-action@v12
           with:
-            file: ${{ steps.changed-files.outputs.all_changed_files }}
+            file: ${{ needs.check_changes.outputs.changed_files }}
             framework: bicep
             output_format: sarif
             output_file_path: checkov-results.sarif
@@ -315,19 +327,50 @@ jobs:
             check: CKV_AZURE_*
 
         - name: 'Upload Checkov SARIF'
-          if: always()
+          if: always() && needs.check_changes.outputs.bicep_required == 'true'
           uses: github/codeql-action/upload-sarif@v3
           with:
             category: checkov-bicep-security
             sarif_file: checkov-results.sarif
 
-  post-failure-comment:
-    name: 'Post Validation Failure Comment'
-    needs: validate-bicep
+        - name: 'No Bicep Changes - Security Scan Skipped'
+          if: needs.check_changes.outputs.bicep_required != 'true'
+          run: |
+            echo "ℹ️ No Bicep files changed - security scan skipped"
+            echo "If you expected security scanning to run, check that changes are in infra/ directory with .bicep or .bicepparam extensions"
+
+  post-comment:
+    name: 'Post Validation Results Comment'
+    needs: [check_changes, validate-bicep, security-scan]
     runs-on: ubuntu-latest
-    if: failure() && github.event_name == 'pull_request'
+    if: always() && github.event_name == 'pull_request'
     steps:
-      - name: 'Post PR Comment on Failure'
+      - name: 'Post Success Comment'
+        if: needs.check_changes.outputs.bicep_required == 'true' && needs.validate-bicep.result == 'success' && needs.security-scan.result == 'success'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ **Bicep Validation Successful**
+
+            All Bicep files passed validation successfully! 🎉
+
+            **Validation Results:**
+            - 📦 Bicep compilation: ✅ Passed
+            - 🛡️ Security scanning: ✅ Passed
+
+            **What was validated:**
+            - 📦 Bicep compilation (syntax validation)
+            - 🔍 Bicep linting (best practices)  
+            - 🛡️ Security scanning with Checkov
+
+            Great work! Your infrastructure code looks good.
+          edit-mode: replace
+
+      - name: 'Post Failure Comment'
+        if: needs.check_changes.outputs.bicep_required == 'true' && (needs.validate-bicep.result != 'success' || needs.security-scan.result != 'success')
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -336,10 +379,14 @@ jobs:
           body: |
             ❌ **Bicep Validation Failed**
 
-            One or more Bicep files failed validation. 
+            One or more Bicep files failed validation.
             Please review the [Checks tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
 
-            The validation includes:
+            **Validation Results:**
+            - 📦 Bicep compilation: ${{ needs.validate-bicep.result == 'success' && '✅ Passed' || needs.validate-bicep.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }}
+            - 🛡️ Security scanning: ${{ needs.security-scan.result == 'success' && '✅ Passed' || needs.security-scan.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }}
+
+            **What was checked:**
             - 📦 Bicep compilation (syntax validation)
             - 🔍 Bicep linting (best practices)
             - 🛡️ Security scanning with Checkov
