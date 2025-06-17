@@ -8,6 +8,7 @@
 async function copyToClipboard(textToCopy, buttonElement) {
     try {
         // First try the modern Clipboard API (HTTPS/localhost only)
+        // Test commit to review if CI PR works
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(textToCopy);
             showCopySuccess(buttonElement);
