@@ -1,0 +1,176 @@
+name: "CI - Frontend PR Validation"
+on: 
+  pull_request:
+    branches:
+      - 'development'
+    paths:
+      - 'frontend/**/*.js'
+      - 'frontend/**/*.html'
+      - 'frontend/**/*.css'
+      - 'frontend/Dockerfile'
+      - 'frontend/nginx.conf'
+      - 'frontend/static/**'
+jobs:
+  check_changes:
+    name: 'Check for file changes'
+    runs-on: ubuntu-latest
+    outputs:
+      lint_required: ${{ steps.changed-files-frontend.outputs.all_changed_files }}
+      build_required: ${{ steps.changed-file-docker-or-static.outputs.any_changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for changed-files to work properly
+      
+      - uses: tj-actions/changed-files@v44
+        id: changed-files-frontend
+        with:
+          # Get all changed JavaScript and HTML files in frontend directory
+          files: |
+            frontend/**/*.js
+            frontend/**/*.html
+            frontend/**/*.css
+          # Output the files as a comma-separated list
+          separator: ','
+
+      - uses: tj-actions/changed-files@v44
+        id: changed-file-docker-or-static
+        with:
+          # Get changes that require a rebuild
+          files: |
+            frontend/Dockerfile
+            frontend/nginx.conf
+            frontend/static/**
+
+  format_and_lint:
+    needs: check_changes
+    name: 'Format and Lint Check'
+    if: needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-frontend-lint.yml
+    with:
+      paths: ${{ needs.check_changes.outputs.lint_required }}
+  static_analysis:
+    needs: check_changes
+    name: 'Static Analysis (SAST Scan)'
+    if: needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-sast-scan.yml
+    with:
+      language: 'javascript'
+    
+  frontend_tests:
+    needs: check_changes
+    name: 'Frontend Unit Tests & Coverage'
+    if: needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-frontend-test.yml
+    with:
+      node-version: '18'
+      coverage-threshold: 80
+      upload-coverage: true
+
+  # Build and container analysis using the existing reusable workflow
+  build_and_scan:
+    needs: check_changes
+    name: 'Frontend Build & Container Scan'
+    if: needs.check_changes.outputs.build_required != '' || needs.check_changes.outputs.lint_required != ''
+    uses: ./.github/workflows/reusable-container-scan.yml
+    with:
+      path: 'frontend/Dockerfile'
+      container-name: 'frontend-app'
+      build-context: 'frontend'
+      
+  post-comment:
+    name: 'Post Validation Results Comment'
+    needs: [check_changes, format_and_lint, static_analysis, frontend_tests, build_and_scan]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: 'Post Success Comment'
+        if: |
+          (needs.check_changes.outputs.lint_required != '' && 
+           needs.format_and_lint.result == 'success' && 
+           needs.static_analysis.result == 'success' && 
+           needs.frontend_tests.result == 'success' &&
+           (needs.build_and_scan.result == 'success' || needs.build_and_scan.result == 'skipped')) ||
+          (needs.check_changes.outputs.lint_required == '' && 
+           (needs.build_and_scan.result == 'success' || needs.build_and_scan.result == 'skipped'))
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ **Frontend Validation Successful**
+
+            All frontend validation checks passed successfully! 🎉
+
+            **Validation Results:**
+            - 🎨 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🧪 Unit Tests & Coverage: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🔨 Build & Container Scan: ${{ needs.build_and_scan.result == 'success' && '✅ Passed' || needs.build_and_scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+
+            **What was validated:**
+            - 🎨 JavaScript/CSS code formatting and linting
+            - 🔍 Static Application Security Testing (SAST) for your JavaScript code
+            - 🧪 Unit tests with coverage requirements
+            - 🔨 Docker build and container security scanning
+
+            Great work! Your frontend code looks good and secure.
+          edit-mode: replace
+
+      - name: 'Post Failure Comment'
+        if: |
+          needs.check_changes.outputs.lint_required != '' && 
+          (needs.format_and_lint.result != 'success' || 
+           needs.static_analysis.result != 'success' || 
+           needs.frontend_tests.result != 'success' ||
+           (needs.build_and_scan.result != 'success' && needs.build_and_scan.result != 'skipped'))
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ **Frontend Validation Failed**
+
+            One or more frontend validation checks failed.
+            Please review the [Checks tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            **Validation Results:**
+            - 🎨 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🧪 Unit Tests & Coverage: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🔨 Build & Container Scan: ${{ needs.build_and_scan.result == 'success' && '✅ Passed' || needs.build_and_scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+
+            **What was checked:**
+            - 🎨 JavaScript/CSS code formatting and linting
+            - 🔍 Static Application Security Testing (SAST) for your JavaScript code
+            - 🧪 Unit tests with coverage requirements
+            - 🔨 Docker build and container security scanning
+
+            **Common fixes:**
+            - **Linting issues**: Run `npx eslint --fix static/*.js tests/*.js` in the frontend directory
+            - **Formatting issues**: Run `npx prettier --write static/*.js tests/*.js` in the frontend directory
+            - **Test failures**: Check test output and fix failing tests
+
+            Please fix the issues and push your changes.
+          edit-mode: replace
+
+      - name: 'Post No Changes Comment'
+        if: needs.check_changes.outputs.lint_required == '' && needs.check_changes.outputs.build_required == ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ℹ️ **No Frontend Changes Detected**
+
+            No frontend files were changed in this PR - validation skipped.
+
+            If you expected frontend validation to run, check that changes are in the `frontend/` directory with the appropriate file extensions (`.js`, `.html`, `.css`, `Dockerfile`).
+          edit-mode: replace

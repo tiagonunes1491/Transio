@@ -1,0 +1,45 @@
+{
+  "name": "securesharer-frontend",
+  "version": "1.0.0",
+  "description": "Frontend tests for SecureSharer application",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint static/**/*.js tests/**/*.js",
+    "lint:fix": "eslint --fix static/**/*.js tests/**/*.js",
+    "format": "prettier --write static/**/*.js tests/**/*.js static/**/*.css static/**/*.html",
+    "format:check": "prettier --check static/**/*.js tests/**/*.js static/**/*.css static/**/*.html"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": ["<rootDir>/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "tests/*-testable.js",
+      "static/**/*.js",
+      "!static/**/*.min.js"
+    ],
+    "coverageReporters": ["text", "lcov", "html"],
+    "coverageDirectory": "coverage",
+    "coverageThreshold": {
+      "global": {
+        "branches": 80,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      }
+    }
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "eslint": "^8.57.0",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
+    "prettier": "^3.2.5",
+    "html-validate": "^8.18.1"
+  }
+}
