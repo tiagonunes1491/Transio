@@ -1,4 +1,4 @@
-// TO DO : Add comments..
+// TO DO : Add more comments ..
 
 @description('Azure Container Registry name')
 param acrName string
