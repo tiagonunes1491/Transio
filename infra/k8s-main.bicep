@@ -19,6 +19,7 @@ param tags object = {
 // Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
+// 
 
 @description('Array of configurations for federated identity credentials. Each object links a UAMI to a specific Kubernetes Service Account and Namespace.')
 param federationConfigs array = [
@@ -161,7 +162,7 @@ param acrSku string = 'Standard'
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
 
-module acr 'common-modules/acr.bicep' = {
+module acr 'shared-infra-modules/acr.bicep' = {
   name: 'acr'
   scope: rg
   params: {
