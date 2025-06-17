@@ -14,7 +14,8 @@
 //
 // Usage:
 // az deployment sub create --location spaincentral --template-file landing-zone-paas.bicep --parameters landing-zone-paas.bicepparam
-//
+// ========================================================
+
 targetScope = 'subscription'
 
 // ========================================================

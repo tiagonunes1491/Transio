@@ -4,6 +4,7 @@
 // - User-assigned managed identities for PaaS workloads
 // - GitHub federated credentials for PaaS deployments
 // - RBAC assignments for PaaS resources
+//  Trigger this deployment after the shared artifacts resource group is created
 
 using 'landing-zone-paas.bicep'
 
