@@ -1,5 +1,3 @@
-To do : add comments.
-
 @description('Location of the User Assigned Managed Identity (UAMI)')
 param uamiLocation string = 'spaincentral'
 
@@ -11,10 +9,11 @@ param tags object = {}
 
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = [
   for name in uamiNames: {
-  name: name
-  location: uamiLocation
-  tags: tags
-}]
+    name: name
+    location: uamiLocation
+    tags: tags
+  }
+]
 
 output uamiIds array = [for i in range(0, length(uamiNames)): uami[i].id]
 output uamiClientIds array = [for i in range(0, length(uamiNames)): uami[i].properties.clientId]
