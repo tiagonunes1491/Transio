@@ -19,7 +19,7 @@ param tags object = {
 // Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
-// Test 01
+// Test 02
 
 @description('Array of configurations for federated identity credentials. Each object links a UAMI to a specific Kubernetes Service Account and Namespace.')
 param federationConfigs array = [
