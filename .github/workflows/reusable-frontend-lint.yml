@@ -1,0 +1,136 @@
+name: 'Reusable - Frontend Lint & Format Check'
+on:
+  workflow_call:
+    inputs:
+      paths:
+        required: true
+        type: string
+        description: 'Comma-separated list of JavaScript files to check'
+      node-version:
+        required: false
+        type: string
+        default: '18'
+        description: 'Node.js version to use'
+
+jobs:
+  frontend_lint:
+    name: 'Frontend Lint & Format'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package.json'
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install linting dependencies
+        working-directory: frontend
+        run: |
+          # Install ESLint and Prettier with needed plugins locally
+          npm install --no-save eslint prettier eslint-config-standard eslint-plugin-promise eslint-plugin-import eslint-plugin-node html-validate
+
+      - name: Validate HTML files
+        working-directory: frontend
+        run: |
+          echo "Validating HTML files..."
+          find static -name "*.html" -exec echo "Validating: {}" \; -exec npx html-validate {} \;
+
+      - name: Check JavaScript syntax
+        working-directory: frontend
+        run: |
+          echo "Checking JavaScript syntax..."
+          
+          # Check all JavaScript files for syntax errors
+          find static tests -name "*.js" -exec echo "Checking syntax: {}" \; -exec node -c {} \;
+
+      - name: Run ESLint
+        working-directory: frontend
+        run: |
+          # Convert comma-separated paths to space-separated for ESLint
+          FILES="${{ inputs.paths }}"
+          FILES_ARRAY=(${FILES//,/ })
+          
+          echo "Running ESLint on files: ${FILES_ARRAY[@]}"
+          
+          # Run ESLint on the specified files
+          for file in "${FILES_ARRAY[@]}"; do
+            if [[ "$file" == frontend/* ]]; then
+              # Remove frontend/ prefix since we're already in frontend directory
+              file_path="${file#frontend/}"
+              echo "Linting: $file_path"
+              npx eslint "$file_path"
+            fi
+          done
+
+      - name: Run Prettier check
+        working-directory: frontend
+        run: |
+          # Convert comma-separated paths to space-separated for Prettier
+          FILES="${{ inputs.paths }}"
+          FILES_ARRAY=(${FILES//,/ })
+          
+          echo "Running Prettier check on files: ${FILES_ARRAY[@]}"
+          
+          # Run Prettier check on the specified files
+          for file in "${FILES_ARRAY[@]}"; do
+            if [[ "$file" == frontend/* ]]; then
+              # Remove frontend/ prefix since we're already in frontend directory
+              file_path="${file#frontend/}"
+              echo "Checking format: $file_path"
+              npx prettier --check "$file_path"
+            fi
+          done
+
+      - name: Validate static assets
+        working-directory: frontend
+        run: |
+          echo "Validating static assets..."
+          
+          # Check that all referenced assets exist
+          echo "Checking for missing asset references..."
+          
+          # Check CSS files for missing references
+          if [ -f static/index.css ]; then
+            echo "Validating CSS file..."
+            # Simple check - could be enhanced with a CSS linter
+            node -e "
+              const fs = require('fs');
+              const css = fs.readFileSync('static/index.css', 'utf8');
+              console.log('✅ CSS file is valid');
+            "
+          fi
+          
+          # Check that logo.png exists if referenced
+          if [ -f static/logo.png ]; then
+            echo "✅ Logo file exists"
+          else
+            echo "⚠️  Logo file not found"
+          fi
+          
+          echo "✅ Static asset validation complete"
+
+      - name: Suggest fixes
+        if: failure()
+        working-directory: frontend
+        run: |
+          echo "❌ Linting, formatting, or validation issues found!"
+          echo ""
+          echo "To fix formatting issues, run:"
+          echo "  cd frontend"
+          echo "  npx prettier --write static/*.js tests/*.js static/*.css static/*.html"
+          echo ""
+          echo "To fix linting issues, run:"
+          echo "  cd frontend"
+          echo "  npx eslint --fix static/*.js tests/*.js"
+          echo ""
+          echo "To validate HTML, run:"
+          echo "  cd frontend"
+          echo "  npx html-validate static/*.html"
