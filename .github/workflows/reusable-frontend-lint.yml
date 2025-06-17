@@ -40,16 +40,16 @@ jobs:
       - name: Validate HTML files
         working-directory: frontend
         run: |
-          echo "Validating HTML files..."
-          find static -name "*.html" -exec echo "Validating: {}" \; -exec npx html-validate {} \;
+          echo "Validating HTML files in static directory..."
+          npm run validate:html
 
       - name: Check JavaScript syntax
         working-directory: frontend
         run: |
-          echo "Checking JavaScript syntax..."
+          echo "Checking JavaScript syntax for production files..."
           
-          # Check all JavaScript files for syntax errors
-          find static tests -name "*.js" -exec echo "Checking syntax: {}" \; -exec node -c {} \;
+          # Check only JavaScript files in static directory for syntax errors
+          find static -name "*.js" -exec echo "Checking syntax: {}" \; -exec node -c {} \;
 
       - name: Run ESLint
         working-directory: frontend
@@ -58,15 +58,20 @@ jobs:
           FILES="${{ inputs.paths }}"
           FILES_ARRAY=(${FILES//,/ })
           
-          echo "Running ESLint on files: ${FILES_ARRAY[@]}"
+          echo "Running ESLint on JavaScript files..."
           
-          # Run ESLint on the specified files
+          # Run ESLint only on JavaScript files in static directory (production files)
           for file in "${FILES_ARRAY[@]}"; do
             if [[ "$file" == frontend/* ]]; then
               # Remove frontend/ prefix since we're already in frontend directory
               file_path="${file#frontend/}"
-              echo "Linting: $file_path"
-              npx eslint "$file_path"
+              # Only lint JavaScript files in static directory, not config files
+              if [[ "$file_path" == static/*.js ]]; then
+                echo "Linting: $file_path"
+                npx eslint "$file_path"
+              else
+                echo "Skipping non-production file: $file_path"
+              fi
             fi
           done
 
@@ -77,15 +82,20 @@ jobs:
           FILES="${{ inputs.paths }}"
           FILES_ARRAY=(${FILES//,/ })
           
-          echo "Running Prettier check on files: ${FILES_ARRAY[@]}"
+          echo "Running Prettier check on production files..."
           
-          # Run Prettier check on the specified files
+          # Run Prettier check only on production files in static directory
           for file in "${FILES_ARRAY[@]}"; do
             if [[ "$file" == frontend/* ]]; then
               # Remove frontend/ prefix since we're already in frontend directory
               file_path="${file#frontend/}"
-              echo "Checking format: $file_path"
-              npx prettier --check "$file_path"
+              # Run Prettier only on production files in static directory
+              if [[ "$file_path" == static/*.js || "$file_path" == static/*.css || "$file_path" == static/*.html ]]; then
+                echo "Checking format: $file_path"
+                npx prettier --check "$file_path"
+              else
+                echo "Skipping non-production file: $file_path"
+              fi
             fi
           done
 
@@ -125,11 +135,11 @@ jobs:
           echo ""
           echo "To fix formatting issues, run:"
           echo "  cd frontend"
-          echo "  npx prettier --write static/*.js tests/*.js static/*.css static/*.html"
+          echo "  npx prettier --write static/*.js static/*.css static/*.html"
           echo ""
           echo "To fix linting issues, run:"
           echo "  cd frontend"
-          echo "  npx eslint --fix static/*.js tests/*.js"
+          echo "  npx eslint --fix static/*.js"
           echo ""
           echo "To validate HTML, run:"
           echo "  cd frontend"

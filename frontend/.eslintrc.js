@@ -17,12 +17,31 @@ module.exports = {
     'no-console': 'warn',
     'no-debugger': 'error',
     'no-unused-vars': 'error',
-    'prefer-const': 'error'
+    'prefer-const': 'error',
+    // Override standard style to match existing codebase
+    semi: ['error', 'always'],
+    'space-before-function-paren': ['error', {
+      anonymous: 'never',
+      named: 'never',
+      asyncArrow: 'always'
+    }],
+    'comma-dangle': ['error', 'never'],
+    'no-trailing-spaces': 'error',
+    'eol-last': 'error'
   },
   globals: {
     // Add any global variables used in your frontend
-    'crypto': 'readonly',
-    'TextEncoder': 'readonly',
-    'TextDecoder': 'readonly'
-  }
-}
+    crypto: 'readonly',
+    TextEncoder: 'readonly',
+    TextDecoder: 'readonly'
+  },
+  overrides: [
+    {
+      // Allow console statements in test files
+      files: ['tests/**/*.js'],
+      rules: {
+        'no-console': 'off'
+      }
+    }
+  ]
+};

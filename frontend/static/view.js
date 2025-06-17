@@ -54,8 +54,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch(apiEndpoint, {
         method: 'HEAD', // Only check headers, don't retrieve content
         headers: {
-          Accept: 'application/json',
-        },
+          Accept: 'application/json'
+        }
       });
 
       // Always hide loading state when response comes back
@@ -109,8 +109,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Fetch the secret
       const response = await fetch(apiEndpoint, {
         headers: {
-          Accept: 'application/json',
-        },
+          Accept: 'application/json'
+        }
       });
 
       // Always hide loading state
