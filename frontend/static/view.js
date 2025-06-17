@@ -3,154 +3,156 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   // Extract the link ID from the URL hash
-  const hash = window.location.hash.substring(1) // Remove the # character
-  const linkId = hash
+  const hash = window.location.hash.substring(1); // Remove the # character
+  const linkId = hash;
 
   // Get DOM elements
-  const headerTitle = document.getElementById('headerTitle')
-  const initialMessage = document.getElementById('initialMessage')
-  const loadingContainer = document.getElementById('loadingContainer')
-  const secretContent = document.getElementById('secretContent')
-  const errorContent = document.getElementById('errorContent')
+  const headerTitle = document.getElementById('headerTitle');
+  const initialMessage = document.getElementById('initialMessage');
+  const loadingContainer = document.getElementById('loadingContainer');
+  const secretContent = document.getElementById('secretContent');
+  const errorContent = document.getElementById('errorContent');
 
   // Help modal elements
-  const helpButton = document.getElementById('helpButton')
-  const helpModal = document.getElementById('helpModal')
-  const closeHelpModal = document.getElementById('closeHelpModal')
-  const closeHelpModalButton = document.getElementById('closeHelpModalButton')
+  const helpButton = document.getElementById('helpButton');
+  const helpModal = document.getElementById('helpModal');
+  const closeHelpModal = document.getElementById('closeHelpModal');
+  const closeHelpModalButton = document.getElementById('closeHelpModalButton');
 
   // Function to reset all UI states
-  function resetUI () {
-    initialMessage.classList.add('hidden')
-    loadingContainer.classList.add('hidden')
-    secretContent.classList.add('hidden')
-    errorContent.classList.add('hidden')
+  function resetUI() {
+    initialMessage.classList.add('hidden');
+    loadingContainer.classList.add('hidden');
+    secretContent.classList.add('hidden');
+    errorContent.classList.add('hidden');
   }
 
   if (!linkId) {
-    showError('Invalid link. No secret ID was provided.')
-    return
+    showError('Invalid link. No secret ID was provided.');
+    return;
   }
 
   // Initially show loading and check if secret exists
-  resetUI()
-  loadingContainer.classList.remove('hidden')
-  headerTitle.textContent = 'Checking...'
+  resetUI();
+  loadingContainer.classList.remove('hidden');
+  headerTitle.textContent = 'Checking...';
 
-  checkSecretExists(linkId)
+  checkSecretExists(linkId);
   // Function to check if the secret exists without revealing it
-  async function checkSecretExists (linkId) {
+  async function checkSecretExists(linkId) {
     try {
       // Determine API endpoint based on environment
-      const isDevelopment = window.location.hostname === 'localhost' ||
-                               window.location.hostname === '127.0.0.1' ||
-                               window.location.protocol === 'file:'
+      const isDevelopment =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.protocol === 'file:';
       const apiEndpoint = isDevelopment
         ? `http://127.0.0.1:5000/api/share/secret/${linkId}` // Local dev
-        : `/api/share/secret/${linkId}` // Deployed
+        : `/api/share/secret/${linkId}`; // Deployed
 
       // Just check if the secret exists without revealing it
       const response = await fetch(apiEndpoint, {
         method: 'HEAD', // Only check headers, don't retrieve content
         headers: {
-          Accept: 'application/json'
-        }
-      })
+          Accept: 'application/json',
+        },
+      });
 
       // Always hide loading state when response comes back
-      resetUI()
+      resetUI();
 
       if (response.status === 404) {
         // Secret doesn't exist, show not found message immediately
-        showNotFound()
-        return
+        showNotFound();
+        return;
       }
 
       if (!response.ok) {
         // Some other error, show generic error message
-        showError(`Server returned error: ${response.status}`)
-        return
+        showError(`Server returned error: ${response.status}`);
+        return;
       }
 
       // Secret exists but we don't reveal it yet, just update the UI to indicate it's ready
-      headerTitle.textContent = 'Secret Available'
-      initialMessage.classList.remove('hidden')
+      headerTitle.textContent = 'Secret Available';
+      initialMessage.classList.remove('hidden');
 
       // Add click event listener to the reveal button
-      const revealButton = document.getElementById('revealButton')
+      const revealButton = document.getElementById('revealButton');
       if (revealButton) {
         revealButton.addEventListener('click', async () => {
-          resetUI()
-          loadingContainer.classList.remove('hidden')
-          headerTitle.textContent = 'Loading...'
+          resetUI();
+          loadingContainer.classList.remove('hidden');
+          headerTitle.textContent = 'Loading...';
 
-          await fetchSecret(linkId)
-        })
+          await fetchSecret(linkId);
+        });
       }
     } catch (error) {
       // Always hide loading state on error
-      resetUI()
-      showError(`Failed to check if the secret exists: ${error.message}`)
+      resetUI();
+      showError(`Failed to check if the secret exists: ${error.message}`);
     }
   }
   // Function to fetch the secret from the API
-  async function fetchSecret (linkId) {
+  async function fetchSecret(linkId) {
     try {
       // Determine API endpoint based on environment
-      const isDevelopment = window.location.hostname === 'localhost' ||
-                               window.location.hostname === '127.0.0.1' ||
-                               window.location.protocol === 'file:'
+      const isDevelopment =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.protocol === 'file:';
       const apiEndpoint = isDevelopment
         ? `http://127.0.0.1:5000/api/share/secret/${linkId}` // Local dev
-        : `/api/share/secret/${linkId}` // Deployed
+        : `/api/share/secret/${linkId}`; // Deployed
 
       // Fetch the secret
       const response = await fetch(apiEndpoint, {
         headers: {
-          Accept: 'application/json'
-        }
-      })
+          Accept: 'application/json',
+        },
+      });
 
       // Always hide loading state
-      resetUI()
+      resetUI();
 
       if (response.status === 404) {
-        showNotFound()
-        return
+        showNotFound();
+        return;
       }
 
       if (!response.ok) {
         try {
-          const errorData = await response.json()
-          throw new Error(errorData.error || `Server returned error: ${response.status}`)
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server returned error: ${response.status}`);
         } catch (jsonError) {
-          throw new Error(`Server returned error: ${response.status}`)
+          throw new Error(`Server returned error: ${response.status}`);
         }
       }
 
       try {
         // Handle successful response
-        const data = await response.json()
+        const data = await response.json();
 
         if (data.error) {
-          showError(data.error)
+          showError(data.error);
         } else if (data.secret) {
-          showSecret(data.secret)
+          showSecret(data.secret);
         } else {
-          showError('Received unexpected data format from server.')
+          showError('Received unexpected data format from server.');
         }
       } catch (jsonParseError) {
-        showError(`Failed to parse response: ${jsonParseError.message}`)
+        showError(`Failed to parse response: ${jsonParseError.message}`);
       }
     } catch (error) {
-      showError(`Failed to retrieve the secret: ${error.message}`)
+      showError(`Failed to retrieve the secret: ${error.message}`);
     }
   }
 
   // Function to display the secret
-  function showSecret (secretText) {
-    resetUI()
-    headerTitle.textContent = 'Your One-Time Secret'
+  function showSecret(secretText) {
+    resetUI();
+    headerTitle.textContent = 'Your One-Time Secret';
     secretContent.innerHTML = `
             <div class="border border-gray-200 rounded-lg p-4 mx-4 mb-4" style="background-color: var(--surface-color);">
                 <div class="flex items-center gap-2 mb-3">
@@ -178,14 +180,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="truncate">Create New Secret</span>
                 </button>
             </div>
-        `
-    secretContent.classList.remove('hidden')
+        `;
+    secretContent.classList.remove('hidden');
   }
 
   // Function to show "not found" message
-  function showNotFound () {
-    resetUI()
-    headerTitle.textContent = 'Secret Not Found'
+  function showNotFound() {
+    resetUI();
+    headerTitle.textContent = 'Secret Not Found';
     errorContent.innerHTML = `
             <div class="text-center">
                 <div class="text-6xl mb-4">
@@ -205,14 +207,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
             </div>
-        `
-    errorContent.classList.remove('hidden')
+        `;
+    errorContent.classList.remove('hidden');
   }
 
   // Function to show error message
-  function showError (message) {
-    resetUI()
-    headerTitle.textContent = 'An Error Occurred'
+  function showError(message) {
+    resetUI();
+    headerTitle.textContent = 'An Error Occurred';
     errorContent.innerHTML = `
             <div class="text-center">
                 <div class="text-6xl mb-4">
@@ -231,48 +233,48 @@ document.addEventListener('DOMContentLoaded', () => {
                     </button>
                 </div>
             </div>
-        `
-    errorContent.classList.remove('hidden')
+        `;
+    errorContent.classList.remove('hidden');
   }
 
   // Help modal functionality
-  function showHelpModal () {
-    helpModal.classList.remove('hidden')
-    document.body.style.overflow = 'hidden' // Prevent background scrolling
+  function showHelpModal() {
+    helpModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
   }
 
-  function hideHelpModal () {
-    helpModal.classList.add('hidden')
-    document.body.style.overflow = '' // Restore scrolling
+  function hideHelpModal() {
+    helpModal.classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
   }
 
   // Help button click handler
   if (helpButton) {
-    helpButton.addEventListener('click', showHelpModal)
+    helpButton.addEventListener('click', showHelpModal);
   }
 
   // Close modal handlers
   if (closeHelpModal) {
-    closeHelpModal.addEventListener('click', hideHelpModal)
+    closeHelpModal.addEventListener('click', hideHelpModal);
   }
 
   if (closeHelpModalButton) {
-    closeHelpModalButton.addEventListener('click', hideHelpModal)
+    closeHelpModalButton.addEventListener('click', hideHelpModal);
   }
 
   // Close modal when clicking outside of it
   if (helpModal) {
-    helpModal.addEventListener('click', (e) => {
+    helpModal.addEventListener('click', e => {
       if (e.target === helpModal) {
-        hideHelpModal()
+        hideHelpModal();
       }
-    })
+    });
   }
 
   // Close modal with Escape key
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && !helpModal.classList.contains('hidden')) {
-      hideHelpModal()
+      hideHelpModal();
     }
-  })
-})
+  });
+});

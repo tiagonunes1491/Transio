@@ -1,159 +1,337 @@
-<html>  <head>
+<html>
+  <head>
     <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
     <link
       rel="stylesheet"
       as="style"
       onload="this.rel='stylesheet'"
-      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Montserrat:wght@400;500;600;700;800&amp;family=Open+Sans:wght@300;400;500;600;700"    />      <title>SecretSharer - View Secret</title>
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Montserrat:wght@400;500;600;700;800&amp;family=Open+Sans:wght@300;400;500;600;700"
+    />
+    <title>SecretSharer - View Secret</title>
     <link rel="icon" type="image/png" href="logo.png" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>    <link rel="stylesheet" href="shared.css">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="shared.css" />
   </head>
   <body>
     <div class="relative flex size-full min-h-screen flex-col bg-white font-body">
-      <div class="layout-container flex h-full grow flex-col">        <header class="header-custom flex items-center justify-between whitespace-nowrap px-10 py-3 shadow-lg">          
+      <div class="layout-container flex h-full grow flex-col">
+        <header
+          class="header-custom flex items-center justify-between whitespace-nowrap px-10 py-3 shadow-lg"
+        >
           <div class="flex items-center gap-4">
-            <img src="logo.png" alt="SecretShare Logo" class="h-8 w-auto drop-shadow-lg">
-            <h2 class="font-heading text-lg font-bold leading-tight tracking-[-0.015em] drop-shadow-md" style="color: var(--text-color-light);">SecureSharer</h2>
-          </div>          <div class="flex flex-1 justify-end gap-8">
+            <img src="logo.png" alt="SecretShare Logo" class="h-8 w-auto drop-shadow-lg" />
+            <h2
+              class="font-heading text-lg font-bold leading-tight tracking-[-0.015em] drop-shadow-md"
+              style="color: var(--text-color-light)"
+            >
+              SecureSharer
+            </h2>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
             <div class="flex items-center gap-9">
-              <a class="font-body text-sm font-medium leading-normal hover:text-white transition-colors" style="color: var(--text-color-light);" href="index.html">New Secret</a>
-            </div>            
+              <a
+                class="font-body text-sm font-medium leading-normal hover:text-white transition-colors"
+                style="color: var(--text-color-light)"
+                href="index.html"
+                >New Secret</a
+              >
+            </div>
             <button
               id="helpButton"
               class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5 btn-glow"
-              style="background-color: var(--secondary-color); color: white;"
+              style="background-color: var(--secondary-color); color: white"
               title="Help & Information"
             >
               <div data-icon="Question" data-size="20px" data-weight="regular">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20px"
+                  height="20px"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
                   <path
                     d="M140,180a12,12,0,1,1-12-12A12,12,0,0,1,140,180ZM128,72c-22.06,0-40,16.15-40,36v4a8,8,0,0,0,16,0v-4c0-11,10.77-20,24-20s24,9,24,20-10.77,20-24,20a8,8,0,0,0-8,8v8a8,8,0,0,0,16,0v-.72c18.24-3.35,32-17.9,32-35.28C168,88.15,150.06,72,128,72Zm104,56A104,104,0,1,1,128,24,104.11,104.11,0,0,1,232,128Zm-16,0a88,88,0,1,0-88,88A88.1,88.1,0,0,0,216,128Z"
                   ></path>
                 </svg>
               </div>
-            </button>            <div
+            </button>
+            <div
               class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
-              style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDU-j0wNyUKuIvcmTMleDvWmlVk_RErBSesvnYVgcCCMv9spYcDLUFZFA37GOa6YERCEzl5awdwEeWs21DMtrGPF8uDYTv5J9CC-lsqMzeu00oNqrbELqmA74QAVOiTkBLEAZtsKBfmLyHz3mYzRBafeMsrIXJQgwa3g8C5NznSILXM_v0J8Bxq2fd1O1s6ETK1jl4LL0m876r46_Dekf42eO26CiE0H_ZG5SrBwhjrfI0XL_eZaZxZZEKwRhZRI2a3tVmhQsRYdyg");'
+              style="
+                background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDU-j0wNyUKuIvcmTMleDvWmlVk_RErBSesvnYVgcCCMv9spYcDLUFZFA37GOa6YERCEzl5awdwEeWs21DMtrGPF8uDYTv5J9CC-lsqMzeu00oNqrbELqmA74QAVOiTkBLEAZtsKBfmLyHz3mYzRBafeMsrIXJQgwa3g8C5NznSILXM_v0J8Bxq2fd1O1s6ETK1jl4LL0m876r46_Dekf42eO26CiE0H_ZG5SrBwhjrfI0XL_eZaZxZZEKwRhZRI2a3tVmhQsRYdyg');
+              "
               title="Profile - Stay tuned!"
             ></div>
           </div>
         </header>
         <div class="px-40 flex flex-1 justify-center py-5">
-          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">            <h2 id="headerTitle" class="font-heading tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5" style="color: var(--text-primary);">Checking...</h2>
-            
-            <!-- Initial message shown when secret exists but not yet revealed -->            <div id="initialMessage" class="hidden">
-              <p class="font-body text-base font-normal leading-normal pb-3 pt-1 px-4 text-center" style="color: var(--text-primary);">Your secret is available and ready to view.</p>
-              <p class="font-body text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center" style="color: var(--text-secondary);">
-                <strong>Important:</strong> For security reasons, this secret can only be viewed once. After viewing, it will be permanently deleted.
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <h2
+              id="headerTitle"
+              class="font-heading tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5"
+              style="color: var(--text-primary)"
+            >
+              Checking...
+            </h2>
+
+            <!-- Initial message shown when secret exists but not yet revealed -->
+            <div id="initialMessage" class="hidden">
+              <p
+                class="font-body text-base font-normal leading-normal pb-3 pt-1 px-4 text-center"
+                style="color: var(--text-primary)"
+              >
+                Your secret is available and ready to view.
               </p>
-              <div class="flex px-4 py-3 justify-center">                <button
+              <p
+                class="font-body text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center"
+                style="color: var(--text-secondary)"
+              >
+                <strong>Important:</strong> For security reasons, this secret can only be viewed
+                once. After viewing, it will be permanently deleted.
+              </p>
+              <div class="flex px-4 py-3 justify-center">
+                <button
                   id="revealButton"
                   class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 px-4 text-sm font-bold leading-normal tracking-[0.015em] font-body btn-glow"
-                  style="background-color: var(--secondary-color); color: white;"
+                  style="background-color: var(--secondary-color); color: white"
                 >
                   <span class="truncate">Reveal Secret</span>
                 </button>
               </div>
             </div>
-            
-            <!-- Loading state -->            <div id="loadingContainer" class="hidden">
-              <p class="font-body text-base font-normal leading-normal pb-3 pt-1 px-4 text-center" style="color: var(--text-primary);">Loading your secret...</p>
+
+            <!-- Loading state -->
+            <div id="loadingContainer" class="hidden">
+              <p
+                class="font-body text-base font-normal leading-normal pb-3 pt-1 px-4 text-center"
+                style="color: var(--text-primary)"
+              >
+                Loading your secret...
+              </p>
               <div class="flex justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2" style="border-color: var(--secondary-color);"></div>
+                <div
+                  class="animate-spin rounded-full h-8 w-8 border-b-2"
+                  style="border-color: var(--secondary-color)"
+                ></div>
               </div>
             </div>
-            
+
             <!-- Secret content area -->
             <div id="secretContent" class="hidden">
               <!-- This will be populated when secret is fetched -->
             </div>
-            
+
             <!-- Error/not found content area -->
             <div id="errorContent" class="hidden">
               <!-- This will be populated for errors -->
-            </div>          </div>
+            </div>
+          </div>
         </div>
-        
-        <footer class="footer-custom flex flex-col gap-6 px-5 py-10 text-center border-t mt-auto shadow-2xl">
+
+        <footer
+          class="footer-custom flex flex-col gap-6 px-5 py-10 text-center border-t mt-auto shadow-2xl"
+        >
           <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            <a class="text-sm font-normal leading-normal hover:text-white transition-colors hover:drop-shadow-lg" href="#">Privacy Policy</a>
-            <a class="text-sm font-normal leading-normal hover:text-white transition-colors hover:drop-shadow-lg" href="#">Terms of Service</a>
-            <a class="text-sm font-normal leading-normal hover:text-white transition-colors hover:drop-shadow-lg" href="#">Contact Us</a>
+            <a
+              class="text-sm font-normal leading-normal hover:text-white transition-colors hover:drop-shadow-lg"
+              href="#"
+              >Privacy Policy</a
+            >
+            <a
+              class="text-sm font-normal leading-normal hover:text-white transition-colors hover:drop-shadow-lg"
+              href="#"
+              >Terms of Service</a
+            >
+            <a
+              class="text-sm font-normal leading-normal hover:text-white transition-colors hover:drop-shadow-lg"
+              href="#"
+              >Contact Us</a
+            >
           </div>
-          <div class="flex flex-wrap justify-center gap-5">                <a href="https://github.com/tiagonunes1491/secure-secret-sharer" aria-label="GitHub" class="social-icon-custom transition-all duration-300 hover:scale-110">
-                  <div class="p-2 rounded-full hover:bg-opacity-20 hover:shadow-lg" style="color: var(--accent-color-light-grey); background-color: transparent;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M208.31,75.68A59.78,59.78,0,0,0,202.93,28,8,8,0,0,0,196,24a59.75,59.75,0,0,0-48,24H124A59.75,59.75,0,0,0,76,24a8,8,0,0,0-6.93,4,59.78,59.78,0,0,0-5.38,47.68A58.14,58.14,0,0,0,56,104v8a56.06,56.06,0,0,0,48.44,55.47A39.8,39.8,0,0,0,96,192v8H72a24,24,0,0,1-24-24A40,40,0,0,0,8,136a8,8,0,0,0,0,16,24,24,0,0,1,24,24,40,40,0,0,0,40,40H96v16a8,8,0,0,0,16,0V192a24,24,0,0,1,48,0v40a8,8,0,0,0,16,0V192a39.8,39.8,0,0,0-8.44-24.53A56.06,56.06,0,0,0,216,112v-8A58.14,58.14,0,0,0,208.31,75.68ZM200,112a40,40,0,0,1-40,40H112a40,40,0,0,1-40-40v-8a41.74,41.74,0,0,1,6.9-22.48A8,8,0,0,0,80,73.83a43.81,43.81,0,0,1,.79-33.58,43.88,43.88,0,0,1,32.32,20.06A8,8,0,0,0,119.82,64h32.35a8,8,0,0,0,6.74-3.69,43.87,43.87,0,0,1,32.32-20.06A43.81,43.81,0,0,1,192,73.83a8.09,8.09,0,0,0,1,7.65A41.72,41.72,0,0,1,200,104Z"></path>
-                    </svg>
-                  </div>
-                </a>
-                <a href="https://www.linkedin.com/in/tiago-nunes1491/" aria-label="LinkedIn" class="social-icon-custom transition-all duration-300 hover:scale-110">
-                  <div class="p-2 rounded-full hover:bg-opacity-20 hover:shadow-lg" style="color: var(--accent-color-light-grey); background-color: transparent;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
-                      <path d="M216,24H40A16,16,0,0,0,24,40V216a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V40A16,16,0,0,0,216,24Zm0,192H40V40H216V216ZM96,112v64a8,8,0,0,1-16,0V112a8,8,0,0,1,16,0Zm88,28v36a8,8,0,0,1-16,0V140a20,20,0,0,0-40,0v36a8,8,0,0,1-16,0V112a8,8,0,0,1,15.79-1.78A36,36,0,0,1,184,140ZM100,84A12,12,0,1,1,88,72,12,12,0,0,1,100,84Z"></path>
-                    </svg>
-                  </div>
-                </a>
+          <div class="flex flex-wrap justify-center gap-5">
+            <a
+              href="https://github.com/tiagonunes1491/secure-secret-sharer"
+              aria-label="GitHub"
+              class="social-icon-custom transition-all duration-300 hover:scale-110"
+            >
+              <div
+                class="p-2 rounded-full hover:bg-opacity-20 hover:shadow-lg"
+                style="color: var(--accent-color-light-grey); background-color: transparent"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24px"
+                  height="24px"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path
+                    d="M208.31,75.68A59.78,59.78,0,0,0,202.93,28,8,8,0,0,0,196,24a59.75,59.75,0,0,0-48,24H124A59.75,59.75,0,0,0,76,24a8,8,0,0,0-6.93,4,59.78,59.78,0,0,0-5.38,47.68A58.14,58.14,0,0,0,56,104v8a56.06,56.06,0,0,0,48.44,55.47A39.8,39.8,0,0,0,96,192v8H72a24,24,0,0,1-24-24A40,40,0,0,0,8,136a8,8,0,0,0,0,16,24,24,0,0,1,24,24,40,40,0,0,0,40,40H96v16a8,8,0,0,0,16,0V192a24,24,0,0,1,48,0v40a8,8,0,0,0,16,0V192a39.8,39.8,0,0,0-8.44-24.53A56.06,56.06,0,0,0,216,112v-8A58.14,58.14,0,0,0,208.31,75.68ZM200,112a40,40,0,0,1-40,40H112a40,40,0,0,1-40-40v-8a41.74,41.74,0,0,1,6.9-22.48A8,8,0,0,0,80,73.83a43.81,43.81,0,0,1,.79-33.58,43.88,43.88,0,0,1,32.32,20.06A8,8,0,0,0,119.82,64h32.35a8,8,0,0,0,6.74-3.69,43.87,43.87,0,0,1,32.32-20.06A43.81,43.81,0,0,1,192,73.83a8.09,8.09,0,0,0,1,7.65A41.72,41.72,0,0,1,200,104Z"
+                  ></path>
+                </svg>
+              </div>
+            </a>
+            <a
+              href="https://www.linkedin.com/in/tiago-nunes1491/"
+              aria-label="LinkedIn"
+              class="social-icon-custom transition-all duration-300 hover:scale-110"
+            >
+              <div
+                class="p-2 rounded-full hover:bg-opacity-20 hover:shadow-lg"
+                style="color: var(--accent-color-light-grey); background-color: transparent"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24px"
+                  height="24px"
+                  fill="currentColor"
+                  viewBox="0 0 256 256"
+                >
+                  <path
+                    d="M216,24H40A16,16,0,0,0,24,40V216a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V40A16,16,0,0,0,216,24Zm0,192H40V40H216V216ZM96,112v64a8,8,0,0,1-16,0V112a8,8,0,0,1,16,0Zm88,28v36a8,8,0,0,1-16,0V140a20,20,0,0,0-40,0v36a8,8,0,0,1-16,0V112a8,8,0,0,1,15.79-1.78A36,36,0,0,1,184,140ZM100,84A12,12,0,1,1,88,72,12,12,0,0,1,100,84Z"
+                  ></path>
+                </svg>
+              </div>
+            </a>
           </div>
-          <p class="text-sm font-normal leading-normal" style="color: var(--text-color-subtle);">&copy; 2025 SecureSharer. All rights reserved. Built for privacy.</p>
+          <p class="text-sm font-normal leading-normal" style="color: var(--text-color-subtle)">
+            &copy; 2025 SecureSharer. All rights reserved. Built for privacy.
+          </p>
         </footer>
       </div>
     </div>
-    
-    <!-- Help Modal -->    <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div class="bg-white border border-gray-200 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto shadow-2xl">
+
+    <!-- Help Modal -->
+    <div
+      id="helpModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+      <div
+        class="bg-white border border-gray-200 rounded-xl max-w-md w-full max-h-[80vh] overflow-y-auto shadow-2xl"
+      >
         <div class="p-6">
           <div class="flex items-center justify-between mb-4">
-            <h3 class="font-heading text-lg font-bold" style="color: var(--text-primary);">How SecretShare Works</h3>
-            <button id="closeHelpModal" class="transition-colors" style="color: var(--text-secondary);" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
-                <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+            <h3 class="font-heading text-lg font-bold" style="color: var(--text-primary)">
+              How SecretShare Works
+            </h3>
+            <button
+              id="closeHelpModal"
+              class="transition-colors"
+              style="color: var(--text-secondary)"
+              onmouseover="this.style.color='var(--text-primary)'"
+              onmouseout="this.style.color='var(--text-secondary)'"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                fill="currentColor"
+                viewBox="0 0 256 256"
+              >
+                <path
+                  d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"
+                ></path>
               </svg>
             </button>
           </div>
-          
+
           <div class="space-y-4 text-sm">
-            <div class="border border-gray-200 rounded-lg p-4" style="background-color: var(--surface-color);">
+            <div
+              class="border border-gray-200 rounded-lg p-4"
+              style="background-color: var(--surface-color)"
+            >
               <div class="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="var(--secondary-color)" viewBox="0 0 256 256">
-                  <path d="M225.86,102.82c-3.77-3.94-7.67-8-9.14-11.57-1.36-3.27-1.44-8.69-1.52-13.94-.15-9.76-.31-20.82-8-28.51s-18.75-7.85-28.51-8c-5.25-.08-10.67-.16-13.94-1.52-3.56-1.47-7.63-5.37-11.57-9.14C146.28,23.51,138.44,16,128,16s-18.27,7.51-25.18,14.14c-3.94,3.77-8,7.67-11.57,9.14C88,40.64,82.56,40.72,77.31,40.8c-9.76.15-20.82.31-28.51,8S41,67.55,40.8,77.31c-.08,5.25-.16,10.67-1.52,13.94-1.47,3.56-5.37,7.63-9.14,11.57C23.51,109.72,16,117.56,16,128s7.51,18.27,14.14,25.18c3.77,3.94,7.67,8,9.14,11.57,1.36,3.27,1.44,8.69,1.52,13.94.15,9.76.31,20.82,8,28.51s18.75,7.85,28.51,8c5.25.08,10.67.16,13.94,1.52,3.56,1.47,7.63,5.37,11.57,9.14C109.72,232.49,117.56,240,128,240s18.27-7.51,25.18-14.14c3.94-3.77,8-7.67,11.57-9.14,3.27-1.36,8.69-1.44,13.94-1.52,9.76-.15,20.82-.31,28.51-8s7.85-18.75,8-28.51c.08-5.25.16-10.67,1.52-13.94,1.47-3.56,5.37-7.63,9.14-11.57C232.49,146.28,240,138.44,240,128S232.49,109.73,225.86,102.82Zm-52.2,6.84-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"></path>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="var(--secondary-color)"
+                  viewBox="0 0 256 256"
+                >
+                  <path
+                    d="M225.86,102.82c-3.77-3.94-7.67-8-9.14-11.57-1.36-3.27-1.44-8.69-1.52-13.94-.15-9.76-.31-20.82-8-28.51s-18.75-7.85-28.51-8c-5.25-.08-10.67-.16-13.94-1.52-3.56-1.47-7.63-5.37-11.57-9.14C146.28,23.51,138.44,16,128,16s-18.27,7.51-25.18,14.14c-3.94,3.77-8,7.67-11.57,9.14C88,40.64,82.56,40.72,77.31,40.8c-9.76.15-20.82.31-28.51,8S41,67.55,40.8,77.31c-.08,5.25-.16,10.67-1.52,13.94-1.47,3.56-5.37,7.63-9.14,11.57C23.51,109.72,16,117.56,16,128s7.51,18.27,14.14,25.18c3.77,3.94,7.67,8,9.14,11.57,1.36,3.27,1.44,8.69,1.52,13.94.15,9.76.31,20.82,8,28.51s18.75,7.85,28.51,8c5.25.08,10.67.16,13.94,1.52,3.56,1.47,7.63,5.37,11.57,9.14C109.72,232.49,117.56,240,128,240s18.27-7.51,25.18-14.14c3.94-3.77,8-7.67,11.57-9.14,3.27-1.36,8.69-1.44,13.94-1.52,9.76-.15,20.82-.31,28.51-8s7.85-18.75,8-28.51c.08-5.25.16-10.67,1.52-13.94,1.47-3.56,5.37-7.63,9.14-11.57C232.49,146.28,240,138.44,240,128S232.49,109.73,225.86,102.82Zm-52.2,6.84-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"
+                  ></path>
                 </svg>
-                <span class="font-body font-medium" style="color: var(--text-primary);">Security First</span>
+                <span class="font-body font-medium" style="color: var(--text-primary)"
+                  >Security First</span
+                >
               </div>
-              <p class="font-body" style="color: var(--text-secondary);">Your secret is encrypted and can only be viewed once. After viewing, it's permanently deleted from our servers.</p>
-            </div>              <div class="border border-gray-200 rounded-lg p-4" style="background-color: var(--surface-color);">
+              <p class="font-body" style="color: var(--text-secondary)">
+                Your secret is encrypted and can only be viewed once. After viewing, it's
+                permanently deleted from our servers.
+              </p>
+            </div>
+            <div
+              class="border border-gray-200 rounded-lg p-4"
+              style="background-color: var(--surface-color)"
+            >
               <div class="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#28a745" viewBox="0 0 256 256">
-                  <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="#28a745"
+                  viewBox="0 0 256 256"
+                >
+                  <path
+                    d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"
+                  ></path>
                 </svg>
-                <span class="font-body font-medium" style="color: var(--text-primary);">How SecretSharer Works</span>
+                <span class="font-body font-medium" style="color: var(--text-primary)"
+                  >How SecretSharer Works</span
+                >
               </div>
-              <ul class="font-body space-y-1 list-disc list-inside" style="color: var(--text-secondary);">
+              <ul
+                class="font-body space-y-1 list-disc list-inside"
+                style="color: var(--text-secondary)"
+              >
                 <li>Someone shared a secret with you via this link</li>
                 <li>Click "Reveal Secret" to view the message</li>
                 <li>The secret will be shown once and then deleted</li>
                 <li>The link becomes invalid after viewing</li>
               </ul>
             </div>
-            
-            <div class="border border-gray-200 rounded-lg p-4" style="background-color: var(--surface-color);">
+
+            <div
+              class="border border-gray-200 rounded-lg p-4"
+              style="background-color: var(--surface-color)"
+            >
               <div class="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#f39c12" viewBox="0 0 256 256">
-                  <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"></path>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="#f39c12"
+                  viewBox="0 0 256 256"
+                >
+                  <path
+                    d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"
+                  ></path>
                 </svg>
-                <span class="font-body font-medium" style="color: var(--text-primary);">Important</span>
+                <span class="font-body font-medium" style="color: var(--text-primary)"
+                  >Important</span
+                >
               </div>
-              <p class="font-body" style="color: var(--text-secondary);">Make sure you're ready to view the secret before clicking "Reveal" - you won't get a second chance!</p>
+              <p class="font-body" style="color: var(--text-secondary)">
+                Make sure you're ready to view the secret before clicking "Reveal" - you won't get a
+                second chance!
+              </p>
             </div>
           </div>
-          
+
           <div class="mt-6 flex justify-center">
-            <button id="closeHelpModalButton" class="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-md font-body" style="background-color: var(--secondary-color); color: white;">
+            <button
+              id="closeHelpModalButton"
+              class="px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:shadow-md font-body"
+              style="background-color: var(--secondary-color); color: white"
+            >
               Got it!
             </button>
           </div>
         </div>
-      </div>    </div>
+      </div>
+    </div>
   </body>
   <script src="utils.js"></script>
   <script src="view.js"></script>

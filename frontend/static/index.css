@@ -3,7 +3,7 @@
 .hero-title-custom {
   font-family: var(--font-heading);
   color: var(--primary-color);
-  text-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Softer shadow */
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Softer shadow */
 }
 .hero-subtitle-custom {
   font-family: var(--font-body);
@@ -13,7 +13,7 @@
 .create-section-custom {
   background-color: var(--accent-color-light-grey);
   border: 1px solid #cccccc; /* Lighter border */
-  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
   border-radius: 8px;
 }
 .create-section-custom h3 {
@@ -23,14 +23,14 @@
   color: var(--secondary-color); /* Icon color */
 }
 
-.create-section-custom input[type="text"] {
+.create-section-custom input[type='text'] {
   background-color: var(--accent-color-white);
   color: var(--text-color-dark);
   border: 1px solid #bdc3c7; /* Match container border for seamless integration */
   border-left: none; /* Remove left border - handled by icon container */
   border-right: none; /* Remove right border - handled by button container */
 }
-.create-section-custom input[type="text"]:focus {
+.create-section-custom input[type='text']:focus {
   border: 1px solid #bdc3c7; /* Keep matching border on focus */
   border-left: none; /* Remove left border - handled by icon container */
   border-right: none; /* Remove right border - handled by button container */
@@ -54,7 +54,8 @@
   outline: none; /* Remove default outline */
 }
 
-.create-section-custom .main-create-button-custom { /* Button in create section */
+.create-section-custom .main-create-button-custom {
+  /* Button in create section */
   background-color: var(--secondary-color);
   color: var(--text-color-light);
 }
@@ -70,11 +71,13 @@
 .feature-card-custom {
   background-color: var(--accent-color-white);
   border: 1px solid #e0e0e0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .feature-card-custom:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   border-color: var(--secondary-color);
 }
 .feature-card-custom .icon-bg-custom {
@@ -99,5 +102,5 @@
   color: var(--accent-color-light-grey); /* Initial color */
 }
 .footer-custom .social-icon-custom:hover svg {
-   color: var(--accent-color-white); /* Hover color for social icons */
+  color: var(--accent-color-white); /* Hover color for social icons */
 }
