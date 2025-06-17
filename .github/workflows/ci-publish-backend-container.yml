@@ -1,4 +1,4 @@
-name: 'CD - Release backend container to ACR'
+name: 'CI - Publish backend container to ACR'
 on:
     push:
         branches: [development]

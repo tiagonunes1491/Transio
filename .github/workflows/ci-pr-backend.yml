@@ -85,3 +85,101 @@ jobs:
       path: 'backend/Dockerfile'
       container-name: 'backend-app'
       build-context: 'backend'
+
+  post-comment:
+    name: 'Post Validation Results Comment'
+    needs: [check_changes, format_and_lint, static_analysis, sca_analysis, backend_tests, container_analysis]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: 'Post Success Comment'
+        if: |
+          (needs.check_changes.outputs.lint_required != '' && 
+           needs.format_and_lint.result == 'success' && 
+           needs.static_analysis.result == 'success' && 
+           needs.backend_tests.result == 'success' &&
+           (needs.sca_analysis.result == 'success' || needs.sca_analysis.result == 'skipped') &&
+           (needs.container_analysis.result == 'success' || needs.container_analysis.result == 'skipped')) ||
+          (needs.check_changes.outputs.lint_required == '' && 
+           (needs.sca_analysis.result == 'success' || needs.sca_analysis.result == 'skipped') &&
+           (needs.container_analysis.result == 'success' || needs.container_analysis.result == 'skipped'))
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ **Backend Validation Successful**
+
+            All backend validation checks passed successfully! 🎉
+
+            **Validation Results:**
+            - 🐍 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 📦 Software Composition Analysis (SCA): ${{ needs.sca_analysis.result == 'success' && '✅ Passed' || needs.sca_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🧪 Unit Tests & Coverage: ${{ needs.backend_tests.result == 'success' && '✅ Passed' || needs.backend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🐳 Container Analysis: ${{ needs.container_analysis.result == 'success' && '✅ Passed' || needs.container_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+
+            **What was validated:**
+            - 🐍 Python code formatting and linting
+            - 🔍 Static Application Security Testing (SAST)
+            - 📦 Dependency vulnerability scanning (SCA)
+            - 🧪 Unit tests with coverage requirements
+            - 🐳 Container security scanning
+
+            Great work! Your backend code looks good and secure.
+          edit-mode: replace
+
+      - name: 'Post Failure Comment'
+        if: |
+          needs.check_changes.outputs.lint_required != '' && 
+          (needs.format_and_lint.result != 'success' || 
+           needs.static_analysis.result != 'success' || 
+           needs.backend_tests.result != 'success' ||
+           (needs.sca_analysis.result != 'success' && needs.sca_analysis.result != 'skipped') ||
+           (needs.container_analysis.result != 'success' && needs.container_analysis.result != 'skipped'))
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ **Backend Validation Failed**
+
+            One or more backend validation checks failed.
+            Please review the [Checks tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            **Validation Results:**
+            - 🐍 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 📦 Software Composition Analysis (SCA): ${{ needs.sca_analysis.result == 'success' && '✅ Passed' || needs.sca_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🧪 Unit Tests & Coverage: ${{ needs.backend_tests.result == 'success' && '✅ Passed' || needs.backend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🐳 Container Analysis: ${{ needs.container_analysis.result == 'success' && '✅ Passed' || needs.container_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+
+            **What was checked:**
+            - 🐍 Python code formatting and linting
+            - 🔍 Static Application Security Testing (SAST)
+            - 📦 Dependency vulnerability scanning (SCA)
+            - 🧪 Unit tests with coverage requirements
+            - 🐳 Container security scanning
+
+            Please fix the issues and push your changes.
+          edit-mode: replace
+
+      - name: 'Post No Changes Comment'
+        if: needs.check_changes.outputs.lint_required == '' && needs.check_changes.outputs.sca_required == '' && needs.check_changes.outputs.trivy_required == ''
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ℹ️ **No Backend Changes Detected**
+
+            No backend files were changed in this PR - validation skipped.
+
+            If you expected backend validation to run, check that changes are in the `backend/` directory with the appropriate file extensions (`.py`, `requirements.txt`, `Dockerfile`).
+          edit-mode: replace

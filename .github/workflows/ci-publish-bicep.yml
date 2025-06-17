@@ -1,5 +1,4 @@
 # .github/workflows/ci-publish-bicep.yml
-
 name: 'CI - Publish Bicep Artifacts'
 
 on:
