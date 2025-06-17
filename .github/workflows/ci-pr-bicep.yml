@@ -307,37 +307,37 @@ jobs:
           sarif_file: bicep-validation-results.sarif
           
   security-scan:
-      needs: check_changes
-      name: 'Security Scan Bicep Files'
-      runs-on: ubuntu-latest
-      steps:
-        - name: 'Checkout Code'
-          uses: actions/checkout@v4
+    needs: check_changes
+    name: 'Security Scan Bicep Files'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
 
-        - name: 'Run Security Scan with Checkov'
-          if: needs.check_changes.outputs.bicep_required == 'true'
-          uses: bridgecrewio/checkov-action@v12
-          with:
-            file: ${{ needs.check_changes.outputs.changed_files }}
-            framework: bicep
-            output_format: sarif
-            output_file_path: checkov-results.sarif
-            quiet: true
-            soft_fail: false
-            check: CKV_AZURE_*
+      - name: 'Run Security Scan with Checkov'
+        if: needs.check_changes.outputs.bicep_required == 'true'
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          file: ${{ needs.check_changes.outputs.changed_files }}
+          framework: bicep
+          output_format: sarif
+          output_file_path: checkov-results.sarif
+          quiet: true
+          soft_fail: false
+          check: CKV_AZURE_*
 
-        - name: 'Upload Checkov SARIF'
-          if: always() && needs.check_changes.outputs.bicep_required == 'true'
-          uses: github/codeql-action/upload-sarif@v3
-          with:
-            category: checkov-bicep-security
-            sarif_file: checkov-results.sarif
+      - name: 'Upload Checkov SARIF'
+        if: always() && needs.check_changes.outputs.bicep_required == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          category: checkov-bicep-security
+          sarif_file: checkov-results.sarif
 
-        - name: 'No Bicep Changes - Security Scan Skipped'
-          if: needs.check_changes.outputs.bicep_required != 'true'
-          run: |
-            echo "ℹ️ No Bicep files changed - security scan skipped"
-            echo "If you expected security scanning to run, check that changes are in infra/ directory with .bicep or .bicepparam extensions"
+      - name: 'No Bicep Changes - Security Scan Skipped'
+        if: needs.check_changes.outputs.bicep_required != 'true'
+        run: |
+          echo "ℹ️ No Bicep files changed - security scan skipped"
+          echo "If you expected security scanning to run, check that changes are in infra/ directory with .bicep or .bicepparam extensions"
 
   post-comment:
     name: 'Post Validation Results Comment'
