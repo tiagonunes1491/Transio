@@ -1,3 +1,5 @@
+To do : add comments.
+
 @description('Location of the User Assigned Managed Identity (UAMI)')
 param uamiLocation string = 'spaincentral'
 
