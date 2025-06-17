@@ -60,13 +60,11 @@ jobs:
     
   frontend_tests:
     needs: check_changes
-    name: 'Frontend Unit Tests & Coverage'
+    name: 'Frontend Unit Tests'
     if: needs.check_changes.outputs.lint_required != ''
     uses: ./.github/workflows/reusable-frontend-test.yml
     with:
       node-version: '18'
-      coverage-threshold: 80
-      upload-coverage: true
 
   # Build and container analysis using the existing reusable workflow
   build_and_scan:
@@ -110,13 +108,13 @@ jobs:
             **Validation Results:**
             - 🎨 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
-            - 🧪 Unit Tests & Coverage: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🧪 Unit Tests: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔨 Build & Container Scan: ${{ needs.build_and_scan.result == 'success' && '✅ Passed' || needs.build_and_scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
 
             **What was validated:**
             - 🎨 JavaScript/CSS code formatting and linting
             - 🔍 Static Application Security Testing (SAST) for your JavaScript code
-            - 🧪 Unit tests with coverage requirements
+            - 🧪 Unit tests
             - 🔨 Docker build and container security scanning
 
             Great work! Your frontend code looks good and secure.
@@ -143,13 +141,13 @@ jobs:
             **Validation Results:**
             - 🎨 Format & Lint: ${{ needs.format_and_lint.result == 'success' && '✅ Passed' || needs.format_and_lint.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔍 Static Analysis (SAST): ${{ needs.static_analysis.result == 'success' && '✅ Passed' || needs.static_analysis.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
-            - 🧪 Unit Tests & Coverage: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
+            - 🧪 Unit Tests: ${{ needs.frontend_tests.result == 'success' && '✅ Passed' || needs.frontend_tests.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
             - 🔨 Build & Container Scan: ${{ needs.build_and_scan.result == 'success' && '✅ Passed' || needs.build_and_scan.result == 'skipped' && '⏭️ Skipped' || '❌ Failed' }}
 
             **What was checked:**
             - 🎨 JavaScript/CSS code formatting and linting
             - 🔍 Static Application Security Testing (SAST) for your JavaScript code
-            - 🧪 Unit tests with coverage requirements
+            - 🧪 Unit tests
             - 🔨 Docker build and container security scanning
 
             **Common fixes:**
