@@ -30,5 +30,14 @@ module.exports = {
     'crypto': 'readonly',
     'TextEncoder': 'readonly',
     'TextDecoder': 'readonly'
-  }
+  },
+  overrides: [
+    {
+      // Allow console statements in test files
+      files: ['tests/**/*.js'],
+      rules: {
+        'no-console': 'off'
+      }
+    }
+  ]
 }
