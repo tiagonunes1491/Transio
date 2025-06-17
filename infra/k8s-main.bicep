@@ -16,6 +16,8 @@ param tags object = {
   owner: 'Tiago'
 }
 
+// PR Change
+
 // Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
