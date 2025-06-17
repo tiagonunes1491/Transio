@@ -41,7 +41,7 @@ jobs:
         working-directory: frontend
         run: |
           echo "Validating HTML files..."
-          find static -name "*.html" -exec echo "Validating: {}" \; -exec npx html-validate {} \;
+          npm run validate:html
 
       - name: Check JavaScript syntax
         working-directory: frontend
