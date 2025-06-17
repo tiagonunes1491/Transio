@@ -1,6 +1,6 @@
 # .github/workflows/reusable-python-check.yml
 
-name: Python Code Quality Checks
+name: Reusable - Python Code Quality Checks
 
 # Controls when the workflow will run
 on:

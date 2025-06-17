@@ -1,4 +1,4 @@
-name: 'Reusable SCA Scan'
+name: 'Reusable - SCA Scan'
 on:
   workflow_call:
     inputs:

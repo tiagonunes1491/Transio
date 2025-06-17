@@ -1,4 +1,4 @@
-name: 'Reusable Container Scan with Trivy'
+name: 'Reusable - Container Scan with Trivy'
 on:
     workflow_call:
         inputs:
