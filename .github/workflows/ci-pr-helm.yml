@@ -107,6 +107,8 @@ jobs:
     # But is skipped if no images were found
     if: needs.pr-validation.outputs.images_json != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     strategy:
       fail-fast: false
       matrix:
@@ -123,10 +125,18 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'HIGH,CRITICAL'
 
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+          category: 'trivy-${{ matrix.image }}'
+
   test-install:
     name: Test Helm chart install
-    # This job runs after static validation and image scanning
-    needs: [pr-validation, scan-images]    # Run only if image scanning was successful OR if it was skipped (because no images were found)
+    # This job runs after static validation and image scanning    
+    needs: [pr-validation, scan-images]
+    # Run only if image scanning was successful OR if it was skipped (because no images were found)
     if: needs.pr-validation.result == 'success' && (needs.scan-images.result == 'success' || needs.scan-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
@@ -146,10 +156,27 @@ jobs:
       - name: Create kind cluster
         uses: helm/kind-action@v1.12.0
 
+      - name: Create test values file
+        run: |
+          cat <<EOF > test-values.yaml
+          acrLoginServer: dummy.acr.io
+          backend:
+            keyVault:
+              name: dummy-kv
+              tenantId: 00000000-0000-0000-0000-000000000000
+              userAssignedIdentityClientID: 00000000-0000-0000-0000-000000000000
+            serviceAccount:
+              name: dummy-backend-sa
+          database:
+            serviceAccount:
+              name: dummy-db-sa
+              azureClientId: 00000000-0000-0000-0000-000000000000
+          EOF
+
       - name: Test Helm chart install
         run: |
           ct install --chart-dirs k8s --target-branch development \
-            --helm-extra-args "--set acrLoginServer=dummy.acr.io --set backend.keyVault.name=dummy-kv --set backend.keyVault.tenantId=00000000-0000-0000-0000-000000000000 --set backend.keyVault.userAssignedIdentityClientID=00000000-0000-0000-0000-000000000000 --set backend.serviceAccount.name=dummy-backend-sa --set database.serviceAccount.name=dummy-db-sa --set database.serviceAccount.azureClientId=00000000-0000-0000-0000-000000000000"
+            --helm-extra-args "--values test-values.yaml"
 
   
   post-comment:
