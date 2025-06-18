@@ -40,21 +40,34 @@ jobs:
           # Since there is only one chart, we can hardcode the name
           helm template secret-sharer-app k8s/secret-sharer-app --output-dir rendered
 
-      # 4. Manifest validation & IaC policies
-      - name: Validate manifests with kubeconform container
-        uses: docker://ghcr.io/yannh/kubeconform:latest
-        with:
-          entrypoint: '/kubeconform'
-          args: >
-            -summary -verbose rendered/**/*.yaml
+      # 4. List rendered files for debugging
+      - name: List rendered files
+        run: |
+          echo "Contents of rendered directory:"
+          find rendered -name "*.yaml" -type f
+          echo "Total YAML files found: $(find rendered -name "*.yaml" -type f | wc -l)"
 
+      # 5. Install and run kubeconform directly (avoiding Docker path issues)
+      - name: Install kubeconform
+        run: |
+          wget https://github.com/yannh/kubeconform/releases/download/v0.6.4/kubeconform-linux-amd64.tar.gz
+          tar xf kubeconform-linux-amd64.tar.gz
+          sudo mv kubeconform /usr/local/bin
+          kubeconform --version
+
+      - name: Validate manifests with kubeconform
+        run: |
+          # Run kubeconform on all rendered YAML files
+          find rendered -name "*.yaml" -type f | xargs kubeconform -summary -verbose
+
+      # 6. K8s IaC security policies (Checkov)
       - name: K8s IaC security policies (Checkov)
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: rendered
           framework: kubernetes
 
-      # 5. Extract public images
+      # 7. Extract public images
       - name: Install jq
         run: sudo apt-get -y install jq
       
