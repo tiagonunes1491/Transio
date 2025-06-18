@@ -1,6 +1,5 @@
 /* utils.js - Shared utility functions for SecureSharer */
 /* exported copyToClipboard, truncateLink, formatDate, copyToClipboardFallback, showManualCopyDialog, showCopySuccess, escapeHTML */
-
 /**
  * Copy text to clipboard with visual feedback and fallbacks for HTTP environments
  * @param {string} textToCopy - The text to copy to clipboard
