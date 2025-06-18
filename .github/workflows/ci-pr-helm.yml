@@ -82,6 +82,8 @@ jobs:
           shopt -s globstar
           ACR_DOMAIN="secureSharerACR.azurecr.io"
           IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
+          # Remove any surrounding quotes from each image
+          IMAGES_TEXT=$(echo "$IMAGES_TEXT" | sed 's/^"//;s/"$//')
           if [[ -z "$IMAGES_TEXT" ]]; then
               echo "No public images found to scan."
               echo "images_json=[]" >> $GITHUB_OUTPUT
@@ -92,7 +94,6 @@ jobs:
           IMAGES_JSON=$(printf '%s\n' $IMAGES_TEXT | jq -R -s 'split("\n")[:-1]')
           echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
           echo "Public images JSON: $IMAGES_JSON"
-          echo "::set-output name=images_json::$IMAGES_JSON"    
         
   scan-images:
     name: Scan public images
