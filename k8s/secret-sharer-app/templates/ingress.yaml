@@ -51,5 +51,5 @@ spec:
                 name: {{ include "secret-sharer-app.fullname" $ }}-backend
                 port:
                   number: {{ $.Values.backend.service.port }}
-  {{- end }} 
+  {{- end }} # End of outer loop
 {{- end }}
