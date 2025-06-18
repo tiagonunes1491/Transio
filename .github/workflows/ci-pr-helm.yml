@@ -56,16 +56,20 @@ jobs:
           kubeconform -v
 
       - name: Validate manifests with kubeconform
+        id: kubeconform
         run: |
           # Run kubeconform on all rendered YAML files
           find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose
+        continue-on-error: true
 
       # 6. K8s IaC security policies (Checkov)
       - name: K8s IaC security policies (Checkov)
+        id: checkov
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: rendered
           framework: kubernetes
+        continue-on-error: true
 
       # 7. Extract public images
       - name: Install jq
@@ -146,3 +150,88 @@ jobs:
             --set backend.serviceAccount.name=dummy-backend-sa \
             --set database.serviceAccount.name=dummy-db-sa \
             --set database.serviceAccount.azureClientId=00000000-0000-0000-0000-000000000000"
+
+      - name: Check validation results
+        if: always()
+        run: |
+          echo "Kubeconform result: ${{ steps.kubeconform.outcome }}"
+          echo "Checkov result: ${{ steps.checkov.outcome }}"
+          # Add more validation steps here if needed
+          if [[ "${{ steps.kubeconform.outcome }}" == "failure" ]] || \
+             [[ "${{ steps.checkov.outcome }}" == "failure" ]]; then
+            echo "One or more validations failed"
+            exit 1
+          fi
+  
+  post-comment:
+    name: 'Post Validation Results Comment'
+    needs: [pr-validation]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: 'Post Success Comment'
+        if: |
+          needs.pr-validation.result == 'success'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ✅ **Helm Chart Validation Successful**
+
+            All Helm chart validation checks passed successfully! 🎉
+
+            **Validation Results:**
+            - 📝 Kubeconform: ${{ needs.pr-validation.result == 'success' && '✅ Passed' || '❌ Failed' }}
+            - 🔒 Checkov: ${{ needs.pr-validation.result == 'success' && '✅ Passed' || '❌ Failed' }}
+
+            **What was validated:**
+            - 📝 Kubernetes manifest schema validation (kubeconform)
+            - 🔒 Kubernetes security policies (Checkov)
+
+            Great work! Your Helm chart looks good and secure.
+          edit-mode: replace
+
+      - name: 'Post Failure Comment'
+        if: |
+          needs.pr-validation.result != 'success'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ❌ **Helm Chart Validation Failed**
+
+            One or more Helm chart validation checks failed.
+            Please review the [Checks tab](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+            **Validation Results:**
+            - 📝 Kubeconform: ${{ needs.pr-validation.result == 'success' && '✅ Passed' || '❌ Failed' }}
+            - 🔒 Checkov: ${{ needs.pr-validation.result == 'success' && '✅ Passed' || '❌ Failed' }}
+
+            **What was checked:**
+            - 📝 Kubernetes manifest schema validation (kubeconform)
+            - 🔒 Kubernetes security policies (Checkov)
+
+            Please fix the issues and push your changes.
+          edit-mode: replace
+
+      - name: 'Post No Changes Comment'
+        if: needs.pr-validation.result == 'skipped'
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ℹ️ **No Helm Chart Changes Detected**
+
+            No Helm chart files were changed in this PR - validation skipped.
+
+            If you expected Helm chart validation to run, check that changes are in the `k8s/secret-sharer-app/` directory.
+          edit-mode: replace
