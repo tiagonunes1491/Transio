@@ -46,7 +46,7 @@ spec:
             successThreshold: {{ .Values.backend.probes.liveness.successThreshold | default 1 }}
           readinessProbe:
             httpGet:
-              path: /health # Or your specific health check endpoint e.g., /health8
+              path: /health # Or your specific health check endpoint e.g., /health9
               port: http # Refers to the containerPort named 'http'
             initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds | default 5 }}
             periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds | default 10 }}
