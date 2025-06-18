@@ -61,7 +61,6 @@ jobs:
         run: |
           # Run kubeconform on all rendered YAML files
           find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose
-        continue-on-error: true
 
       # 6. K8s IaC security policies (Checkov)
       - name: K8s IaC security policies (Checkov)
@@ -152,17 +151,6 @@ jobs:
             --set database.serviceAccount.name=dummy-db-sa \
             --set database.serviceAccount.azureClientId=00000000-0000-0000-0000-000000000000"
 
-      - name: Check validation results
-        if: always()
-        run: |
-          echo "Kubeconform result: ${{ steps.kubeconform.outcome }}"
-          echo "Checkov result: ${{ steps.checkov.outcome }}"
-          # Add more validation steps here if needed
-          if [[ "${{ steps.kubeconform.outcome }}" == "failure" ]] || \
-             [[ "${{ steps.checkov.outcome }}" == "failure" ]]; then
-            echo "One or more validations failed"
-            exit 1
-          fi
   
   post-comment:
     name: 'Post Validation Results Comment'
