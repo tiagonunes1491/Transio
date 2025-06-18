@@ -78,18 +78,19 @@ jobs:
       - name: Extract public images
         run: |
           shopt -s globstar
-          ACR_DOMAIN="${{ vars.ACR_NAME }}.azurecr.io"
+          ACR_DOMAIN="secureSharerACR.azurecr.io"
           IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
           if [[ -z "$IMAGES_TEXT" ]]; then
               echo "No public images found to scan."
-              echo "images_json='[]'" >> $GITHUB_OUTPUT
+              echo "images_json=[]" >> $GITHUB_OUTPUT
               exit 0
           fi
           echo "Found public images:"
           echo "$IMAGES_TEXT"
-          IMAGES_JSON=$(echo "$IMAGES_TEXT" | jq -R . | jq -s .)
+          IMAGES_JSON=$(printf '%s\n' $IMAGES_TEXT | jq -R -s 'split("\n")[:-1]')
           echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
-          echo "Public images JSON: $IMAGES_JSON"  
+          echo "Public images JSON: $IMAGES_JSON"
+            id: image_extractor
 
   scan-images:
     name: Scan public images
