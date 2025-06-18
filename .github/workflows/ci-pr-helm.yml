@@ -104,7 +104,6 @@ jobs:
       - name: Validate manifests with kubeconform
         run: |
           find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose
-
   # Job 5: Security policy validation
   checkov:
     name: Security policy validation
@@ -115,8 +114,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: rendered-charts
-          path: rendered/
-
+          path: rendered/      
       - name: K8s IaC security policies (Checkov)
         uses: bridgecrewio/checkov-action@v12
         with:
@@ -124,9 +122,19 @@ jobs:
           framework: kubernetes
           quiet: true
           compact: true
+          output_format: sarif
+          output_file_path: checkov-results.sarif
         env:
           CHECKOV_COMPACT: true
-          CHECKOV_QUIET: true  # Job 6: Image vulnerability scanning
+          CHECKOV_QUIET: true
+
+      - name: Upload Checkov scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: 'checkov-kubernetes-security'
+  # Job 6: Image vulnerability scanning
   scan-images:
     name: Image vulnerability scanning
     runs-on: ubuntu-latest
@@ -154,7 +162,7 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
 
-      - name: Run Trivy vulnerability scanner on ${{ matrix.image }} (Detailed Table)
+      - name: Run Trivy vulnerability scanner on ${{ matrix.image }} (Table)
         uses: aquasecurity/trivy-action@0.31.0
         if: always()  # Run even if SARIF scan failed
         with:
@@ -162,32 +170,11 @@ jobs:
           image-ref: ${{ matrix.image }}
           ignore-unfixed: false
           format: 'table'
-          severity: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'  # Show all severities for full picture
-          output: 'trivy-detailed-results.txt'
-
-      - name: Display detailed vulnerability report
-        if: always()
-        run: |
-          echo "## 🔍 Detailed Vulnerability Report for ${{ matrix.image }}"
-          echo ""
-          if [ -f trivy-detailed-results.txt ]; then
-            cat trivy-detailed-results.txt
-          else
-            echo "No detailed results file found"
-          fi
-          echo ""
-          echo "## 🚨 HIGH/CRITICAL Only Summary"
-          echo "Running focused scan for HIGH/CRITICAL vulnerabilities..."
-
-      - name: Run focused HIGH/CRITICAL scan for summary
-        uses: aquasecurity/trivy-action@0.31.0
-        if: always()
-        with:
-          scan-type: 'image'
-          image-ref: ${{ matrix.image }}
-          ignore-unfixed: false
-          format: 'table'
           severity: 'HIGH,CRITICAL'
+          # Enhanced table output options for detailed vulnerability info
+          scanners: 'vuln'  # Focus on vulnerabilities
+          list-all-pkgs: false  # Only show packages with vulnerabilities
+          exit-code: '0'  # Don't fail this step (SARIF already failed if needed)
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
