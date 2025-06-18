@@ -23,6 +23,7 @@ spec:
       automountServiceAccountToken: true # Ensure token is mounted for WI/CSI Driver
       
       terminationGracePeriodSeconds: 10
+      # We will add securityContext for the pod later
       containers:
         - name: postgres
           image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag | default "15-alpine" }}"
