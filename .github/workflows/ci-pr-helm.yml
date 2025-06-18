@@ -23,9 +23,6 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-            scan-path: .
-            args: "--commit-range=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
 
       # 2. Helm + chart-testing
       - name: Setup Helm
@@ -130,4 +127,4 @@ jobs:
         uses: helm/kind-action@v1.12.0
 
       - name: Run chart-testing (install)
-        run: ct install --config ct.yaml --target-branch ${{ github.event.pull_request.base.ref }}
+        run: ct install  --chart-dirs k8s --target-branch ${{ github.event.pull_request.base.ref }}
