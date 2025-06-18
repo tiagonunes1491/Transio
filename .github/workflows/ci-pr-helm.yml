@@ -127,7 +127,6 @@ jobs:
         env:
           CHECKOV_COMPACT: true
           CHECKOV_QUIET: true
-
   # Job 6: Image vulnerability scanning
   scan-images:
     name: Image vulnerability scanning
@@ -142,7 +141,7 @@ jobs:
         image: ${{ fromJSON(needs.setup.outputs.images_json) }}
     
     steps:
-      - name: Run Trivy vulnerability scanner on ${{ matrix.image }}
+      - name: Run Trivy vulnerability scanner on ${{ matrix.image }} (SARIF)
         uses: aquasecurity/trivy-action@0.31.0
         with:
           scan-type: 'image'
@@ -152,6 +151,16 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
+
+      - name: Run Trivy vulnerability scanner on ${{ matrix.image }} (Table)
+        uses: aquasecurity/trivy-action@0.31.0
+        if: always()  # Run even if SARIF scan failed
+        with:
+          scan-type: 'image'
+          image-ref: ${{ matrix.image }}
+          ignore-unfixed: false
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
