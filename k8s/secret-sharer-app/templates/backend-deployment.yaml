@@ -37,7 +37,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /health # Or your specific health check endpoint e.g., /health
+              path: /health # Or your specific health check endpoint e.g., /health2
               port: http # Refers to the containerPort named 'http' (e.g., 8000)
             initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds | default 15 }}
             periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds | default 20 }}
@@ -46,7 +46,7 @@ spec:
             successThreshold: {{ .Values.backend.probes.liveness.successThreshold | default 1 }}
           readinessProbe:
             httpGet:
-              path: /health # Or your specific health check endpoint e.g., /health
+              path: /health # Or your specific health check endpoint e.g., /health2
               port: http # Refers to the containerPort named 'http'
             initialDelaySeconds: {{ .Values.backend.probes.readiness.initialDelaySeconds | default 5 }}
             periodSeconds: {{ .Values.backend.probes.readiness.periodSeconds | default 10 }}
