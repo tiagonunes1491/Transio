@@ -173,10 +173,21 @@ jobs:
               azureClientId: 00000000-0000-0000-0000-000000000000
           EOF
 
+      - name: Install required CRDs
+        run: |
+          # Install Secrets Store CSI Driver CRDs
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/main/deploy/secrets-store.csi.x-k8s.io_secretproviderclasses.yaml
+          kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/secrets-store-csi-driver/main/deploy/secrets-store.csi.x-k8s.io_secretproviderclasspodstatuses.yaml
+          
+          # Wait for CRDs to be established
+          kubectl wait --for condition=established --timeout=60s crd/secretproviderclasses.secrets-store.csi.x-k8s.io
+          kubectl wait --for condition=established --timeout=60s crd/secretproviderclasspodstatuses.secrets-store.csi.x-k8s.io
+
       - name: Test Helm chart install
         run: |
           ct install --chart-dirs k8s --target-branch development \
             --helm-extra-args "--values test-values.yaml"
+
 
   
   post-comment:
