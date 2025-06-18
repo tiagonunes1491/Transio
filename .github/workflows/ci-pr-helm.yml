@@ -37,8 +37,9 @@ jobs:
       - name: Render changed charts
         run: |
           mkdir -p rendered
-          # Since there is only one chart, we can hardcode the name
-          helm template secret-sharer-app k8s/secret-sharer-app --output-dir rendered
+          helm template secret-sharer-app k8s/secret-sharer-app \
+            --output-dir rendered \
+            --set acrLoginServer=${{ vars.ACR_NAME }}.azurecr.io \
 
       # 4. List rendered files for debugging
       - name: List rendered files
