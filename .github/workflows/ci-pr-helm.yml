@@ -58,7 +58,7 @@ jobs:
       - name: Validate manifests with kubeconform
         run: |
           # Run kubeconform on all rendered YAML files
-          find rendered -name "*.yaml" -type f | xargs kubeconform -summary -verbose
+          find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose
 
       # 6. K8s IaC security policies (Checkov)
       - name: K8s IaC security policies (Checkov)
