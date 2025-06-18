@@ -60,25 +60,28 @@ jobs:
         id: kubeconform
         run: |
           # Run kubeconform on all rendered YAML files
-          find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose
-
-      # 6. K8s IaC security policies (Checkov)
+          find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose      # 6. K8s IaC security policies (Checkov)
       - name: K8s IaC security policies (Checkov)
         id: checkov
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: rendered
           framework: kubernetes
+          quiet: true
+          compact: true
+          soft_fail: true
         continue-on-error: true
-
-      # 7. Extract public images
+        env:
+          # Prevent Checkov from setting environment variables
+          CHECKOV_COMPACT: true
+          CHECKOV_QUIET: true
+          # 7. Extract public images
       - name: Install jq
         run: sudo apt-get -y install jq
       
       - name: Extract public images
         id: image_extractor
         run: |
-          unset CHECKOV_RESULTS
           shopt -s globstar
           ACR_DOMAIN="secureSharerACR.azurecr.io"
           IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
@@ -91,7 +94,7 @@ jobs:
           fi
           echo "Found public images:"
           echo "$IMAGES_TEXT"
-          IMAGES_JSON=$(printf '%s\n' $IMAGES_TEXT | jq -R -s 'split("\n")[:-1]')
+          IMAGES_JSON=$(printf '%s\n' $IMAGES_TEXT | jq -R -s 'split("\n")[:-1]' | jq -c .)
           echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
           echo "Public images JSON: $IMAGES_JSON"
         
