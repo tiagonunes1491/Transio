@@ -1,0 +1,131 @@
+name: CI - Helm PR Review
+
+on:
+  pull_request:
+    paths:
+      - 'k8s/secret-sharer-app/**'
+
+jobs:
+  pr-validation:
+    name: Static validation
+    runs-on: ubuntu-latest
+    outputs:
+      images_json: ${{ steps.image_extractor.outputs.images_json }}
+
+    steps:
+      # 0. Checkout
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 1. Secret scans (Gitleaks)
+      - name: Gitleaks (PR diff scan)
+        uses: gitleaks/gitleaks-action@v2
+        with:
+            scan-path: .
+            args: "--commit-range=${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+
+      # 2. Helm + chart-testing
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.6.1
+
+      - name: ct lint (changed charts only)
+        run: ct lint --config ct.yaml --target-branch ${{ github.event.pull_request.base.ref }}
+
+      # 3. Render only changed charts
+      - name: Render changed charts
+        run: |
+          mkdir -p rendered
+          # Since there is only one chart, we can hardcode the name
+          helm template secret-sharer-app k8s/secret-sharer-app --output-dir rendered/secret-sharer-app
+
+      # 4. Manifest validation & IaC policies
+      - name: Validate manifests with kubeconform container
+        uses: docker://ghcr.io/yannh/kubeconform:latest
+        with:
+          entrypoint: '/kubeconform'
+          args: >
+            -summary -verbose rendered/**/*.yaml
+
+      - name: K8s IaC security policies (Checkov)
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: rendered
+          framework: kubernetes
+
+      # 5. Extract public images
+      - name: Install jq
+        run: sudo apt-get -y install jq
+      
+      - name: Extract public images
+        id: image_extractor
+        shell: bash
+        run: |
+            set -euo pipefail
+            ACR_DOMAIN="${{ vars.ACR_NAME }}.azurecr.io"
+            IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
+            if [[ -z "$IMAGES_TEXT" ]]; then
+                echo "No public images found to scan."
+                echo "images_json='[]'" >> $GITHUB_OUTPUT
+                exit 0
+            fi
+            echo "Found public images:"
+            echo "$IMAGES_TEXT"
+            IMAGES_JSON=$(echo "$IMAGES_TEXT" | jq -R . | jq -s .)
+            echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
+            
+  scan-images:
+    name: Scan public images
+    # This job runs after static validation
+    # Will be replaced by hosting external images in ACR in the future
+    needs: pr-validation
+    # But is skipped if no images were found
+    if: needs.pr-validation.outputs.images_json != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.pr-validation.outputs.images_json) }}
+    
+    steps:
+      - name: Run Trivy vulnerability scanner on ${{ matrix.image }}
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          scan-type: 'image'
+          image-ref: ${{ matrix.image }}
+          ignore-unfixed: false
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          
+  test-install:
+    name: Test Helm chart install
+    # This job runs after static validation and image scanning
+    needs: [pr-validation, scan-images]
+    # Run only if image scanning was successful OR if it was skipped (because no images were found)
+    if: always() && (needs.scan-images.result == 'success' || needs.scan-images.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.6.1
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+
+      - name: Run chart-testing (install)
+        run: ct install --config ct.yaml --target-branch ${{ github.event.pull_request.base.ref }}
