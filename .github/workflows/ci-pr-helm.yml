@@ -107,7 +107,7 @@ jobs:
     # This job runs after static validation and image scanning
     needs: [pr-validation, scan-images]
     # Run only if image scanning was successful OR if it was skipped (because no images were found)
-    if: always() && (needs.scan-images.result == 'success' || needs.scan-images.result == 'skipped')
+    if: needs.pr-validation.result == 'success' && (needs.scan-images.result == 'success' || needs.scan-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -126,5 +126,13 @@ jobs:
       - name: Create kind cluster
         uses: helm/kind-action@v1.12.0
 
-      - name: Run chart-testing (install)
-        run: ct install  --chart-dirs k8s --target-branch ${{ github.event.pull_request.base.ref }}
+      - name: Test Helm chart install
+        run: |
+          ct install --chart-dirs k8s --target-branch development --helm-extra-args "\
+            --set acrLoginServer=dummy.acr.io \
+            --set backend.keyVault.name=dummy-kv \
+            --set backend.keyVault.tenantId=00000000-0000-0000-0000-000000000000 \
+            --set backend.keyVault.userAssignedIdentityClientID=00000000-0000-0000-0000-000000000000 \
+            --set backend.serviceAccount.name=dummy-backend-sa \
+            --set database.serviceAccount.name=dummy-db-sa \
+            --set database.serviceAccount.azureClientId=00000000-0000-0000-0000-000000000000"
