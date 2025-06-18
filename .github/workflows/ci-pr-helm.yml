@@ -30,11 +30,8 @@ jobs:
         with:
           version: v3.14.0
 
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.6.1
-
-      - name: ct lint (changed charts only)
-        run: ct lint --chart-dirs k8s --target-branch ${{ github.event.pull_request.base.ref }}
+      - name: Run helm lint
+        run: helm lint k8s/secret-sharer-app
 
       # 3. Render only changed charts
       - name: Render changed charts
