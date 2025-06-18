@@ -75,7 +75,8 @@ jobs:
           # Prevent Checkov from setting environment variables
           CHECKOV_COMPACT: true
           CHECKOV_QUIET: true
-          # 7. Extract public images
+
+      # 7. Extract public images
       - name: Install jq
         run: sudo apt-get -y install jq
       
@@ -125,8 +126,7 @@ jobs:
   test-install:
     name: Test Helm chart install
     # This job runs after static validation and image scanning
-    needs: [pr-validation, scan-images]
-    # Run only if image scanning was successful OR if it was skipped (because no images were found)
+    needs: [pr-validation, scan-images]    # Run only if image scanning was successful OR if it was skipped (because no images were found)
     if: needs.pr-validation.result == 'success' && (needs.scan-images.result == 'success' || needs.scan-images.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
@@ -148,14 +148,8 @@ jobs:
 
       - name: Test Helm chart install
         run: |
-          ct install --chart-dirs k8s --target-branch development --helm-extra-args "\
-            --set acrLoginServer=dummy.acr.io \
-            --set backend.keyVault.name=dummy-kv \
-            --set backend.keyVault.tenantId=00000000-0000-0000-0000-000000000000 \
-            --set backend.keyVault.userAssignedIdentityClientID=00000000-0000-0000-0000-000000000000 \
-            --set backend.serviceAccount.name=dummy-backend-sa \
-            --set database.serviceAccount.name=dummy-db-sa \
-            --set database.serviceAccount.azureClientId=00000000-0000-0000-0000-000000000000"
+          ct install --chart-dirs k8s --target-branch development \
+            --helm-extra-args "--set acrLoginServer=dummy.acr.io --set backend.keyVault.name=dummy-kv --set backend.keyVault.tenantId=00000000-0000-0000-0000-000000000000 --set backend.keyVault.userAssignedIdentityClientID=00000000-0000-0000-0000-000000000000 --set backend.serviceAccount.name=dummy-backend-sa --set database.serviceAccount.name=dummy-db-sa --set database.serviceAccount.azureClientId=00000000-0000-0000-0000-000000000000"
 
   
   post-comment:
