@@ -38,7 +38,7 @@ jobs:
         run: |
           mkdir -p rendered
           # Since there is only one chart, we can hardcode the name
-          helm template secret-sharer-app k8s/secret-sharer-app --output-dir rendered/secret-sharer-app
+          helm template secret-sharer-app k8s/secret-sharer-app --output-dir rendered
 
       # 4. Manifest validation & IaC policies
       - name: Validate manifests with kubeconform container
