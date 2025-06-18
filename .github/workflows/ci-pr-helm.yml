@@ -76,22 +76,21 @@ jobs:
         run: sudo apt-get -y install jq
       
       - name: Extract public images
-        id: image_extractor
-        shell: bash
         run: |
-            set -euo pipefail
-            ACR_DOMAIN="${{ vars.ACR_NAME }}.azurecr.io"
-            IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
-            if [[ -z "$IMAGES_TEXT" ]]; then
-                echo "No public images found to scan."
-                echo "images_json='[]'" >> $GITHUB_OUTPUT
-                exit 0
-            fi
-            echo "Found public images:"
-            echo "$IMAGES_TEXT"
-            IMAGES_JSON=$(echo "$IMAGES_TEXT" | jq -R . | jq -s .)
-            echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
-            
+          shopt -s globstar
+          ACR_DOMAIN="${{ vars.ACR_NAME }}.azurecr.io"
+          IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
+          if [[ -z "$IMAGES_TEXT" ]]; then
+              echo "No public images found to scan."
+              echo "images_json='[]'" >> $GITHUB_OUTPUT
+              exit 0
+          fi
+          echo "Found public images:"
+          echo "$IMAGES_TEXT"
+          IMAGES_JSON=$(echo "$IMAGES_TEXT" | jq -R . | jq -s .)
+          echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
+          echo "Public images JSON: $IMAGES_JSON"  
+
   scan-images:
     name: Scan public images
     # This job runs after static validation
