@@ -37,7 +37,7 @@ jobs:
         uses: helm/chart-testing-action@v2.6.1
 
       - name: ct lint (changed charts only)
-        run: ct lint --config ct.yaml --target-branch ${{ github.event.pull_request.base.ref }}
+        run: ct lint --chart-dirs k8s --target-branch ${{ github.event.pull_request.base.ref }}
 
       # 3. Render only changed charts
       - name: Render changed charts
