@@ -76,7 +76,9 @@ jobs:
         run: sudo apt-get -y install jq
       
       - name: Extract public images
+        id: image_extractor
         run: |
+          unset CHECKOV_RESULTS
           shopt -s globstar
           ACR_DOMAIN="secureSharerACR.azurecr.io"
           IMAGES_TEXT=$(grep -rhoP 'image:\s*\K\S+' rendered/**/*.yaml | sort -u | grep -v "$ACR_DOMAIN" || true)
@@ -90,8 +92,8 @@ jobs:
           IMAGES_JSON=$(printf '%s\n' $IMAGES_TEXT | jq -R -s 'split("\n")[:-1]')
           echo "images_json=$IMAGES_JSON" >> $GITHUB_OUTPUT
           echo "Public images JSON: $IMAGES_JSON"
-            id: image_extractor
-
+          echo "::set-output name=images_json::$IMAGES_JSON"    
+        
   scan-images:
     name: Scan public images
     # This job runs after static validation
