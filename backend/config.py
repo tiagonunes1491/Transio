@@ -56,13 +56,8 @@ class Config:
         COSMOS_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 
     # Legacy database configuration (keeping for backward compatibility during migration)
-    # This will be removed after full migration
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    # This will be removed after full migration    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    # Defines time that secret expires in minutes
-    # Default to 60 minutes if not set in .env
-    SECRET_EXPIRY_MINUTES = int(os.getenv("SECRET_EXPIRY_MINUTES", "60"))
 
     if not MASTER_ENCRYPTION_KEY:
         # Fail fast - encryption key is required for this security application

@@ -7,14 +7,20 @@ param location string
 @description('The name of the database to create')
 param databaseName string
 
-@description('The name of the container to create')
-param containerName string
+@description('The names of the containers to create')
+param containerNames array = [ 'swa-dev', 'swa-prod', 'k8s-dev', 'k8s-prod' ]
 
 @description('Tags for the Cosmos DB account')
 param tags object = {}
 
 @description('Default TTL for documents in seconds (24 hours = 86400)')
 param defaultTtl int = 86400
+
+@description('Enable free tier (only one per subscription)')
+param enableFreeTier bool = true
+
+@description('Throughput for the container (minimum 400 RU/s)')
+param throughput int = 400
 
 resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: cosmosDbAccountName
@@ -35,11 +41,7 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     databaseAccountOfferType: 'Standard'
     enableAutomaticFailover: false
     enableMultipleWriteLocations: false
-    capabilities: [
-      {
-        name: 'EnableServerless' // Use serverless for cost efficiency
-      }
-    ]
+    enableFreeTier: enableFreeTier
     backupPolicy: {
       type: 'Periodic'
       periodicModeProperties: {
@@ -61,38 +63,33 @@ resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@20
   }
 }
 
-resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = {
-  name: containerName
+resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = [for cn in containerNames: {
+  name: cn
   parent: cosmosDbDatabase
   properties: {
     resource: {
-      id: containerName
+      id: cn
       partitionKey: {
-        paths: [
-          '/link_id'
-        ]
+        paths: [ '/link_id' ]
         kind: 'Hash'
       }
       defaultTtl: defaultTtl
       indexingPolicy: {
         indexingMode: 'consistent'
-        includedPaths: [
-          {
-            path: '/*'
-          }
-        ]
-        excludedPaths: [
-          {
-            path: '/"_etag"/?'
-          }
-        ]
+        includedPaths: [ { path: '/*' } ]
+        excludedPaths: [ { path: '/"_etag"/?' } ]
+      }
+    }
+    options: {
+      autoscaleSettings: {
+        maxThroughput: throughput
       }
     }
   }
-}
+}]
 
 output cosmosDbAccountName string = cosmosDbAccount.name
 output cosmosDbAccountId string = cosmosDbAccount.id
 output cosmosDbEndpoint string = cosmosDbAccount.properties.documentEndpoint
 output databaseName string = cosmosDbDatabase.name
-output containerName string = cosmosDbContainer.name
+output containerNames array = [for cn in containerNames: cn]

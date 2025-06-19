@@ -1,17 +1,12 @@
-from azure.cosmos import CosmosClient, PartitionKey
+from azure.cosmos import CosmosClient
 from azure.identity import DefaultAzureCredential
 import logging
-
-# Cosmos DB client instance
-cosmos_client = None
-database = None
-container = None
+import ssl
 
 logger = logging.getLogger(__name__)
 
 def init_cosmos_db(app):
-    """Initialize Cosmos DB client and container"""
-    global cosmos_client, database, container
+    """Initialize Cosmos DB client and connect to existing database and container"""
     
     try:
         # Get configuration from app config
@@ -25,32 +20,47 @@ def init_cosmos_db(app):
             logger.error("Cosmos DB endpoint not configured")
             return False
         
+        # Check if we're using the local emulator (disable SSL verification for emulator)
+        connection_verify = True
+        if 'localhost' in endpoint or 'cosmosdb:8081' in endpoint:
+            logger.info("Detected Cosmos DB emulator - disabling SSL verification")
+            connection_verify = False
+        
         # Initialize client with managed identity if enabled, otherwise use key
         if use_managed_identity:
             logger.info("Using managed identity for Cosmos DB authentication")
             credential = DefaultAzureCredential()
-            cosmos_client = CosmosClient(endpoint, credential)
+            cosmos_client = CosmosClient(endpoint, credential, connection_verify=connection_verify)
         elif key:
             logger.info("Using access key for Cosmos DB authentication")
-            cosmos_client = CosmosClient(endpoint, key)
+            cosmos_client = CosmosClient(endpoint, key, connection_verify=connection_verify)
         else:
             logger.error("Neither managed identity nor access key configured for Cosmos DB")
             return False
         
-        # Create database if not exists
-        database = cosmos_client.create_database_if_not_exists(id=database_name)
+        # Get references to existing database and container (DO NOT CREATE)
+        database = cosmos_client.get_database_client(database_name)
+        container = database.get_container_client(container_name)
+          # Test connectivity by trying to read container properties
+        container_properties = container.read()
+        logger.info(f"Connected to existing container: {container_properties['id']}")
+        logger.info(f"Container TTL setting: {container_properties.get('defaultTtl', 'Not set')}")
         
-        # Create container if not exists with TTL enabled
-        container = database.create_container_if_not_exists(
-            id=container_name,
-            partition_key=PartitionKey(path="/link_id"),
-            default_ttl=86400  # 24 hours TTL in seconds
-        )
+        # Store the Cosmos DB objects in the app context
+        app.cosmos_client = cosmos_client
+        app.cosmos_database = database
+        app.cosmos_container = container
         
         auth_method = "managed identity" if use_managed_identity else "access key"
-        logger.info(f"Cosmos DB initialized using {auth_method}: database={database_name}, container={container_name}")
+        logger.info(f"Cosmos DB connection established using {auth_method}: database={database_name}, container={container_name}")
         return True
         
     except Exception as e:
-        logger.error(f"Failed to initialize Cosmos DB: {e}")
+        logger.error(f"Failed to connect to Cosmos DB: {e}")
+        logger.error("Make sure the database and container exist and are properly configured")
         return False
+
+def get_cosmos_container():
+    """Get the Cosmos DB container from the current Flask app"""
+    from flask import current_app
+    return getattr(current_app, 'cosmos_container', None)

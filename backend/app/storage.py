@@ -1,23 +1,22 @@
 # backend/app/storage.py
 import uuid
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-# Use your existing Config import
-from config import Config
-
-# Import the Cosmos DB client and your Secret model
-from . import cosmos_client, database, container
+# Import the get_container function
+from . import get_cosmos_container
 from .models import Secret
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
-# Initialize logger for this module, as per your existing style
+# Initialize logger for this module
 logger = logging.getLogger(__name__)
 
-# Get SECRET_EXPIRY_MINUTES from Config
-# This will now be fetched from the Config class which reads from environment/.env
-_SECRET_EXPIRY_MINUTES = Config.SECRET_EXPIRY_MINUTES
+def get_container():
+    """Get the initialized Cosmos DB container"""
+    container = get_cosmos_container()
+    if container is None:
+        logger.error("Container is None - Cosmos DB may not be properly initialized")
+    return container
 
 
 def generate_unique_link_id() -> str:
@@ -33,7 +32,8 @@ def store_encrypted_secret(encrypted_secret_data: bytes) -> str | None:
     if not isinstance(encrypted_secret_data, bytes):
         logger.error("Encrypted secret data must be bytes.")
         raise TypeError("Encrypted secret data must be bytes.")
-
+    
+    container = get_container()
     if not container:
         logger.error("Cosmos DB container not initialized")
         return None
@@ -62,10 +62,10 @@ def retrieve_and_delete_secret(link_id: str) -> bytes | None:
     """
     if not link_id or not isinstance(link_id, str):
         logger.warning(
-            f"Attempt to retrieve secret with invalid link_id type or empty: {link_id}"
-        )
+            f"Attempt to retrieve secret with invalid link_id type or empty: {link_id}"        )
         return None
 
+    container = get_container()
     if not container:
         logger.error("Cosmos DB container not initialized")
         return None
@@ -100,50 +100,12 @@ def retrieve_and_delete_secret(link_id: str) -> bytes | None:
 
 def cleanup_expired_secrets() -> int:
     """
-    Cleans up secrets from the database that have expired.
-    With Cosmos DB TTL, this is mostly handled automatically,
-    but this function can still be used for manual cleanup.
-    Returns the number of secrets removed.
+    With Cosmos DB TTL enabled, expired secrets are automatically removed.
+    This function is kept for compatibility but is no longer needed.
+    Returns 0 as cleanup is handled automatically by Cosmos DB.
     """
-    removed_count = 0
-    
-    if not container:
-        logger.error("Cosmos DB container not initialized")
-        return 0
-        
-    try:
-        now_utc = datetime.now(timezone.utc)
-        expiry_threshold = now_utc - timedelta(minutes=_SECRET_EXPIRY_MINUTES)
-
-        # Query for expired secrets
-        query = f"SELECT * FROM c WHERE c.created_at < '{expiry_threshold.isoformat()}'"
-        expired_items = list(container.query_items(query=query, enable_cross_partition_query=True))
-
-        # Delete expired items
-        for item in expired_items:
-            try:
-                container.delete_item(item=item['id'], partition_key=item['link_id'])
-                removed_count += 1
-            except CosmosResourceNotFoundError:
-                # Item already deleted (possibly by TTL)
-                pass
-
-        if removed_count > 0:
-            logger.info(
-                f"Manually cleaned up {removed_count} expired secrets from Cosmos DB."
-            )
-        else:
-            logger.info(
-                "Cleanup_expired_secrets found no expired secrets to remove from Cosmos DB."
-            )
-
-        return removed_count
-
-    except Exception as e:
-        logger.error(
-            f"Cosmos DB error during cleanup_expired_secrets: {e}", exc_info=True
-        )
-        return 0  # Return 0 on error, as per original return type expectation
+    logger.info("Cleanup not needed - Cosmos DB TTL handles automatic cleanup")
+    return 0
 
 
 def check_secret_exists(link_id: str) -> bool:
@@ -156,6 +118,7 @@ def check_secret_exists(link_id: str) -> bool:
         logger.warning("Attempt to check existence of a secret with empty link_id")
         return False
 
+    container = get_container()
     if not container:
         logger.error("Cosmos DB container not initialized")
         return False

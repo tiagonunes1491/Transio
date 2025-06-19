@@ -15,12 +15,27 @@ services:
     volumes:
       - cosmos_data:/tmp/cosmos
     healthcheck:
-      test: ["CMD-SHELL", "curl -f https://localhost:8081/_explorer/emulator.pem || exit 1"]
+      test: ["CMD-SHELL", "curl -k -f https://127.0.0.1:8081/_explorer/emulator.pem || exit 1"]
       interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s # Give Cosmos DB emulator time to initialize
+      timeout: 15s
+      retries: 10
+      start_period: 120s # Give Cosmos DB emulator more time to initialize
     restart: unless-stopped
+
+  # Setup service to initialize the Cosmos DB emulator
+  cosmossetup:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - PYTHONPATH=/opt/app
+    command: python /opt/app/scripts/setup_cosmos_emulator.py
+    depends_on:
+      cosmosdb:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/opt/app/scripts
+    network_mode: "service:cosmosdb"  # Use the same network as cosmosdb to access localhost:8081
 
   # Backend Service (Flask Application)
   backend:
@@ -37,8 +52,7 @@ services:
       # located in the same directory as this docker-compose.yml file.
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
       FLASK_APP: app.main
-      FLASK_DEBUG: 'True'
-      # Cosmos DB emulator configuration
+      FLASK_DEBUG: 'True'      # Cosmos DB emulator configuration
       COSMOS_ENDPOINT: ${COSMOS_ENDPOINT}
       COSMOS_KEY: ${COSMOS_KEY}
       COSMOS_DATABASE_NAME: ${COSMOS_DATABASE_NAME}
@@ -50,8 +64,8 @@ services:
       retries: 3
       start_period: 30s # Give it time to start up
     depends_on:
-      cosmosdb: # Backend depends on the cosmosdb service
-        condition: service_healthy # Waits for cosmosdb to be healthy
+      cosmossetup:
+        condition: service_completed_successfully
 
   # Frontend Service (Nginx Server for Static Files)
   frontend:
@@ -65,7 +79,7 @@ services:
       - "8080:8080"
     depends_on:
       backend: # Service name
-          condition: service_healthy # Condition to wait for
+        condition: service_healthy # Condition to wait for
 
 # Top-level volumes declaration for data persistence
 volumes:
