@@ -32,6 +32,12 @@ param cosmosDatabaseName string = 'SecureSharer'
 @description('Shared Cosmos DB container name')
 param cosmosContainerName string = 'secrets'
 
+@description('Shared infrastructure resource group name where Cosmos DB is deployed')
+param sharedResourceGroupName string = 'rg-ssharer-artifacts-hub'
+
+// Construct the Cosmos DB account ID from the shared resource group and account name
+var cosmosDbAccountId = '/subscriptions/${subscription().subscriptionId}/resourceGroups/${sharedResourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDbAccountName}'
+
 resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
   name: rgName
   location: resourceLocation
@@ -291,6 +297,7 @@ module rbac 'swa-aca-modules/rbac.bicep' = {
     uamiId: uami.outputs.uamiPrincipalIds[0] // Use the first UAMI principal ID
     acaSubnetId: network.outputs.subnetIds[2] // The third subnet is for deployment scripts (snet-aci)
     storageAccountId: deploymentStorageAccount.outputs.storageAccountId
+    cosmosDbAccountId: cosmosDbAccountId
   }
 }
 

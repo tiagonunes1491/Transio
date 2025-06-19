@@ -21,6 +21,9 @@ param appGwId  string
 @minLength(1)
 param vnetId string
 
+@description('Shared Cosmos DB account ID for RBAC assignment')
+param cosmosDbAccountId string = ''
+
 // VAR for role IDs
 
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
@@ -28,6 +31,7 @@ var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var contributorRoleId = 'b24988ac-6180-42a0-ab88-20f7382dd24c'
 var readerRoleId = 'acdd72a7-3385-48ef-bd42-f606fba81ae7'
 var networkContributorRoleId = '4d97b98b-1d4f-4787-a291-c67834d212e7'
+var cosmosDbDataContributorRoleId = '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor
 
 // Existing resources
 
@@ -54,6 +58,12 @@ resource AppGw 'Microsoft.Network/applicationGateways@2023-05-01' existing = {
 resource vnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = {
   scope: resourceGroup()
   name: split(vnetId, '/')[8]
+}
+
+// Reference to existing Cosmos DB account for RBAC assignment
+resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = if (!empty(cosmosDbAccountId)) {
+  scope: resourceGroup()
+  name: split(cosmosDbAccountId, '/')[8]
 }
 
 // Assigns Key Vault Secrets User role to UAMIs for accessing secrets in Key Vault
@@ -128,6 +138,17 @@ resource aksClusterToAppGwContributor 'Microsoft.Authorization/roleAssignments@2
   }
 }
 
+// Cosmos DB Data Contributor role assignments for UAMIs
+resource cosmosDbRoleAssignments 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = [for (id, i) in uamiIds: if (!empty(cosmosDbAccountId)) {
+  name: guid(cosmosDbAccount.id, id, cosmosDbDataContributorRoleId, string(i))
+  parent: cosmosDbAccount
+  properties: {
+    roleDefinitionId: '${cosmosDbAccount.id}/sqlRoleDefinitions/${cosmosDbDataContributorRoleId}'
+    principalId: id
+    scope: cosmosDbAccount.id
+  }
+}]
+
 output kvRoleAssignments array = [for i in range(0, length(uamiIds)): kvRoleAssignments[i].id]
 output acrRoleAssignment object = {
   id: acrRoleAssignment.id
@@ -139,3 +160,4 @@ output agicRoleAssignments object = {
   vnetNetworkContributorRoleAssignmentId: agicToVnetNetworkContributor.id
   aksClusterToAppGwContributorRoleAssignmentId: aksClusterToAppGwContributor.id
 }
+output cosmosDbRoleAssignments array = [for i in range(0, length(uamiIds)): !empty(cosmosDbAccountId) ? cosmosDbRoleAssignments[i].id : '']

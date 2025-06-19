@@ -16,12 +16,6 @@ param tags object = {}
 @description('Default TTL for documents in seconds (24 hours = 86400)')
 param defaultTtl int = 86400
 
-@description('Principal IDs of managed identities that need access to Cosmos DB')
-param managedIdentityPrincipalIds array = []
-
-// Built-in role definition IDs for Cosmos DB
-var cosmosDbDataContributorRoleId = '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor
-
 resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: cosmosDbAccountName
   location: location
@@ -96,17 +90,6 @@ resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
     }
   }
 }
-
-// Assign Cosmos DB Data Contributor role to managed identities
-resource cosmosDbRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = [for (principalId, i) in managedIdentityPrincipalIds: {
-  name: guid(cosmosDbAccount.id, principalId, cosmosDbDataContributorRoleId)
-  parent: cosmosDbAccount
-  properties: {
-    roleDefinitionId: '${cosmosDbAccount.id}/sqlRoleDefinitions/${cosmosDbDataContributorRoleId}'
-    principalId: principalId
-    scope: cosmosDbAccount.id
-  }
-}]
 
 output cosmosDbAccountName string = cosmosDbAccount.name
 output cosmosDbAccountId string = cosmosDbAccount.id

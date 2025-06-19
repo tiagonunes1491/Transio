@@ -16,6 +16,21 @@ param tags object = {
   owner: 'Tiago'
 }
 
+@description('Shared Cosmos DB account name from the shared infrastructure')
+param cosmosDbAccountName string
+
+@description('Shared Cosmos DB database name')
+param cosmosDatabaseName string = 'SecureSharer'
+
+@description('Shared Cosmos DB container name')
+param cosmosContainerName string = 'secrets'
+
+@description('Shared infrastructure resource group name where Cosmos DB is deployed')
+param sharedResourceGroupName string = 'rg-ssharer-artifacts-hub'
+
+// Construct the Cosmos DB account ID from the shared resource group and account name
+var cosmosDbAccountId = '/subscriptions/${subscription().subscriptionId}/resourceGroups/${sharedResourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDbAccountName}'
+
 // Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
@@ -315,6 +330,7 @@ module rbac 'aks-modules/rbac.bicep' = {
     aksId: aks.outputs.aksId
     appGwId: appGw.outputs.appGwId
     vnetId: network.outputs.vnetId
+    cosmosDbAccountId: cosmosDbAccountId
   }
 }
 
@@ -363,3 +379,6 @@ output appGwPublicIp string = appGw.outputs.publicIpAddress
 output backendUamiClientId string = uami.outputs.uamiClientIds[0] 
 output dbInitUamiClientId string = uami.outputs.uamiClientIds[1]  // DB Init UAMI
 output tenantId string = tenantId
+output cosmosDbAccountName string = cosmosDbAccountName
+output cosmosDatabaseName string = cosmosDatabaseName
+output cosmosContainerName string = cosmosContainerName
