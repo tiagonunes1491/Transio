@@ -231,18 +231,21 @@ module workspace 'common-modules/workspace.bicep' = {
   }
 }
 
-// Create PostgreSQL Flexible Server
+// Create Cosmos DB account and database
 
-param dbServerName string = 'pgs-sharer-aca-dev'
+param cosmosDbAccountName string = 'cosmos-sharer-aca-dev'
 
-// Create a private DNS zone for PostgreSQL Flexible Server
-module deployPostgreSQLDNSZone 'common-modules/private-dns-zone.bicep' = {
-  name: 'PostgreSQLPrivateDnsZone'
+module cosmosDb 'swa-aca-modules/cosmos-db.bicep' = {
+  name: 'cosmosDb'
   scope: rg
   params: {
-    privateDnsZoneName: 'secureapp.postgres.database.azure.com'
-    vnetId: network.outputs.vnetId
-    privateDnsZoneTags: tags
+    cosmosDbAccountName: cosmosDbAccountName
+    location: resourceLocation
+    databaseName: 'SecureSharer'
+    containerName: 'secrets'
+    tags: tags
+    throughput: 400 // Minimum for shared throughput
+    defaultTtl: 86400 // 24 hours TTL
   }
 }
 
@@ -297,33 +300,7 @@ module deploymentStorageAccount 'common-modules/storage.bicep' = {
   }
 }
 
-// Create PostgreSQL Flexible Server with deployment script
-module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
-  name: 'postgresqlServer'
-  scope: rg
-  params: {
-    serverName: dbServerName
-    location: resourceLocation
-    administratorLogin: akvSecrets['postgres-admin-user']
-    administratorLoginPassword: akvSecrets['postgres-admin-password']
-    skuName: 'Standard_B1ms' 
-    skuTier: 'Burstable' 
-    postgresVersion: '15' 
-    delegatedSubnetId: network.outputs.subnetIds[1] // The second subnet is for the PaaS DB
-    databaseName: 'secureSecretSharerDB' // Initial database name
-    tags: tags
-    logAnalyticsWorkspaceId: workspace.outputs.workspaceId 
-    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId
-    appDatabaseUser: akvSecrets['database-user']
-    appDatabasePassword: akvSecrets['database-password']
-    userAssignedIdentityId: uami.outputs.uamiIds[0]
-    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts (snet-aci)
-    storageAccountName: storageAccountName
-  }
-  dependsOn: [
-    rbac // Ensure RBAC is configured before deployment script runs
-  ]
-}
+
 
 
 // Role Assignments for Key Vault and ACR access
@@ -342,7 +319,9 @@ output acaEnvironmentId string = acaEnvironment.outputs.acaEnvironmentId
 output acrLoginServer string = acr.outputs.acrLoginServer
 output uamiId string = uami.outputs.uamiIds[0]
 output keyVaultUri string = akv.outputs.keyvaultUri
-output SQLServerFqdn string = postgresqlServer.outputs.fullyQualifiedDomainName
-output SqlDatabaseName string = postgresqlServer.outputs.databaseName
+output cosmosDbEndpoint string = cosmosDb.outputs.cosmosDbEndpoint
+output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
+output cosmosDbDatabaseName string = cosmosDb.outputs.databaseName
+output cosmosDbContainerName string = cosmosDb.outputs.containerName
 
 //Trigger change on main folder.
