@@ -9,8 +9,11 @@
 #
 # Components:
 # - Shared: Common infrastructure (artifacts RG, shared UAMIs, ACR permissions)
+#   Location: infra/10-lz-shared/
 # - K8S: Kubernetes-specific resources (AKS spoke RG, K8S UAMIs, RBAC)
+#   Location: infra/11-lz-aks/
 # - PaaS: Platform-as-a-Service resources (Container Apps spoke RG, PaaS UAMIs, RBAC)
+#   Location: infra/12-lz-paas/
 #
 # Usage Examples:
 #   ./deploy-landing-zone.sh shared    # Deploy only shared infrastructure
@@ -23,6 +26,10 @@
 # - Azure CLI installed and authenticated (az login)
 # - Appropriate permissions to create subscriptions-level resources
 # - GitHub repository configured for OIDC (update .bicepparam files with org/repo)
+# - Bicep files organized in modular structure:
+#   - infra/10-lz-shared/ (shared infrastructure)
+#   - infra/11-lz-aks/ (Kubernetes landing zone)
+#   - infra/12-lz-paas/ (PaaS landing zone)
 #
 # =====================================================
 
@@ -31,6 +38,10 @@ set -e  # Exit on any error
 # =====================================================
 # Configuration Variables
 # =====================================================
+# Note: File paths updated for new modular structure
+# - 10-lz-shared: Shared/common infrastructure
+# - 11-lz-aks: Kubernetes-specific landing zone
+# - 12-lz-paas: PaaS-specific landing zone
 
 # Verbose output configuration
 VERBOSE=true
@@ -42,14 +53,12 @@ K8S_DEPLOYMENT_NAME="landing-zone-k8s-$(date +%Y%m%d-%H%M%S)"
 PAAS_DEPLOYMENT_NAME="landing-zone-paas-$(date +%Y%m%d-%H%M%S)"
 
 # Bicep template and parameter file paths
-BICEP_FILE="../infra/landing-zone.bicep"
-PARAMS_FILE="../infra/landing-zone.dev.bicepparam"
-SHARED_BICEP_FILE="../infra/landing-zone-shared.bicep"
-SHARED_PARAMS_FILE="../infra/landing-zone-shared.bicepparam"
-K8S_BICEP_FILE="../infra/landing-zone-k8s.bicep"
-K8S_PARAMS_FILE="../infra/landing-zone-k8s.bicepparam"
-PAAS_BICEP_FILE="../infra/landing-zone-paas.bicep"
-PAAS_PARAMS_FILE="../infra/landing-zone-paas.bicepparam"
+SHARED_BICEP_FILE="../infra/10-lz-shared/landing-zone-shared.bicep"
+SHARED_PARAMS_FILE="../infra/10-lz-shared/landing-zone-shared.bicepparam"
+K8S_BICEP_FILE="../infra/11-lz-aks/landing-zone-k8s.bicep"
+K8S_PARAMS_FILE="../infra/11-lz-aks/landing-zone-k8s.bicepparam"
+PAAS_BICEP_FILE="../infra/12-lz-paas/landing-zone-paas.bicep"
+PAAS_PARAMS_FILE="../infra/12-lz-paas/landing-zone-paas.bicepparam"
 
 # Azure deployment configuration
 SUBSCRIPTION_SCOPE="subscription"
@@ -87,7 +96,7 @@ function validate_deployment() {
     log_error "Bicep template file not found: $bicep_file"
     log_error "Current working directory: $(pwd)"
     log_error "Available .bicep files in ../infra/:"
-    ls -la ../infra/*.bicep 2>/dev/null || log_error "No .bicep files found"
+    find ../infra/ -name "*.bicep" -type f 2>/dev/null || log_error "No .bicep files found"
     return 1
   fi
   
@@ -95,7 +104,7 @@ function validate_deployment() {
     log_error "Parameters file not found: $params_file"
     log_error "Current working directory: $(pwd)"
     log_error "Available .bicepparam files in ../infra/:"
-    ls -la ../infra/*.bicepparam 2>/dev/null || log_error "No .bicepparam files found"
+    find ../infra/ -name "*.bicepparam" -type f 2>/dev/null || log_error "No .bicepparam files found"
     return 1
   fi
   
@@ -380,9 +389,9 @@ function deploy_all() {
 
   echo ""
   echo "📋 Summary of changes above:"
-  echo "   - Shared: Common infrastructure (artifacts RG, shared UAMIs, ACR permissions)"
-  echo "   - K8S: Kubernetes resources (K8S spoke RG, K8S UAMIs, RBAC)"
-  echo "   - PaaS: Platform-as-a-Service resources (PaaS spoke RG, PaaS UAMIs, RBAC)"
+  echo "   - Shared (10-lz-shared): Common infrastructure (artifacts RG, shared UAMIs, ACR permissions)"
+  echo "   - K8S (11-lz-aks): Kubernetes resources (K8S spoke RG, K8S UAMIs, RBAC)"
+  echo "   - PaaS (12-lz-paas): Platform-as-a-Service resources (PaaS spoke RG, PaaS UAMIs, RBAC)"
   echo ""
   read -p "Do you want to proceed with ALL landing zone deployments? (y/N): " -n 1 -r
   echo ""
