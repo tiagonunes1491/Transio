@@ -43,6 +43,17 @@ param workloadIdentities object = {
 @description('Custom Reader with What-If Role Definition GUID (for use with custom RBAC roles)')
 param ReaderWhatIfRoleDefinitionGuid string = '<REPLACE_WITH_YOUR_CUSTOM_ROLE_ID>'
 
+@description('Name of the Cosmos DB account')
+param cosmosDbAccountName string = 'cosmos-sharer-shared'
+
+@description('The name of the database to create')
+param cosmosDatabaseName string = 'SecureSharer'
+
+@description('The name of the container to create')
+param cosmosContainerName string = 'secrets'
+
+
+
 // =====================
 // Role Definition IDs
 // =====================
@@ -142,6 +153,24 @@ module rbacAssignments 'common-modules/uami-rbac.bicep' = [for (item, i) in item
 }]
 
 // =====================
+// Shared Infrastructure
+// =====================
+
+// Deploy Cosmos DB for shared use across K8S and SWA deployments
+module cosmosDb 'shared-infra-modules/cosmos-db.bicep' = {
+  name: 'deploy-cosmos-db'
+  scope: hubRG
+  params: {
+    cosmosDbAccountName: cosmosDbAccountName
+    location: location
+    databaseName: cosmosDatabaseName
+    containerName: cosmosContainerName
+    tags: tags
+    defaultTtl: 86400 // 24 hours TTL
+  }
+}
+
+// =====================
 // Outputs
 // =====================
 
@@ -153,3 +182,7 @@ output federatedCredentialNames array = [for (item, i) in items(workloadIdentiti
 }] // Federated credential names for each identity
 output managementResourceGroupName string = mgmtSharedRG.name // Management RG name
 output artifactsResourceGroupName string = hubRG.name // Shared artifacts RG name
+output cosmosDbEndpoint string = cosmosDb.outputs.cosmosDbEndpoint // Cosmos DB endpoint
+output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName // Cosmos DB account name
+output cosmosDatabaseName string = cosmosDb.outputs.databaseName // Cosmos DB database name
+output cosmosContainerName string = cosmosDb.outputs.containerName // Cosmos DB container name

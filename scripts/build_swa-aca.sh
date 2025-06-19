@@ -115,7 +115,7 @@ fi
 # 2. Deploy PaaS Infrastructure (Container Apps, Static Web Apps, etc.)
 # =====================
 if [[ "$SKIP_INFRA" == false ]]; then
-  log "INFO" "Deploying PaaS infrastructure (Container Apps Environment, PostgreSQL, etc.)..."
+  log "INFO" "Deploying PaaS infrastructure (Container Apps Environment, Cosmos DB, etc.)..."
   log "INFO" "This may take 10-15 minutes..."
   if ! az deployment sub create \
     --template-file "$PAAS_BICEP_FILE" \
@@ -142,8 +142,9 @@ UAMI_ID=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properti
 ACR_LOGIN_SERVER=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
 KEY_VAULT_URI=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.keyVaultUri.value -o tsv)
 KEY_VAULT_NAME=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.keyVaultName.value -o tsv)
-SQL_SERVER_FQDN=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.postgresqlServerFqdn.value -o tsv)
-SQL_DATABASE_NAME=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.databaseName.value -o tsv)
+COSMOS_DB_ENDPOINT=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.cosmosDbEndpoint.value -o tsv)
+COSMOS_DB_DATABASE_NAME=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.cosmosDbDatabaseName.value -o tsv)
+COSMOS_DB_CONTAINER_NAME=$(az deployment sub show --name "$PAAS_DEPLOYMENT_NAME" --query properties.outputs.cosmosDbContainerName.value -o tsv)
 
 log "INFO" "Successfully retrieved PaaS infrastructure outputs:"
 log "INFO" "RESOURCE_GROUP=$RESOURCE_GROUP"
@@ -152,8 +153,9 @@ log "INFO" "UAMI_ID=$UAMI_ID"
 log "INFO" "ACR_LOGIN_SERVER=$ACR_LOGIN_SERVER"
 log "INFO" "KEY_VAULT_URI=$KEY_VAULT_URI"
 log "INFO" "KEY_VAULT_NAME=$KEY_VAULT_NAME"
-log "INFO" "SQL_SERVER_FQDN=$SQL_SERVER_FQDN"
-log "INFO" "SQL_DATABASE_NAME=$SQL_DATABASE_NAME"
+log "INFO" "COSMOS_DB_ENDPOINT=$COSMOS_DB_ENDPOINT"
+log "INFO" "COSMOS_DB_DATABASE_NAME=$COSMOS_DB_DATABASE_NAME"
+log "INFO" "COSMOS_DB_CONTAINER_NAME=$COSMOS_DB_CONTAINER_NAME"
 
 # =====================
 # 4. Build & Push Container Images
@@ -213,8 +215,9 @@ if ! az deployment group create \
     userAssignedIdentityId="$UAMI_ID" \
     acrLoginServer="$ACR_LOGIN_SERVER" \
     keyVaultUri="$KEY_VAULT_URI" \
-    postgresqlServerFqdn="$SQL_SERVER_FQDN" \
-    databaseName="$SQL_DATABASE_NAME" \
+    cosmosDbEndpoint="$COSMOS_DB_ENDPOINT" \
+    cosmosDatabaseName="$COSMOS_DB_DATABASE_NAME" \
+    cosmosContainerName="$COSMOS_DB_CONTAINER_NAME" \
   --verbose; then
   log "ERROR" "Container app deployment failed"
   get_deployment_errors "$APP_DEPLOYMENT_NAME" "$RESOURCE_GROUP"
@@ -299,8 +302,8 @@ echo "ACA Environment: $ACA_ENVIRONMENT_ID"
 echo "Resource Group: $RESOURCE_GROUP"
 echo "Key Vault: $KEY_VAULT_NAME"
 echo "Container Registry: $ACR_LOGIN_SERVER"
-echo "PostgreSQL Server: $SQL_SERVER_FQDN"
-echo "Database Name: $SQL_DATABASE_NAME"
+echo "Cosmos DB Endpoint: $COSMOS_DB_ENDPOINT"
+echo "Database Name: $COSMOS_DB_DATABASE_NAME"
 echo "Managed Identity: $UAMI_ID"
 echo ""
 echo "🎉 Deployment Complete!"

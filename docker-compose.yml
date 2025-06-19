@@ -1,22 +1,26 @@
 services:
-# Database Service (PostgreSQL)
-  db:
-    image: postgres:15-alpine # Using PostgreSQL 15 Alpine image
-    container_name: secure_secret_sharer_db # Optional: give a specific container name
+# Database Service (Cosmos DB Emulator)
+  cosmosdb:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    container_name: secure_secret_sharer_cosmosdb
     environment:
-      # These MUST match the credentials and db name in your DATABASE_URL
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      AZURE_COSMOS_EMULATOR_PARTITION_COUNT: 2
+      AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "true"
+    ports:
+      - "8081:8081"
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
     volumes:
-      - postgres_data:/var/lib/postgresql/data # Mount a named volume for data persistence
+      - cosmos_data:/tmp/cosmos
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
-      interval: 10s
-      timeout: 5s
+      test: ["CMD-SHELL", "curl -f https://localhost:8081/_explorer/emulator.pem || exit 1"]
+      interval: 30s
+      timeout: 10s
       retries: 5
-      start_period: 10s # Give PostgreSQL time to initialize
-    restart: unless-stopped # Optional: policy to restart the DB container
+      start_period: 60s # Give Cosmos DB emulator time to initialize
+    restart: unless-stopped
 
   # Backend Service (Flask Application)
   backend:
@@ -34,10 +38,11 @@ services:
       MASTER_ENCRYPTION_KEY: ${MASTER_ENCRYPTION_KEY}
       FLASK_APP: app.main
       FLASK_DEBUG: 'True'
-      DATABASE_URL: ${DATABASE_URL} # Pass the DATABASE_URL from root .env
-      # Ensure the database URL is correctly formatted for PostgreSQL
-      # Example: postgres://secrets_user:yoursecurepassword@db:5432/secrets_db
-      # Note: The db service name is used as the hostname in the URL.
+      # Cosmos DB emulator configuration
+      COSMOS_ENDPOINT: ${COSMOS_ENDPOINT}
+      COSMOS_KEY: ${COSMOS_KEY}
+      COSMOS_DATABASE_NAME: ${COSMOS_DATABASE_NAME}
+      COSMOS_CONTAINER_NAME: ${COSMOS_CONTAINER_NAME}
     healthcheck: # Ensure this is uncommented
       test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"] # Using CMD-SHELL for robustness with curl
       interval: 30s
@@ -45,8 +50,8 @@ services:
       retries: 3
       start_period: 30s # Give it time to start up
     depends_on:
-      db: # Backend depends on the db service
-        condition: service_healthy # Waits for db to be healthy
+      cosmosdb: # Backend depends on the cosmosdb service
+        condition: service_healthy # Waits for cosmosdb to be healthy
 
   # Frontend Service (Nginx Server for Static Files)
   frontend:
@@ -64,5 +69,5 @@ services:
 
 # Top-level volumes declaration for data persistence
 volumes:
-  postgres_data: # Defines the named volume used by the db service
+  cosmos_data: # Defines the named volume used by the cosmosdb service
     driver: local

@@ -5,7 +5,7 @@ from flask_cors import CORS
 ## Trigger CI v3
 
 # Relative imports for modules within the same package ('app')
-from . import db  # ADD THIS LINE - db is now from app/__init__.py
+from . import init_cosmos_db  # Import Cosmos DB initialization
 from .encryption import encrypt_secret, decrypt_secret
 from .storage import (
     store_encrypted_secret,
@@ -22,11 +22,14 @@ CORS(app)  # Enable CORS for all routes (for development purposes)
 
 # Load configuration from config.py (which loads .env)
 app.config.from_object(Config)
-db.init_app(app)  # Initialize the imported db instance
 
-with app.app_context():  # <-- CREATE TABLES
-    db.create_all()  # Use the imported db instance
-    print("Database tables created or already exist.")
+# Initialize Cosmos DB
+with app.app_context():
+    if init_cosmos_db(app):
+        print("Cosmos DB initialized successfully.")
+    else:
+        print("Failed to initialize Cosmos DB. Check configuration.")
+        exit(1)
 
 
 @app.route("/api/share", methods=["POST"])

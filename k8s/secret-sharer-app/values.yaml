@@ -30,9 +30,8 @@ backend:
     userAssignedIdentityClientID: "PLACEHOLDER_BACKEND_UAMI_CLIENT_ID" # Client ID for Backend UAMI
     secrets:
       # These are the names of the secrets *in Azure Key Vault* that the backend needs.
-      dbUser: "app-db-user"                # AKV secret name for the application's DB username
-      dbPassword: "app-db-password"        # AKV secret name for the application's DB password
-      appMasterKey: "app-master-encryption-key" # AKV secret name for the application's master encryption key
+      cosmosDbKey: "cosmos-db-primary-key"         # AKV secret name for Cosmos DB primary key
+      appMasterKey: "app-master-encryption-key"    # AKV secret name for the application's master encryption key
   probes:
     liveness:
       initialDelaySeconds: 15
@@ -53,61 +52,17 @@ backend:
     requests:
       cpu: "100m"
       memory: "128Mi"
-# --- Database (PostgreSQL) Configuration ---
-database:
-  replicaCount: 1
-  image:
-    repository: postgres
-    pullPolicy: IfNotPresent
-    tag: "15.7-alpine3.20" # Using a specific immutable tag is good practice
+# --- Cosmos DB Configuration ---
+cosmosdb:
+  # Cosmos DB will be provisioned externally via Azure infrastructure
+  # These values are used to configure the connection from the backend
+  endpoint: "PLACEHOLDER_COSMOS_DB_ENDPOINT"
+  databaseName: "SecureSharer"
+  containerName: "secrets"
+  # Use managed identity for authentication (set to true for AKS with Workload Identity)
+  useManagedIdentity: false
+  # The primary key will be retrieved from Azure Key Vault via SecretProviderClass if useManagedIdentity is false
 
-  # Database name (used by init script and referred to by backend)
-  auth:
-    database: "secret_sharer_db"
-    # Note: Initial admin user ('postgres') and its password, and the application user/password
-    # are handled via SecretProviderClasses and the init script.
-
-  persistence:
-    enabled: true
-    size: 1Gi
-    # storageClass: "default" # Uncomment and set if you need a specific StorageClass
-
-  # Service Account for the Database (defined in templates/database-serviceaccount.yaml)
-  # This SA is linked to the UAMI that has permissions for 'postgres-password' (for init)
-  # and 'app-db-password' (for the init script to create the app user).
-  serviceAccount:
-    create: true # Set to false if you are managing the SA outside this chart
-    # name: "override-db-sa-name" # Optional: uncomment to override the default generated name from helpers
-    annotations: {} # Default annotations from template will use database.serviceAccount.azureClientId
-    azureClientId: "PLACEHOLDER_DATABASE_UAMI_CLIENT_ID" # Client ID for Database UAMI
-    name: "placeholder-sa" # This is the name of the ServiceAccount for the database init script
-
-  # Key Vault secrets needed ONLY for database initialization (by db-init-spc)
-  keyVault: # This section is for the database's SecretProviderClass
-    secrets:
-      # This is the name of the secret *in Azure Key Vault* holding the desired password
-      # for the initial 'postgres' user (used by db-init-spc).
-      initPassword: "postgres-password"
-  probes:
-    liveness:
-      initialDelaySeconds: 30 # DBs can take longer to start
-      periodSeconds: 30
-      timeoutSeconds: 5
-      failureThreshold: 3
-      successThreshold: 1
-    readiness: # New values
-      initialDelaySeconds: 10
-      periodSeconds: 15
-      timeoutSeconds: 5
-      failureThreshold: 3
-      successThreshold: 1
-  resources:
-    limits:
-      cpu: "1000m" # 1 core
-      memory: "1Gi"
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
 # --- Frontend Configuration ---
 frontend:
   replicaCount: 1

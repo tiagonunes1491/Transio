@@ -20,36 +20,6 @@ spec:
   # egress: []  # Explicitly showing empty, usually omitted for default deny
 {{- end }}
 ---
-# Allow traffic from Backend pods to Database pods on the database's service port
-{{- if .Values.networkPolicies.create }}
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-allow-backend-to-database
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
-spec:
-  # This policy applies to Database pods
-  podSelector:
-    matchLabels:
-      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: database # Selects the database pods
-  policyTypes:
-    - Ingress # This policy is about allowing INCOMING traffic to the database
-  ingress:
-    - from:
-        # Allow traffic FROM pods that have these labels (i.e., Backend pods)
-        - podSelector:
-            matchLabels:
-              {{- include "secret-sharer-app.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: backend # Selects the backend pods
-      ports:
-        # Allow traffic TO this port on the Database pods
-        - protocol: TCP
-          port: 5432 # Standard PostgreSQL port, ensure this matches your DB containerPort
-{{- end }}
----
 # Allow Ingress traffic to Frontend pods (e.g., from an Ingress Controller)
 {{- if .Values.networkPolicies.create }}
 apiVersion: networking.k8s.io/v1
@@ -132,12 +102,12 @@ spec:
           port: 53
 {{- end }}
 ---
-# Allow Backend pods to connect TO Database pods (egress rule)
+# Allow Backend pods to connect to external Cosmos DB (egress rule)
 {{- if .Values.networkPolicies.create }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-allow-backend-egress-to-database
+  name: {{ include "secret-sharer-app.fullname" . }}-allow-backend-egress-to-cosmosdb
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "secret-sharer-app.labels" . | nindent 4 }}
@@ -150,14 +120,5 @@ spec:
   policyTypes:
     - Egress # This policy is about allowing OUTGOING traffic from the backend
   egress:
-    - to:
-        # Allow traffic TO pods that have these labels (i.e., Database pods)
-        - podSelector:
-            matchLabels:
-              {{- include "secret-sharer-app.selectorLabels" . | nindent 14 }}
-              app.kubernetes.io/component: database # Selects the database pods
-      ports:
-        # Allow traffic TO this port on the Database pods
-        - protocol: TCP
-          port: 5432 # PostgreSQL port
+    - {} # Allow all external egress for Cosmos DB and Azure services (can be restricted to specific IP ranges if needed)
 {{- end }}
