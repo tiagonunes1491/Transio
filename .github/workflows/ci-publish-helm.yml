@@ -27,8 +27,8 @@ jobs:
       - name: 'Checkout Code'
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Ensures full git history for comparison
-
+          fetch-depth: 0  # Ensures full git history for comparison      
+    
       - name: 'Find changed Helm charts'
         id: changed-files
         uses: tj-actions/changed-files@v46
@@ -71,7 +71,7 @@ jobs:
 
           # Install yq
           curl -sSL https://github.com/mikefarah/yq/releases/download/v4.47.1/yq_linux_amd64 \
-            -o /usr/local/bin/yq && chmod +x /usr/local/bin/yq
+            -o /tmp/yq && sudo mv /tmp/yq /usr/local/bin/yq && sudo chmod +x /usr/local/bin/yq
 
           export HELM_EXPERIMENTAL_OCI=1
 
