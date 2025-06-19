@@ -37,7 +37,7 @@ spec:
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /health # Or your specific health check endpoint e.g., /healthz
+              path: /health # Or your specific health check endpoint e.g., /health
               port: http # Refers to the containerPort named 'http' (e.g., 8000)
             initialDelaySeconds: {{ .Values.backend.probes.liveness.initialDelaySeconds | default 15 }}
             periodSeconds: {{ .Values.backend.probes.liveness.periodSeconds | default 20 }}
