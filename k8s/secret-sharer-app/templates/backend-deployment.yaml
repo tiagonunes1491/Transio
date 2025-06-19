@@ -67,17 +67,21 @@ spec:
                 secretKeyRef:
                   name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
                   key: appMasterEncryptionKey # Key name within the K8s Secret
+            {{- if not .Values.cosmosdb.useManagedIdentity }}
             - name: COSMOS_KEY
               valueFrom:
                 secretKeyRef:
                   name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
                   key: cosmosDbKey # Key name within the K8s Secret
+            {{- end }}
             - name: COSMOS_ENDPOINT
               value: {{ .Values.cosmosdb.endpoint | quote }} # From cosmosdb values
             - name: COSMOS_DATABASE_NAME
               value: {{ .Values.cosmosdb.databaseName | quote }} # From cosmosdb values
             - name: COSMOS_CONTAINER_NAME
               value: {{ .Values.cosmosdb.containerName | quote }} # From cosmosdb values
+            - name: USE_MANAGED_IDENTITY
+              value: {{ .Values.cosmosdb.useManagedIdentity | quote }} # Enable managed identity if set
 
           # We will add livenessProbe and readinessProbe later
           # We will add resources (requests/limits) later

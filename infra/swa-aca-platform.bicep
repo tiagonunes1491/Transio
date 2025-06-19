@@ -20,6 +20,18 @@ param tags object = {
   flavor: 'SWA-ACA'
 }
 
+@description('Shared Cosmos DB endpoint from the shared infrastructure')
+param cosmosDbEndpoint string
+
+@description('Shared Cosmos DB account name from the shared infrastructure')
+param cosmosDbAccountName string
+
+@description('Shared Cosmos DB database name')
+param cosmosDatabaseName string = 'SecureSharer'
+
+@description('Shared Cosmos DB container name')
+param cosmosContainerName string = 'secrets'
+
 resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
   name: rgName
   location: resourceLocation
@@ -28,7 +40,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
 
 // Deployment for VNET 
 // ! Order of subnets are important and should not be changed.
-// The first subnet is for the ACA, the second one is for the PaaS DB, the third is for Private Endpoints, the fourth is for deployment scripts.
+// The first subnet is for the ACA, the second one is for Private Endpoints, the third is for deployment scripts.
 
 @description('Name of the virtual network')
 param vnetName string = 'vnet-secureSecretSharer'
@@ -43,18 +55,6 @@ var subnets  = [
   {
     name: 'snet-aca'
     addressPrefix: '10.0.10.0/23'
-  }
-  {
-    name: 'snet-db'
-    addressPrefix: '10.0.20.0/24'
-    delegations: [
-      {
-        name: 'dbDelegation'
-        properties: {
-          serviceName: 'Microsoft.DBforPostgreSQL/flexibleServers'
-        }
-      }
-    ]
   }
   {
     name: 'snet-pe'
@@ -151,7 +151,7 @@ module akvPE 'common-modules/private-endpoint.bicep' = {
   params: {
     privateEndpointName: 'pe-${akv.outputs.keyvaultName}'
     privateEndpointLocation: resourceLocation
-    privateEndpointSubnetId: network.outputs.subnetIds[2] // The third subnet is for Private Endpoints
+    privateEndpointSubnetId: network.outputs.subnetIds[1] // The second subnet is for Private Endpoints
     privateEndpointGroupId: 'vault'
     privateEndpointServiceId: akv.outputs.keyvaultId
     privateEndpointTags: tags
@@ -175,7 +175,7 @@ param acrSku string = 'Standard'
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
 
-module acr 'common-modules/acr.bicep' = {
+module acr 'shared-infra-modules/acr.bicep' = {
   name: 'acr'
   scope: rg
   params: {
@@ -206,7 +206,7 @@ module acrPE 'common-modules/private-endpoint.bicep' = {
   params: {
     privateEndpointName: 'pe-${acr.outputs.acrName}'
     privateEndpointLocation: resourceLocation
-    privateEndpointSubnetId: network.outputs.subnetIds[2] // The third subnet is for Private Endpoints
+    privateEndpointSubnetId: network.outputs.subnetIds[1] // The second subnet is for Private Endpoints
     privateEndpointGroupId: 'registry'
     privateEndpointServiceId: acr.outputs.acrId
     privateEndpointTags: tags
@@ -228,21 +228,6 @@ module workspace 'common-modules/workspace.bicep' = {
     workspaceName: workspaceName
     location: resourceLocation
     tags: tags
-  }
-}
-
-// Create PostgreSQL Flexible Server
-
-param dbServerName string = 'pgs-sharer-aca-dev'
-
-// Create a private DNS zone for PostgreSQL Flexible Server
-module deployPostgreSQLDNSZone 'common-modules/private-dns-zone.bicep' = {
-  name: 'PostgreSQLPrivateDnsZone'
-  scope: rg
-  params: {
-    privateDnsZoneName: 'secureapp.postgres.database.azure.com'
-    vnetId: network.outputs.vnetId
-    privateDnsZoneTags: tags
   }
 }
 
@@ -293,38 +278,9 @@ module deploymentStorageAccount 'common-modules/storage.bicep' = {
     sku: 'Standard_LRS'
     kind: 'StorageV2'
     vnetId: network.outputs.vnetId
-    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts
+    acaSubnetId: network.outputs.subnetIds[2] // The third subnet is for deployment scripts
   }
 }
-
-// Create PostgreSQL Flexible Server with deployment script
-module postgresqlServer 'swa-aca-modules/postgresql-flexible.bicep' = {
-  name: 'postgresqlServer'
-  scope: rg
-  params: {
-    serverName: dbServerName
-    location: resourceLocation
-    administratorLogin: akvSecrets['postgres-admin-user']
-    administratorLoginPassword: akvSecrets['postgres-admin-password']
-    skuName: 'Standard_B1ms' 
-    skuTier: 'Burstable' 
-    postgresVersion: '15' 
-    delegatedSubnetId: network.outputs.subnetIds[1] // The second subnet is for the PaaS DB
-    databaseName: 'secureSecretSharerDB' // Initial database name
-    tags: tags
-    logAnalyticsWorkspaceId: workspace.outputs.workspaceId 
-    privateDnsZoneId: deployPostgreSQLDNSZone.outputs.privateDnsZoneId
-    appDatabaseUser: akvSecrets['database-user']
-    appDatabasePassword: akvSecrets['database-password']
-    userAssignedIdentityId: uami.outputs.uamiIds[0]
-    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts (snet-aci)
-    storageAccountName: storageAccountName
-  }
-  dependsOn: [
-    rbac // Ensure RBAC is configured before deployment script runs
-  ]
-}
-
 
 // Role Assignments for Key Vault and ACR access
 module rbac 'swa-aca-modules/rbac.bicep' = {
@@ -333,7 +289,7 @@ module rbac 'swa-aca-modules/rbac.bicep' = {
   params: {    keyVaultId: akv.outputs.keyvaultId
     acrId: acr.outputs.acrId
     uamiId: uami.outputs.uamiPrincipalIds[0] // Use the first UAMI principal ID
-    acaSubnetId: network.outputs.subnetIds[3] // The fourth subnet is for deployment scripts (snet-aci)
+    acaSubnetId: network.outputs.subnetIds[2] // The third subnet is for deployment scripts (snet-aci)
     storageAccountId: deploymentStorageAccount.outputs.storageAccountId
   }
 }
@@ -341,8 +297,10 @@ module rbac 'swa-aca-modules/rbac.bicep' = {
 output acaEnvironmentId string = acaEnvironment.outputs.acaEnvironmentId
 output acrLoginServer string = acr.outputs.acrLoginServer
 output uamiId string = uami.outputs.uamiIds[0]
+output uamiPrincipalId string = uami.outputs.uamiPrincipalIds[0]
 output keyVaultUri string = akv.outputs.keyvaultUri
-output SQLServerFqdn string = postgresqlServer.outputs.fullyQualifiedDomainName
-output SqlDatabaseName string = postgresqlServer.outputs.databaseName
+output cosmosDbEndpoint string = cosmosDbEndpoint
+output cosmosDatabaseName string = cosmosDatabaseName
+output cosmosContainerName string = cosmosContainerName
 
 //Trigger change on main folder.

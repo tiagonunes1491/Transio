@@ -26,11 +26,14 @@ param keyVaultSecrets object
 @description('Tags for the app')
 param tags object
 
-@description('SQL Server fully qualified domain name')
-param postgresqlServerFqdn string 
+@description('Cosmos DB endpoint from the shared infrastructure')
+param cosmosDbEndpoint string
 
-@description('SQL Database name')
-param databaseName string
+@description('Cosmos DB database name')
+param cosmosDatabaseName string
+
+@description('Cosmos DB container name')
+param cosmosContainerName string
 
 @description('CPU limit for the ACA App')
 param acaCpuLimit string
@@ -40,34 +43,26 @@ param acaMemoryLimit string
 
 var acaEnvironmentVariables = [
   {
-    name: 'DATABASE_HOST'
-    value: postgresqlServerFqdn
+    name: 'COSMOS_ENDPOINT'
+    value: cosmosDbEndpoint
   }
   {
-    name: 'DATABASE_PORT'
-    value: '5432'
+    name: 'COSMOS_DATABASE_NAME'
+    value: cosmosDatabaseName
   }
   {
-    name: 'DATABASE_NAME'
-    value: databaseName
+    name: 'COSMOS_CONTAINER_NAME'
+    value: cosmosContainerName
   }
   {
-    name: 'DATABASE_SSL_MODE'
-    value: 'require'
+    name: 'USE_MANAGED_IDENTITY'
+    value: 'true'
   }
 ]
 
 // Secret references - these will reference secrets stored in Key Vault
 // Map Key Vault secret names to exact environment variable names expected by backend
 var acaSecretReferences = [
-  {
-    name: 'DATABASE_USER'
-    secretRef: keyVaultSecrets.databaseUser
-  }
-  {
-    name: 'DATABASE_PASSWORD'
-    secretRef: keyVaultSecrets.databasePassword
-  }
   {
     name: 'MASTER_ENCRYPTION_KEY'
     secretRef: keyVaultSecrets.masterEncryptionKey

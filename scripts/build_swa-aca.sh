@@ -215,8 +215,9 @@ if ! az deployment group create \
     userAssignedIdentityId="$UAMI_ID" \
     acrLoginServer="$ACR_LOGIN_SERVER" \
     keyVaultUri="$KEY_VAULT_URI" \
-    postgresqlServerFqdn="$COSMOS_DB_ENDPOINT" \
-    databaseName="$COSMOS_DB_DATABASE_NAME" \
+    cosmosDbEndpoint="$COSMOS_DB_ENDPOINT" \
+    cosmosDatabaseName="$COSMOS_DB_DATABASE_NAME" \
+    cosmosContainerName="$COSMOS_DB_CONTAINER_NAME" \
   --verbose; then
   log "ERROR" "Container app deployment failed"
   get_deployment_errors "$APP_DEPLOYMENT_NAME" "$RESOURCE_GROUP"

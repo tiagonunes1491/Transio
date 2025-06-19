@@ -52,6 +52,9 @@ param cosmosDatabaseName string = 'SecureSharer'
 @description('The name of the container to create')
 param cosmosContainerName string = 'secrets'
 
+@description('Principal IDs of managed identities that need access to Cosmos DB')
+param managedIdentityPrincipalIds array = []
+
 // =====================
 // Role Definition IDs
 // =====================
@@ -164,8 +167,8 @@ module cosmosDb 'shared-infra-modules/cosmos-db.bicep' = {
     databaseName: cosmosDatabaseName
     containerName: cosmosContainerName
     tags: tags
-    throughput: 400 // Minimum for shared throughput
     defaultTtl: 86400 // 24 hours TTL
+    managedIdentityPrincipalIds: managedIdentityPrincipalIds
   }
 }
 

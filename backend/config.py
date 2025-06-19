@@ -37,17 +37,21 @@ class Config:
 
     # --- Cosmos DB Configuration ---
     COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT")
-    COSMOS_KEY = os.getenv("COSMOS_KEY")
+    COSMOS_KEY = os.getenv("COSMOS_KEY")  # Optional - will use managed identity if not provided
     COSMOS_DATABASE_NAME = os.getenv("COSMOS_DATABASE_NAME", "SecureSharer")
     COSMOS_CONTAINER_NAME = os.getenv("COSMOS_CONTAINER_NAME", "secrets")
+    
+    # Use managed identity for authentication (prefer this for production)
+    USE_MANAGED_IDENTITY = os.getenv("USE_MANAGED_IDENTITY", "false").lower() in ("true", "1", "t")
 
     # Validate Cosmos DB configuration
     if not COSMOS_ENDPOINT:
         logging.warning("COSMOS_ENDPOINT not set. Using default local emulator endpoint.")
         COSMOS_ENDPOINT = "https://localhost:8081"
     
-    if not COSMOS_KEY:
-        logging.warning("COSMOS_KEY not set. Using default local emulator key.")
+    # For local development, default to emulator key if no managed identity and no key provided
+    if not COSMOS_KEY and not USE_MANAGED_IDENTITY and COSMOS_ENDPOINT == "https://localhost:8081":
+        logging.warning("COSMOS_KEY not set and managed identity not enabled. Using default local emulator key.")
         # This is the well-known emulator key for local development
         COSMOS_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 

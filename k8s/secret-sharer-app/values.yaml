@@ -59,7 +59,9 @@ cosmosdb:
   endpoint: "PLACEHOLDER_COSMOS_DB_ENDPOINT"
   databaseName: "SecureSharer"
   containerName: "secrets"
-  # The primary key will be retrieved from Azure Key Vault via SecretProviderClass
+  # Use managed identity for authentication (set to true for AKS with Workload Identity)
+  useManagedIdentity: false
+  # The primary key will be retrieved from Azure Key Vault via SecretProviderClass if useManagedIdentity is false
 
 # --- Frontend Configuration ---
 frontend:
