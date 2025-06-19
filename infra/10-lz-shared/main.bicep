@@ -88,7 +88,7 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // =====================
 
 // Dynamically create UAMIs for each workload identity in the management resource group
-module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloadIdentities): {
+module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -99,7 +99,7 @@ module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloa
 }]
 
 // Create Environment Federated Credentials for each UAMI if specified in federationTypes
-module envFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
+module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -114,7 +114,7 @@ module envFederationModules 'common-modules/github-federation.bicep' = [for (ite
 }]
 
 // Create Branch Federated Credentials for all workload identities that specify 'branch' in federationTypes
-module branchFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'branch')) {
+module branchFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'branch')) {
   name: 'deploy-branch-fed-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -133,7 +133,7 @@ module branchFederationModules 'common-modules/github-federation.bicep' = [for (
 // =====================
 
 // Assign RBAC roles to all UAMIs in the shared artifacts resource group
-module rbacAssignments 'common-modules/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../40-modules/core/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
   params: {

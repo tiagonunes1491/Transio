@@ -28,14 +28,14 @@ param acrEnableAdminUser bool = false
 @description('Name of the Cosmos DB account')
 param cosmosDbAccountName string = 'cosmos-sharer-shared'
 
-@description('The name of the database to create')
-param cosmosDatabaseName string = 'SecureSharer'
+@description('The names of the databases to create')
+param cosmosDatabaseNames array = ['paas-dev', 'paas-prod', 'aks-dev', 'aks-prod']
 
-@description('The names of the containers to create')
-param cosmosContainerNames array = ['secrets']
+@description('The name of the container to create in each database')
+param cosmosContainerName string = 'secret'
 
 
-module acr 'shared-infra-modules/acr.bicep' = {
+module acr '../40-modules/shared-services/acr.bicep' = {
   name: 'acr'
   params: {
     tags: tags
@@ -47,13 +47,13 @@ module acr 'shared-infra-modules/acr.bicep' = {
 }
 
 // Deploy Cosmos DB for shared use across K8S and SWA deployments
-module cosmosDb 'shared-infra-modules/cosmos-db.bicep' = {
+module cosmosDb '../40-modules/shared-services/cosmos-db.bicep' = {
   name: 'deploy-cosmos-db'
   params: {
     cosmosDbAccountName: cosmosDbAccountName
     location: resourceLocation
-    databaseName: cosmosDatabaseName
-    containerNames: cosmosContainerNames
+    databaseNames: cosmosDatabaseNames
+    containerName: cosmosContainerName
     tags: tags
     defaultTtl: 86400 // 24 hours TTL
   }
@@ -67,5 +67,5 @@ output acrName string = acr.outputs.acrName
 output acrLoginServer string = acr.outputs.acrLoginServer
 output cosmosDbEndpoint string = cosmosDb.outputs.cosmosDbEndpoint
 output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
-output cosmosDatabaseName string = cosmosDb.outputs.databaseName
-output cosmosContainerNames array = cosmosDb.outputs.containerNames
+output cosmosDatabaseNames array = cosmosDb.outputs.databaseNames
+output cosmosContainerName string = cosmosDb.outputs.containerName

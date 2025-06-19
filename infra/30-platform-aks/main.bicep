@@ -25,8 +25,11 @@ param cosmosDatabaseName string = 'SecureSharer'
 @description('Shared Cosmos DB container name')
 param cosmosContainerName string = 'secrets'
 
-@description('Shared infrastructure resource group name where Cosmos DB is deployed')
+@description('Shared infrastructure resource group name where Cosmos DB and ACR are deployed')
 param sharedResourceGroupName string = 'rg-ssharer-artifacts-hub'
+
+@description('Shared Azure Container Registry name from the shared infrastructure')
+param acrName string
 
 // Construct the Cosmos DB account ID from the shared resource group and account name
 var cosmosDbAccountId = '/subscriptions/${subscription().subscriptionId}/resourceGroups/${sharedResourceGroupName}/providers/Microsoft.DocumentDB/databaseAccounts/${cosmosDbAccountName}'
@@ -106,7 +109,7 @@ param appGwNsgAllowRules array = [
 param appGwNsgDenyRules array = []
 
 
-module appGwNsg 'aks-modules/nsg.bicep' = {
+module appGwNsg '../40-modules/aks/nsg.bicep' = {
   name: appGwNsgName
   scope: rg
   params: {
@@ -143,7 +146,7 @@ var subnets  = [
   }
 ]
 
-module network 'common-modules/network.bicep' = {
+module network '../40-modules/core/network.bicep' = {
   name: 'network'
   scope: rg
   params: {
@@ -156,35 +159,13 @@ module network 'common-modules/network.bicep' = {
         addressPrefix: subnet.addressPrefix
         networkSecurityGroupId: subnet.name == 'snet-agw'  ? appGwNsg.outputs.nsgId : null
       }
-    ]
-  }
+    ]  }
 }
 
-// Deployment for ACR
-
-@description('Azure Container Registry name')
-param acrName string
-
-@description('SKU for the ACR')
-@allowed([
-  'Basic'
-  'Standard'
-  'Premium'
-])
-param acrSku string = 'Standard'
-
-@description('Enable admin user for the ACR')
-param acrEnableAdminUser bool = false
-
-module acr 'shared-infra-modules/acr.bicep' = {
-  name: 'acr'
-  scope: rg
-  params: {
-    acrName: acrName
-    location: resourceLocation
-    sku: acrSku
-    enableAdminUser: acrEnableAdminUser
-  }
+// Reference existing ACR from shared infrastructure
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: acrName
+  scope: resourceGroup(sharedResourceGroupName)
 }
 
 // Deployment for AKV
@@ -211,7 +192,7 @@ param akvPurgeProtection bool = true
 @secure()
 param akvSecrets object
 
-module akv 'common-modules/keyvault.bicep' = {
+module akv '../40-modules/core/keyvault.bicep' = {
   name: 'keyvault'
   scope: rg
   params: {
@@ -267,7 +248,7 @@ param userNodePoolMaxCount int = 3
 @description('AKS Admin Group object IDs for the AKS cluster')
 param aksAdminGroupObjectIds array = []
 
-module aks 'aks-modules/aks.bicep' = {
+module aks '../40-modules/aks/aks.bicep' = {
   name: 'aks'
   scope: rg
   params: {    
@@ -297,7 +278,7 @@ module aks 'aks-modules/aks.bicep' = {
 // Retrieves the names of the UAMIs from the federationConfigs parameter
 var uamiNames = [for config in federationConfigs: config.uamiTargetName]
 
-module uami 'common-modules/uami.bicep' = {
+module uami '../40-modules/core/uami.bicep' = {
   name: 'uami'
   scope: rg
   params: {
@@ -307,7 +288,7 @@ module uami 'common-modules/uami.bicep' = {
   }
 }
 
-module federation 'aks-modules/federation.bicep' = [for config in federationConfigs: {
+module federation '../40-modules/aks/federation.bicep' = [for config in federationConfigs: {
   name: 'fed-${take(uniqueString(config.uamiTargetName, config.k8sServiceAccountName), 13)}'
   scope: rg
   params: {
@@ -320,12 +301,12 @@ module federation 'aks-modules/federation.bicep' = [for config in federationConf
 
 // Role Assignmeents for RBAC
 
-module rbac 'aks-modules/rbac.bicep' = {
+module rbac '../40-modules/aks/rbac.bicep' = {
   name: 'rbac'
   scope: rg
   params: {
     keyVaultId: akv.outputs.keyvaultId
-    acrId: acr.outputs.acrId
+    acrId: acr.id
     uamiIds: uami.outputs.uamiPrincipalIds 
     aksId: aks.outputs.aksId
     appGwId: appGw.outputs.appGwId
@@ -353,7 +334,7 @@ param appGwPublicIpName string = 'appgw-public-ip'
 
 
 // Creates AppGW. Assumes subnet for appGW is in place [1] on array.
-module appGw 'aks-modules/appgw.bicep' = {
+module appGw '../40-modules/aks/appgw.bicep' = {
   name: 'appgw'
   scope: rg
   params: {
@@ -368,8 +349,8 @@ module appGw 'aks-modules/appgw.bicep' = {
 
 // Final outputs for main.bicep
 
-output acrLoginServer string = acr.outputs.acrLoginServer
-output acrName string = acr.outputs.acrName  
+output acrLoginServer string = acr.properties.loginServer
+output acrName string = acr.name
 output aksName string = aks.outputs.aksName
 output backendK8sServiceAccountName string = federationConfigs[0].k8sServiceAccountName
 output databaseInitK8sServiceAccountName string = federationConfigs[1].k8sServiceAccountName

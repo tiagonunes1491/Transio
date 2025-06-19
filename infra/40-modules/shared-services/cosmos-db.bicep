@@ -4,11 +4,11 @@ param cosmosDbAccountName string
 @description('Location for the Cosmos DB account')
 param location string
 
-@description('The name of the database to create')
-param databaseName string
+@description('The names of the databases to create')
+param databaseNames array = [ 'paas-dev', 'paas-prod', 'aks-dev', 'paas-prod' ]
 
-@description('The names of the containers to create')
-param containerNames array = [ 'swa-dev', 'swa-prod', 'k8s-dev', 'k8s-prod' ]
+@description('The name of the container to create in each database')
+param containerName string = 'secret'
 
 @description('Tags for the Cosmos DB account')
 param tags object = {}
@@ -53,22 +53,22 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   }
 }
 
-resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = {
-  name: databaseName
+resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2023-04-15' = [for dbName in databaseNames: {
+  name: dbName
   parent: cosmosDbAccount
   properties: {
     resource: {
-      id: databaseName
+      id: dbName
     }
   }
-}
+}]
 
-resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = [for cn in containerNames: {
-  name: cn
-  parent: cosmosDbDatabase
+resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-04-15' = [for (dbName, i) in databaseNames: {
+  name: containerName
+  parent: cosmosDbDatabase[i]
   properties: {
     resource: {
-      id: cn
+      id: containerName
       partitionKey: {
         paths: [ '/link_id' ]
         kind: 'Hash'
@@ -91,5 +91,5 @@ resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
 output cosmosDbAccountName string = cosmosDbAccount.name
 output cosmosDbAccountId string = cosmosDbAccount.id
 output cosmosDbEndpoint string = cosmosDbAccount.properties.documentEndpoint
-output databaseName string = cosmosDbDatabase.name
-output containerNames array = [for cn in containerNames: cn]
+output databaseNames array = [for dbName in databaseNames: dbName]
+output containerName string = containerName
