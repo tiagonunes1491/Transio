@@ -52,7 +52,7 @@ param workloadIdentities object = {
 }
 
 // ========================================================
-// Name Generation and Tagging (using standardized patterns)
+// Naming and Tagging (using standardized patterns)
 // ========================================================
 
 // Environment mapping (consistent with naming module)
@@ -61,6 +61,11 @@ var envMapping = {
   prod: 'p'
   shared: 's'
 }
+
+// Generate resource names using the same pattern as the naming module
+var hubRgName = '${projectCode}-${envMapping.shared}-hub-rg'
+var paasRgName = '${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg'
+var mgmtRgName = '${projectCode}-${envMapping[environmentName]}-mgmt-rg'
 
 // Standard tags using the same pattern as the tagging module
 var standardTags = {
@@ -75,11 +80,6 @@ var standardTags = {
   managedBy: 'bicep'
   deployment: deployment().name
 }
-
-// Generate resource names using the same pattern as the naming module
-var hubRgName = '${projectCode}-${envMapping.shared}-hub-rg'
-var paasRgName = '${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg'
-var mgmtRgName = '${projectCode}-${envMapping[environmentName]}-mgmt-rg'
 
 // ========================================================
 // Variables
@@ -125,8 +125,8 @@ resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // ========================================================
 
 // Use naming and tagging modules within the resource groups
-module standardTagsModule '../40-modules/core/tagging.bicep' = {
-  name: 'standard-tags-paas'
+module standardTagsRgModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-paas-rg'
   scope: managementRg
   params: {
     environment: environmentName
@@ -159,7 +159,7 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
   params: {
     uamiLocation: location
     uamiNames: [uamiNamingModules[i].outputs.resourceName]
-    tags: standardTagsModule.outputs.tags
+    tags: standardTagsRgModule.outputs.tags
   }
   dependsOn: [uamiNamingModules[i]]
 }]

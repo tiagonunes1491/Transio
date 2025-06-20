@@ -11,12 +11,28 @@ param resourceLocation string = 'spaincentral'
 @description('Name of the resource group')
 param rgName string = 'rg-ssharer-k8s-spoke-dev'
 
-@description('Tags for the resources')
-param tags object = {
-  environment: 'dev'
-  project: 'secure-secret-sharer'
-  owner: 'Tiago'
-}
+@description('Project code')
+param projectCode string = 'ss'
+
+@description('Service code for AKS platform')
+param serviceCode string = 'aks'
+
+@description('Environment name')
+@allowed(['dev', 'prod'])
+param environmentName string = 'dev'
+
+// Tagging configuration
+@description('Cost center for billing')
+param costCenter string = '1000'
+
+@description('Created by information')
+param createdBy string = 'bicep-deployment'
+
+@description('Owner')
+param owner string = 'tiago-nunes'
+
+@description('Owner email')
+param ownerEmail string = 'tiago.nunes@example.com'
 
 @description('Shared Cosmos DB account name from the shared infrastructure')
 param cosmosDbAccountName string
@@ -60,7 +76,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' existing = {
 }
 
 // =====================
-// Standardized Tagging
+// Naming and Tagging Modules
 // =====================
 
 // Generate standardized tags using the tagging module
@@ -68,20 +84,71 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
   name: 'standard-tags-aks-platform'
   scope: rg
   params: {
-    environment: 'dev'
-    project: 'ss'
-    service: 'aks'
-    costCenter: '1000'
-    createdBy: 'bicep-deployment'
-    owner: 'tiago-nunes'
-    ownerEmail: 'tiago.nunes@example.com'
+    environment: environmentName
+    project: projectCode
+    service: serviceCode
+    costCenter: costCenter
+    createdBy: createdBy
+    owner: owner
+    ownerEmail: ownerEmail
   }
 }
 
-// NSG
+// Generate resource names using naming module
+module appGwNsgNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'appgw-nsg-naming'
+  scope: rg
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'nsg'
+  }
+}
 
-@description('Name of the Network Security Group')
-param appGwNsgName string = 'nsg-securesharer-mvp'
+module vnetNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'vnet-naming'
+  scope: rg
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'vnet'
+  }
+}
+
+module akvNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'akv-naming'
+  scope: rg
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'kv'
+  }
+}
+
+module aksNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'aks-naming'
+  scope: rg
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'aks'
+  }
+}
+
+module appGwNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'appgw-naming'
+  scope: rg
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'agw'
+  }
+}
 
 @description('Allow rules for the Network Security Group')
 param appGwNsgAllowRules array = [
@@ -129,12 +196,12 @@ param appGwNsgAllowRules array = [
 @description('Deny rules for the Network Security Group')
 param appGwNsgDenyRules array = []
 
-
+// NSG
 module appGwNsg '../40-modules/aks/nsg.bicep' = {
-  name: appGwNsgName
+  name: 'appGwNsg'
   scope: rg
   params: {
-    nsgName: appGwNsgName
+    nsgName: appGwNsgNamingModule.outputs.resourceName
     tags: standardTagsModule.outputs.tags
     allowRules: appGwNsgAllowRules
     denyRules: appGwNsgDenyRules
@@ -142,13 +209,9 @@ module appGwNsg '../40-modules/aks/nsg.bicep' = {
   }
 }
 
-
 // Deployment for VNET 
 // ! Order of subnets are important and should not be changed.
 // The first subnet is for the AKS cluster and the second one is for the Application Gateway.
-
-@description('Name of the virtual network')
-param vnetName string = 'vnet-secureSecretSharer'
 
 @description('Address space for the virtual network')
 var addressSpace  = [
@@ -171,7 +234,7 @@ module network '../40-modules/core/network.bicep' = {
   name: 'network'
   scope: rg
   params: {
-    vnetName: vnetName
+    vnetName: vnetNamingModule.outputs.resourceName
     location: resourceLocation
     addressSpace: addressSpace
     subnets: [
@@ -193,9 +256,6 @@ resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
 
 @minLength(3)
 @maxLength(24)
-@description('Name of the keyvault')
-param akvName string = 'kv-sec-secret-sharer'
-
 @description('SKU for the keyvault')
 @allowed([
   'standard'
@@ -217,7 +277,7 @@ module akv '../40-modules/core/keyvault.bicep' = {
   name: 'keyvault'
   scope: rg
   params: {
-    keyvaultName: akvName
+    keyvaultName: akvNamingModule.outputs.resourceName
     location: resourceLocation
     tags: standardTagsModule.outputs.tags
     sku: akvSku
@@ -230,11 +290,8 @@ module akv '../40-modules/core/keyvault.bicep' = {
 
 // Deployment for AKS
 
-@description('Name of the AKS cluster')
-param aksName string = 'aks-securesharer-mvp'
-
 @description('DNS prefix for the AKS cluster')
-param dnsPrefix string = uniqueString(rgName, aksName)
+param dnsPrefix string = uniqueString(rgName, 'aks')
 
 @description('Kubernetes version for the AKS cluster')
 param kubernetesVersion string = '1.28.5'
@@ -276,7 +333,7 @@ module aks '../40-modules/aks/aks.bicep' = {
     location: resourceLocation
     tags: standardTagsModule.outputs.tags
     aksAdminGroupObjectIds: aksAdminGroupObjectIds
-    aksName: aksName
+    aksName: aksNamingModule.outputs.resourceName
     dnsPrefix: dnsPrefix
     kubernetesVersion: kubernetesVersion
     systemNodePoolName: systemNodePoolName
@@ -336,10 +393,19 @@ module rbac '../40-modules/aks/rbac.bicep' = {
   }
 }
 
-// Create APP GATEWAY
+// Generate Public IP name for Application Gateway
+module appGwPipNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'appgw-pip-naming'
+  scope: rg
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'pip'
+  }
+}
 
-@description('Name of the Application Gateway')
-param appGwName string = 'appgw-securesharer-mvp'
+// Create APP GATEWAY
 
 @description('Application Gateway SKU')
 @allowed([
@@ -348,22 +414,16 @@ param appGwName string = 'appgw-securesharer-mvp'
 ])
 param appGwSku string = 'WAF_v2'
 
-
-@description('Public IP address name for the Application Gateway')
-param appGwPublicIpName string = 'appgw-public-ip'
-
-
-
 // Creates AppGW. Assumes subnet for appGW is in place [1] on array.
 module appGw '../40-modules/aks/appgw.bicep' = {
   name: 'appgw'
   scope: rg
   params: {
-    appGwName: appGwName
+    appGwName: appGwNamingModule.outputs.resourceName
     location: resourceLocation
     tags: standardTagsModule.outputs.tags
     sku: appGwSku
-    publicIpName: appGwPublicIpName
+    publicIpName: appGwPipNamingModule.outputs.resourceName
     appGwSubnetId: network.outputs.subnetIds[1]
   }
 }

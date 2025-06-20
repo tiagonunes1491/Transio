@@ -9,23 +9,31 @@ param tenantId string = subscription().tenantId
 @description('Deployment location')
 param resourceLocation string = 'spaincentral'
 
-@description('Common tags object')
-param tags object = {
-  environment: 'dev'
-  project:     'secure-secret-sharer'
-  owner:       'Tiago'
-  flavor:      'SWA-ACA'
-}
+@description('Project code')
+param projectCode string = 'ss'
 
-@description('Name for stub Container App')
-param stubContainerAppName string = 'app-ss-aca-dev'
+@description('Service code for SWA/ACA platform')
+param serviceCode string = 'swa'
+
+@description('Environment name')
+@allowed(['dev', 'prod'])
+param environmentName string = 'dev'
+
+// Tagging configuration
+@description('Cost center for billing')
+param costCenter string = '1000'
+
+@description('Created by information')
+param createdBy string = 'bicep-deployment'
+
+@description('Owner')
+param owner string = 'tiago-nunes'
+
+@description('Owner email')
+param ownerEmail string = 'tiago.nunes@example.com'
 
 @description('Image for the stub Container App')
 param stubContainerImage string = '${acrLoginServer}/hello-world:latest'
-
-@description('Static Web App name')
-param swaName string = 'swa-secure-sharer-dev'
-
 
 // ========== SHARED INFRASTRUCTURE REFERENCES ==========
 @description('Existing ACR name from shared infrastructure')
@@ -47,9 +55,6 @@ param cosmosDatabaseName string = 'paas-dev'
 param cosmosContainerName string = 'secret'
 
 // ========== VNET & SUBNETS ==========
-@description('Name of virtual network')
-param vnetName string = 'vnet-secureSecretSharer'
-
 var addressSpace = [ '10.0.0.0/16' ]
 var subnets = [
   {
@@ -65,34 +70,102 @@ var subnets = [
 module network '../40-modules/core/network.bicep' = {
   name:  'network'
   params: {
-    vnetName:      vnetName
+    vnetName:      vnetNamingModule.outputs.resourceName
     location:      resourceLocation
     addressSpace:  addressSpace
     subnets:       subnets
-    tags:          tags
+    tags:          standardTagsModule.outputs.tags
   }
 }
 
-// ========== STANDARDIZED TAGGING ==========
+// ========== NAMING AND TAGGING MODULES ==========
 
 // Generate standardized tags using the tagging module
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
   name: 'standard-tags-swa-platform'
   params: {
-    environment: 'dev'
-    project: 'ss'
-    service: 'swa'
-    costCenter: '1000'
-    createdBy: 'bicep-deployment'
-    owner: 'tiago-nunes'
-    ownerEmail: 'tiago.nunes@example.com'
+    environment: environmentName
+    project: projectCode
+    service: serviceCode
+    costCenter: costCenter
+    createdBy: createdBy
+    owner: owner
+    ownerEmail: ownerEmail
+  }
+}
+
+// Generate resource names using naming module
+module vnetNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'vnet-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'vnet'
+  }
+}
+
+module akvNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'akv-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'kv'
+  }
+}
+
+module lawNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'law-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'law'
+  }
+}
+
+module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'aca-env-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'cae'
+  }
+}
+
+module uamiNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'uami-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'uai'
+  }
+}
+
+module containerAppNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'container-app-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'ca'
+  }
+}
+
+module swaNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'swa-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'swa'
   }
 }
 
 // ========== KEY VAULT & PRIVATE ENDPOINT ==========
-@description('Key Vault name')
-param akvName string = 'kv-sec-secret-sharer'
-
 @description('Key Vault SKU')
 @allowed([ 'standard', 'premium' ])
 param akvSku string = 'standard'
@@ -110,7 +183,7 @@ param akvSecrets object
 module akv '../40-modules/core/keyvault.bicep' = {
   name:  'keyvault'
   params: {
-    keyvaultName:            akvName
+    keyvaultName:            akvNamingModule.outputs.resourceName
     location:                resourceLocation
     sku:                     akvSku
     tenantId:                tenantId
@@ -138,7 +211,7 @@ module kvPe '../40-modules/core/private-endpoint.bicep' = {
     privateEndpointSubnetId:     network.outputs.subnetIds[1]
     privateEndpointGroupId:      'vault'
     privateEndpointServiceId:    akv.outputs.keyvaultId
-    privateEndpointTags:         tags
+    privateEndpointTags:         standardTagsModule.outputs.tags
     privateDnsZoneIds:           [ kvDns.outputs.privateDnsZoneId ]
   }
 }
@@ -149,7 +222,7 @@ module acrDns '../40-modules/core/private-dns-zone.bicep' = {
   params: {
     privateDnsZoneName:  'privatelink.azurecr.io'
     vnetId:              network.outputs.vnetId
-    privateDnsZoneTags:  tags
+    privateDnsZoneTags:  standardTagsModule.outputs.tags
   }
 }
 
@@ -161,7 +234,7 @@ module acrPe '../40-modules/core/private-endpoint.bicep' = {
     privateEndpointSubnetId:   network.outputs.subnetIds[1]
     privateEndpointGroupId:    'registry'
     privateEndpointServiceId:  acrId
-    privateEndpointTags:       tags
+    privateEndpointTags:       standardTagsModule.outputs.tags
     privateDnsZoneIds:         [ acrDns.outputs.privateDnsZoneId ]
   }
 }
@@ -170,21 +243,19 @@ module acrPe '../40-modules/core/private-endpoint.bicep' = {
 module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
   name:  'workspace'
   params: {
-    workspaceName: 'law-secure-sharer-swa-aca-dev'
+    workspaceName: lawNamingModule.outputs.resourceName
     location:      resourceLocation
     tags:          standardTagsModule.outputs.tags
   }
 }
 
 // ========== ACA ENVIRONMENT & UAMI ==========
-@description('ACA Environment name')
-param acaEnvName string = 'cae-sharer-aca-dev'
 module acaEnv '../40-modules/swa-aca/aca-environment.bicep' = {
   name:  'acaEnvironment'
   params: {
-    acaEnvironmentName:     acaEnvName
+    acaEnvironmentName:     acaEnvNamingModule.outputs.resourceName
     acaEnvironmentLocation: resourceLocation
-    acaEnvironmentTags:     tags
+    acaEnvironmentTags:     standardTagsModule.outputs.tags
     workspaceId:            workspace.outputs.workspaceId
     acaEnvironmentSubnetId: network.outputs.subnetIds[0]
   }
@@ -193,7 +264,7 @@ module acaEnv '../40-modules/swa-aca/aca-environment.bicep' = {
 module uami '../40-modules/core/uami.bicep' = {
   name: 'uami'
   params: {
-    uamiNames:     [ 'uai-ss-aca-dev' ]
+    uamiNames:     [ uamiNamingModule.outputs.resourceName ]
     uamiLocation:  resourceLocation
     tags:          standardTagsModule.outputs.tags
   }
@@ -213,7 +284,7 @@ module rbac '../40-modules/swa-aca/rbac.bicep' = {
 module stubApp '../40-modules/swa-aca/container-app.bicep' = {
   name:  'stubContainerApp'
   params: {
-    containerAppName: stubContainerAppName
+    containerAppName: containerAppNamingModule.outputs.resourceName
     environmentId:    acaEnv.outputs.acaEnvironmentId
     image:            stubContainerImage
     acrLoginServer:   acrLoginServer
@@ -227,7 +298,7 @@ module stubApp '../40-modules/swa-aca/container-app.bicep' = {
 module staticWebApp '../40-modules/swa-aca/static-web-app.bicep' = {
   name:  'staticWebApp'
   params: {
-    swaName:  swaName
+    swaName:  swaNamingModule.outputs.resourceName
     location: 'westeurope'     // Static Web Apps aren’t supported in Spain Central (yet)
     uamiId:   uami.outputs.uamiIds[0]
     tags:     standardTagsModule.outputs.tags

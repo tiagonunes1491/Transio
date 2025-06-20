@@ -18,7 +18,7 @@ param environment string
 param serviceCode string
 
 @description('Resource type code')
-@allowed(['ca', 'cae', 'rg', 'vnet', 'sub', 'pe', 'log', 'swa', 'kv', 'acr', 'cosmos', 'id'])
+@allowed(['ca', 'cae', 'rg', 'vnet', 'sub', 'pe', 'log', 'swa', 'kv', 'acr', 'cosmos', 'id', 'nsg', 'aks', 'agw', 'pip', 'law', 'uai'])
 param resourceType string
 
 @description('Optional sequence number (01-99)')

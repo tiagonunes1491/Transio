@@ -52,8 +52,19 @@ param workloadIdentities object = {
 }
 
 // =====================
-// Naming and Tagging Variables (using standardized patterns)
+// Naming and Tagging (using standardized patterns)
 // =====================
+
+// Environment mapping (consistent with naming module)
+var envMapping = {
+  dev: 'd'
+  prod: 'p'
+  shared: 's'
+}
+
+// Generate resource names using the same pattern as the naming module
+var hubRgName = '${projectCode}-${envMapping.shared}-${serviceCode}-rg'
+var mgmtRgName = '${projectCode}-${envMapping.shared}-mgmt-rg'
 
 // Standard tags using the same pattern as the tagging module
 var standardTags = {
@@ -68,17 +79,6 @@ var standardTags = {
   managedBy: 'bicep'
   deployment: deployment().name
 }
-
-// Environment mapping (consistent with naming module)
-var envMapping = {
-  dev: 'd'
-  prod: 'p'
-  shared: 's'
-}
-
-// Generate names using the same pattern as the naming module
-var hubRgName = '${projectCode}-${envMapping.shared}-${serviceCode}-rg'
-var mgmtRgName = '${projectCode}-${envMapping.shared}-mgmt-rg'
 
 
 // =====================
@@ -116,8 +116,8 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // =====================
 
 // Use naming and tagging modules within the resource groups
-module standardTagsModule '../40-modules/core/tagging.bicep' = {
-  name: 'standard-tags'
+module standardTagsRgModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-rg'
   scope: mgmtSharedRG
   params: {
     environment: 'shared'
@@ -150,7 +150,7 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
   params: {
     uamiLocation: location
     uamiNames: [uamiNamingModules[i].outputs.resourceName]
-    tags: standardTagsModule.outputs.tags
+    tags: standardTagsRgModule.outputs.tags
   }
   dependsOn: [uamiNamingModules[i]]
 }]
