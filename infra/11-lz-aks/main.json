@@ -1,0 +1,535 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.36.1.42791",
+      "templateHash": "9592376034911852065"
+    }
+  },
+  "parameters": {
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment for the deployment (e.g., dev, staging, prod)"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "spaincentral",
+      "metadata": {
+        "description": "Azure region where resources will be deployed"
+      }
+    },
+    "projectCode": {
+      "type": "string",
+      "defaultValue": "ss",
+      "metadata": {
+        "description": "Project code"
+      }
+    },
+    "serviceCode": {
+      "type": "string",
+      "defaultValue": "aks",
+      "metadata": {
+        "description": "Service code for K8S platform"
+      }
+    },
+    "costCenter": {
+      "type": "string",
+      "defaultValue": "1000",
+      "metadata": {
+        "description": "Cost center for billing"
+      }
+    },
+    "createdBy": {
+      "type": "string",
+      "defaultValue": "bicep-deployment",
+      "metadata": {
+        "description": "Created by information"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "defaultValue": "tiago-nunes",
+      "metadata": {
+        "description": "Owner"
+      }
+    },
+    "ownerEmail": {
+      "type": "string",
+      "defaultValue": "tiago.nunes@example.com",
+      "metadata": {
+        "description": "Owner email"
+      }
+    },
+    "createdDate": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyy-MM-dd')]",
+      "metadata": {
+        "description": "Creation date for tagging"
+      }
+    },
+    "gitHubOrganizationName": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub organization name for federated credential setup"
+      }
+    },
+    "gitHubRepositoryName": {
+      "type": "string",
+      "metadata": {
+        "description": "GitHub repository name for federated credential setup"
+      }
+    },
+    "workloadIdentities": {
+      "type": "object",
+      "defaultValue": {
+        "k8s": {
+          "UAMI": "k8s",
+          "ENV": "[parameters('environmentName')]",
+          "ROLE": "contributor",
+          "federationTypes": "environment"
+        },
+        "k8sDeploy": {
+          "UAMI": "k8s-deploy",
+          "ENV": "[parameters('environmentName')]",
+          "ROLE": "AcrPull",
+          "federationTypes": "environment"
+        }
+      },
+      "metadata": {
+        "description": "K8S workload identities configuration with roles and federation settings"
+      }
+    }
+  },
+  "variables": {
+    "copy": [
+      {
+        "name": "uamiNames",
+        "count": "[length(items(parameters('workloadIdentities')))]",
+        "input": "[format('{0}-{1}-{2}-id', parameters('projectCode'), variables('envMapping')[parameters('environmentName')], items(parameters('workloadIdentities'))[copyIndex('uamiNames')].value.UAMI)]"
+      }
+    ],
+    "envMapping": {
+      "dev": "d",
+      "staging": "s",
+      "prod": "p",
+      "shared": "sh"
+    },
+    "standardTags": {
+      "environment": "[parameters('environmentName')]",
+      "project": "[parameters('projectCode')]",
+      "service": "[parameters('serviceCode')]",
+      "costCenter": "[parameters('costCenter')]",
+      "createdBy": "[parameters('createdBy')]",
+      "owner": "[parameters('owner')]",
+      "ownerEmail": "[parameters('ownerEmail')]",
+      "createdDate": "[parameters('createdDate')]",
+      "managedBy": "bicep",
+      "deployment": "[deployment().name]"
+    },
+    "hubRgName": "[format('{0}-{1}-hub-rg', parameters('projectCode'), variables('envMapping').shared)]",
+    "k8sRgName": "[format('{0}-{1}-{2}-rg', parameters('projectCode'), variables('envMapping')[parameters('environmentName')], parameters('serviceCode'))]",
+    "mgmtRgName": "[format('{0}-{1}-mgmt-rg', parameters('projectCode'), variables('envMapping')[parameters('environmentName')])]",
+    "AcrPullRoleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d', subscription().subscriptionId)]",
+    "ContributorRoleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c', subscription().subscriptionId)]",
+    "roleIdMap": {
+      "contributor": "[variables('ContributorRoleDefinitionId')]",
+      "AcrPull": "[variables('AcrPullRoleDefinitionId')]"
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[variables('k8sRgName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('standardTags')]"
+    },
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2021-04-01",
+      "name": "[variables('mgmtRgName')]",
+      "location": "[parameters('location')]",
+      "tags": "[variables('standardTags')]"
+    },
+    {
+      "copy": {
+        "name": "uamiModules",
+        "count": "[length(items(parameters('workloadIdentities')))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
+      "resourceGroup": "[variables('mgmtRgName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "uamiLocation": {
+            "value": "[parameters('location')]"
+          },
+          "uamiNames": {
+            "value": [
+              "[variables('uamiNames')[copyIndex()]]"
+            ]
+          },
+          "tags": {
+            "value": "[variables('standardTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.1.42791",
+              "templateHash": "5168640857107218154"
+            }
+          },
+          "parameters": {
+            "uamiLocation": {
+              "type": "string",
+              "defaultValue": "spaincentral",
+              "metadata": {
+                "description": "Location of the User Assigned Managed Identity (UAMI)"
+              }
+            },
+            "uamiNames": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Names of the User Assigned Managed Identity (UAMI) to create"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags for the User Assigned Managed Identity (UAMI)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "uami",
+                "count": "[length(parameters('uamiNames'))]"
+              },
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[parameters('uamiNames')[copyIndex()]]",
+              "location": "[parameters('uamiLocation')]",
+              "tags": "[parameters('tags')]"
+            }
+          ],
+          "outputs": {
+            "uamiIds": {
+              "type": "array",
+              "copy": {
+                "count": "[length(range(0, length(parameters('uamiNames'))))]",
+                "input": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uamiNames')[range(0, length(parameters('uamiNames')))[copyIndex()]])]"
+              }
+            },
+            "uamiClientIds": {
+              "type": "array",
+              "copy": {
+                "count": "[length(range(0, length(parameters('uamiNames'))))]",
+                "input": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uamiNames')[range(0, length(parameters('uamiNames')))[copyIndex()]]), '2023-01-31').clientId]"
+              }
+            },
+            "uamiPrincipalIds": {
+              "type": "array",
+              "copy": {
+                "count": "[length(range(0, length(parameters('uamiNames'))))]",
+                "input": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('uamiNames')[range(0, length(parameters('uamiNames')))[copyIndex()]]), '2023-01-31').principalId]"
+              }
+            },
+            "uamiNames": {
+              "type": "array",
+              "copy": {
+                "count": "[length(range(0, length(parameters('uamiNames'))))]",
+                "input": "[parameters('uamiNames')[range(0, length(parameters('uamiNames')))[copyIndex()]]]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('mgmtRgName'))]"
+      ]
+    },
+    {
+      "copy": {
+        "name": "envFederationModules",
+        "count": "[length(items(parameters('workloadIdentities')))]"
+      },
+      "condition": "[contains(split(items(parameters('workloadIdentities'))[copyIndex()].value.federationTypes, ','), 'environment')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
+      "resourceGroup": "[variables('mgmtRgName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "UamiName": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
+          },
+          "GitHubOrganizationName": {
+            "value": "[parameters('gitHubOrganizationName')]"
+          },
+          "GitHubRepositoryName": {
+            "value": "[parameters('gitHubRepositoryName')]"
+          },
+          "environmentName": {
+            "value": "[items(parameters('workloadIdentities'))[copyIndex()].value.ENV]"
+          },
+          "fedType": {
+            "value": "environment"
+          },
+          "federatedCredentialName": {
+            "value": "[format('gh-env-{0}-{1}', items(parameters('workloadIdentities'))[copyIndex()].value.ENV, items(parameters('workloadIdentities'))[copyIndex()].key)]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.1.42791",
+              "templateHash": "4773535637748705082"
+            }
+          },
+          "parameters": {
+            "UamiName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the existing UAMI to federate with GitHub Actions"
+              }
+            },
+            "GitHubOrganizationName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the GitHub organization to federate with"
+              }
+            },
+            "GitHubRepositoryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the GitHub repository to federate with"
+              }
+            },
+            "branchName": {
+              "type": "string",
+              "defaultValue": "main",
+              "metadata": {
+                "description": "GitHub branch name (e.g., main)"
+              }
+            },
+            "environmentName": {
+              "type": "string",
+              "defaultValue": "production",
+              "metadata": {
+                "description": "GitHub environment to federate with"
+              }
+            },
+            "federatedCredentialName": {
+              "type": "string",
+              "defaultValue": "github-federation",
+              "metadata": {
+                "description": "Name for the federated identity credential"
+              }
+            },
+            "fedType": {
+              "type": "string",
+              "defaultValue": "branch",
+              "allowedValues": [
+                "environment",
+                "branch"
+              ],
+              "metadata": {
+                "description": "Type of federated identity credential. Can be \"environment\" or \"branch\"."
+              }
+            }
+          },
+          "variables": {
+            "subjectFilter": "[if(equals(parameters('fedType'), 'environment'), format('environment:{0}', parameters('environmentName')), format('ref:refs/heads/{0}', parameters('branchName')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials",
+              "apiVersion": "2023-07-31-preview",
+              "name": "[format('{0}/{1}', parameters('UamiName'), parameters('federatedCredentialName'))]",
+              "properties": {
+                "issuer": "https://token.actions.githubusercontent.com",
+                "audiences": [
+                  "api://AzureADTokenExchange"
+                ],
+                "subject": "[format('repo:{0}/{1}:{2}', parameters('GitHubOrganizationName'), parameters('GitHubRepositoryName'), variables('subjectFilter'))]"
+              }
+            }
+          ],
+          "outputs": {
+            "federatedCredentialId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials', parameters('UamiName'), parameters('federatedCredentialName'))]"
+            },
+            "federatedCredentialName": {
+              "type": "string",
+              "value": "[parameters('federatedCredentialName')]"
+            },
+            "uamiClientId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('UamiName')), '2023-01-31').clientId]"
+            },
+            "uamiPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', parameters('UamiName')), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('mgmtRgName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
+      ]
+    },
+    {
+      "copy": {
+        "name": "rbacAssignmentsK8s",
+        "count": "[length(items(parameters('workloadIdentities')))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('deploy-rbac-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
+      "resourceGroup": "[variables('k8sRgName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "uamiPrincipalId": {
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiPrincipalIds.value[0]]"
+          },
+          "roleDefinitionId": {
+            "value": "[variables('roleIdMap')[items(parameters('workloadIdentities'))[copyIndex()].value.ROLE]]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.36.1.42791",
+              "templateHash": "12806316129951810008"
+            }
+          },
+          "parameters": {
+            "uamiPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Principal ID of the User-Assigned Managed Identity"
+              }
+            },
+            "roleDefinitionId": {
+              "type": "string",
+              "metadata": {
+                "description": "Role definition ID to assign (full resource path)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(parameters('uamiPrincipalId'), parameters('roleDefinitionId'), resourceGroup().id)]",
+              "properties": {
+                "principalId": "[parameters('uamiPrincipalId')]",
+                "roleDefinitionId": "[parameters('roleDefinitionId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "roleAssignmentId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Authorization/roleAssignments', guid(parameters('uamiPrincipalId'), parameters('roleDefinitionId'), resourceGroup().id))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('k8sRgName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "uamiNames": {
+      "type": "array",
+      "copy": {
+        "count": "[length(items(parameters('workloadIdentities')))]",
+        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
+      }
+    },
+    "uamiPrincipalIds": {
+      "type": "array",
+      "copy": {
+        "count": "[length(items(parameters('workloadIdentities')))]",
+        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiPrincipalIds.value[0]]"
+      }
+    },
+    "federatedCredentialNames": {
+      "type": "array",
+      "copy": {
+        "count": "[length(items(parameters('workloadIdentities')))]",
+        "input": {
+          "env": "[if(contains(split(items(parameters('workloadIdentities'))[copyIndex()].value.federationTypes, ','), 'environment'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.federatedCredentialName.value, null())]"
+        }
+      }
+    },
+    "managementResourceGroupName": {
+      "type": "string",
+      "value": "[variables('mgmtRgName')]"
+    },
+    "hubResourceGroupName": {
+      "type": "string",
+      "value": "[variables('hubRgName')]"
+    },
+    "k8sResourceGroupName": {
+      "type": "string",
+      "value": "[variables('k8sRgName')]"
+    },
+    "tenantId": {
+      "type": "string",
+      "value": "[subscription().tenantId]"
+    },
+    "subscriptionId": {
+      "type": "string",
+      "value": "[subscription().subscriptionId]"
+    },
+    "environmentName": {
+      "type": "string",
+      "value": "[parameters('environmentName')]"
+    }
+  }
+}
