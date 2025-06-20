@@ -2,7 +2,7 @@
 // Implements Cloud Adoption Framework tagging standards
 
 @description('Environment name')
-@allowed(['dev', 'staging', 'prod', 'shared'])
+@allowed(['dev', 'prod', 'shared'])
 param environment string
 
 @description('Project code (2-3 lowercase letters)')

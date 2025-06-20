@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.1.42791",
-      "templateHash": "1628636987514842155"
+      "templateHash": "7657787068491965351"
     }
   },
   "parameters": {
@@ -108,9 +108,8 @@
     ],
     "envMapping": {
       "dev": "d",
-      "staging": "s",
       "prod": "p",
-      "shared": "sh"
+      "shared": "s"
     },
     "standardTags": {
       "environment": "shared",

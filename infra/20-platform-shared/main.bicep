@@ -4,7 +4,7 @@
 param resourceLocation string = 'spaincentral'
 
 @description('Environment for deployment')
-@allowed(['dev', 'staging', 'prod', 'shared'])
+@allowed(['dev', 'prod', 'shared'])
 param environment string = 'shared'
 
 @description('Project code')
@@ -58,9 +58,8 @@ param cosmosThroughput int = 1000
 // Environment mapping
 var envMapping = {
   dev: 'd'
-  staging: 's'
   prod: 'p'
-  shared: 'sh'
+  shared: 's'
 }
 
 // Standard tags

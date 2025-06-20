@@ -7,8 +7,8 @@
 @maxLength(3)
 param projectCode string = 'ss'
 
-@description('Environment (dev, staging, prod, shared)')
-@allowed(['dev', 'staging', 'prod', 'shared'])
+@description('Environment (dev, prod, shared)')
+@allowed(['dev', 'prod', 'shared'])
 param environment string
 
 @description('Service code (2-4 lowercase letters)')
@@ -26,9 +26,8 @@ param sequence string = ''
 // Environment mapping function
 var envMapping = {
   dev: 'd'
-  staging: 's'
   prod: 'p'
-  shared: 'sh'
+  shared: 's'
 }
 
 // Get mapped environment

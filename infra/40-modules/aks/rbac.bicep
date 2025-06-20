@@ -1,3 +1,5 @@
+// RBAC role assignments for AKS platform services
+// Configures access permissions for Key Vault, ACR, and AKS resources
 @description('ID of the Azure Key Vault')
 @minLength(1)
 param keyVaultId string

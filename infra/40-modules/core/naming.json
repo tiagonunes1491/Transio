@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.1.42791",
-      "templateHash": "10923006439070084449"
+      "templateHash": "17848636303774744973"
     }
   },
   "parameters": {
@@ -22,12 +22,11 @@
       "type": "string",
       "allowedValues": [
         "dev",
-        "staging",
         "prod",
         "shared"
       ],
       "metadata": {
-        "description": "Environment (dev, staging, prod, shared)"
+        "description": "Environment (dev, prod, shared)"
       }
     },
     "serviceCode": {
@@ -51,7 +50,8 @@
         "swa",
         "kv",
         "acr",
-        "cosmos"
+        "cosmos",
+        "id"
       ],
       "metadata": {
         "description": "Resource type code"
@@ -68,9 +68,8 @@
   "variables": {
     "envMapping": {
       "dev": "d",
-      "staging": "s",
       "prod": "p",
-      "shared": "sh"
+      "shared": "s"
     },
     "mappedEnv": "[variables('envMapping')[parameters('environment')]]",
     "baseName": "[format('{0}-{1}-{2}-{3}{4}', parameters('projectCode'), variables('mappedEnv'), parameters('serviceCode'), parameters('resourceType'), if(empty(parameters('sequence')), '', parameters('sequence')))]",

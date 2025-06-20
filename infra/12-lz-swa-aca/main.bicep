@@ -21,8 +21,8 @@ targetScope = 'subscription'
 // Parameters
 // ========================================================
 
-@description('Environment for the deployment (e.g., dev, staging, prod)')
-@allowed(['dev', 'staging', 'prod'])
+@description('Environment for the deployment (e.g., dev, prod)')
+@allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
 @description('Azure region where resources will be deployed')
@@ -72,9 +72,8 @@ param workloadIdentities object = {
 // Environment mapping
 var envMapping = {
   dev: 'd'
-  staging: 's'
   prod: 'p'
-  shared: 'sh'
+  shared: 's'
 }
 
 // Standard tags

@@ -1,3 +1,5 @@
+// Platform AKS infrastructure deployment
+// Deploys AKS platform resources including Cosmos DB integration
 targetScope = 'subscription'
 
 @description('The Azure AD tenant ID that should be used for authenticating requests to the key vault. Defaults to the current subscription tenant ID.')

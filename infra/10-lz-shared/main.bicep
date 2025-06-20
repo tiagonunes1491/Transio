@@ -59,9 +59,8 @@ param workloadIdentities object = {
 // Environment mapping
 var envMapping = {
   dev: 'd'
-  staging: 's'
   prod: 'p'
-  shared: 'sh'
+  shared: 's'
 }
 
 // Standard tags

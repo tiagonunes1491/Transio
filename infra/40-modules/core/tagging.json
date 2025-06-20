@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.1.42791",
-      "templateHash": "4707041946575948066"
+      "templateHash": "7158475074293203830"
     }
   },
   "parameters": {
@@ -13,7 +13,6 @@
       "type": "string",
       "allowedValues": [
         "dev",
-        "staging",
         "prod",
         "shared"
       ],
