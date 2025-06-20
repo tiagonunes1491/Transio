@@ -38,13 +38,11 @@ param gitHubRepositoryName string
 @description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
 param workloadIdentities object = {
     creator: {
-        UAMI: 'creator'
         ENV: 'shared-protected'
         ROLE: 'contributor'
         federationTypes: 'environment'
     }
     push: {
-        UAMI: 'acr-push'
         ENV: 'shared'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
@@ -79,7 +77,7 @@ module hubRgNamingModule '../40-modules/core/naming.bicep' = {
 // Generate RG names using consistent naming pattern
 // Exceptionally uses variable for RG creation because they no be compiled at runtime
 var hubRgName = toLower('${projectCode}-${envMapping.shared}-${serviceCode}-rg')
-var mgmtRgName = toLower('${projectCode}-${envMapping.shared}-mgmt-rg')
+var mgmtRgName = toLower('${projectCode}-i-mgmt-rg')
 
 // Standard tags using consistent pattern
 var standardTags = {
@@ -93,22 +91,6 @@ var standardTags = {
   createdDate: createdDate
   managedBy: 'bicep'
   deployment: deployment().name
-}
-
-// Generate standardized tags using the tagging module (for use within resource groups)
-module standardTagsModule '../40-modules/core/tagging.bicep' = {
-  name: 'standard-tags-shared'
-  scope: subscription()
-  params: {
-    environment: 'shared'
-    project: projectCode
-    service: serviceCode
-    costCenter: costCenter
-    createdBy: createdBy
-    owner: owner
-    ownerEmail: ownerEmail
-    createdDate: createdDate
-  }
 }
 
 

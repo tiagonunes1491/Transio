@@ -44,13 +44,11 @@ param gitHubRepositoryName string
 @description('K8S workload identities configuration with roles and federation settings')
 param workloadIdentities object = {
   k8s: {
-    UAMI: 'k8s'
     ENV: environmentName
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
   k8sDeploy: {
-    UAMI: 'k8s-deploy'
     ENV: environmentName
     ROLE: 'AcrPull'
     federationTypes: 'environment'
@@ -71,7 +69,7 @@ var envMapping = {
 // Generate RG names using consistent naming pattern
 var hubRgName = toLower('${projectCode}-${envMapping.shared}-hub-rg')
 var k8sRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')
-var mgmtRgName = toLower('${projectCode}-${envMapping[environmentName]}-mgmt-rg')
+var mgmtRgName = toLower('${projectCode}-i-mgmt-rg')
 
 // Standard tags using consistent pattern
 var standardTags = {
@@ -87,21 +85,6 @@ var standardTags = {
   deployment: deployment().name
 }
 
-// Generate standardized tags using the tagging module (for use within resource groups)
-module standardTagsModule '../40-modules/core/tagging.bicep' = {
-  name: 'standard-tags-aks'
-  scope: subscription()
-  params: {
-    environment: environmentName
-    project: projectCode
-    service: serviceCode
-    costCenter: costCenter
-    createdBy: createdBy
-    owner: owner
-    ownerEmail: ownerEmail
-    createdDate: createdDate
-  }
-}
 
 // =====================================================
 // Variables
@@ -155,8 +138,9 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(
   params: {
     projectCode: projectCode
     environment: environmentName
-    serviceCode: item.value.UAMI
-    resourceType: 'uai'
+    serviceCode: serviceCode
+    resourceType: 'id'
+    suffix: item.key  
   }
 }]
 

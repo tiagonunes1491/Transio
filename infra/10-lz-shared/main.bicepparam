@@ -40,13 +40,11 @@ param gitHubRepositoryName = 'SecureSharer'
 @description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
 param workloadIdentities = {
     contributor: {
-        UAMI: 'uami-ssharer-shared-infra-creator'
         ENV: 'shared-protected'
         ROLE: 'contributor'
         federationTypes: 'environment'
     }
     acrPush: {
-        UAMI: 'uami-ssharer-acr-push'
         ENV: 'shared'
         ROLE: 'AcrPush'
         federationTypes: 'environment'

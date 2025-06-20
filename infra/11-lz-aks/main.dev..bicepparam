@@ -30,15 +30,14 @@ param gitHubRepositoryName = 'SecureSharer'
 // These UAMIs will be used for K8S workloads and deployments
 param workloadIdentities = {
   // Main K8S workload identity with Contributor access to K8S spoke RG
-  k8s: {
+  contributor: {
     UAMI: 'k8s'
     ENV: 'dev'
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
   // K8S deployment identity with ACR Pull access for container image pulls
-  k8sDeploy: {
-    UAMI: 'k8s-deploy'
+  acrPull: {
     ENV: 'dev'
     ROLE: 'AcrPull'
     federationTypes: 'environment'

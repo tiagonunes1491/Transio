@@ -43,7 +43,7 @@ param acrSku string = 'Premium'
 param acrEnableAdminUser bool = false
 
 @description('The names of the databases to create')
-param cosmosDatabaseNames array = [ 'swa-dev', 'swa-prod', 'k8s-dev', 'k8s-prod' ]
+param cosmosDatabaseNames array = [ 'swa-dev', 'swa-prod', 'aks-dev', 'aks-prod' ]
 
 @description('The name of the container to create in each database')
 param cosmosContainerName string = 'secret'
@@ -109,7 +109,7 @@ module acr '../40-modules/shared-services/acr.bicep' = {
   }
 }
 
-// Deploy Cosmos DB for shared use across K8S and SWA deployments
+// Deploy Cosmos DB for shared use across AKS and SWA deployments
 module cosmosDb '../40-modules/shared-services/cosmos-db.bicep' = {
   name: 'deploy-cosmos-db'
   params: {
