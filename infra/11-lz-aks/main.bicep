@@ -1,41 +1,39 @@
-// landing-zone-k8s.bicep
 // K8S Landing Zone Infrastructure for Secure Secret Sharer
-// =====================================================
-//
-// This Bicep template creates K8S-specific landing zone infrastructure including:
+// Creates K8S-specific landing zone infrastructure including:
 // - K8S spoke resource group for hosting AKS and related resources
 // - User-assigned managed identities for K8S workloads and deployments
 // - GitHub federated credentials for CI/CD authentication
 // - RBAC role assignments for managed identities
-//
-// Prerequisites:
-// - Shared landing zone infrastructure must exist (rg-ssharer-artifacts-hub)
-// - GitHub repository configured for OIDC authentication
-//
-// Usage:
-// az deployment sub create --location spaincentral --template-file landing-zone-k8s.bicep --parameters landing-zone-k8s.bicepparam
-//
-
 targetScope = 'subscription'
 
-// =====================================================
-// Parameters
-// =====================================================
-
-@description('Environment for the deployment (e.g., dev, staging, prod)')
+// Environment configuration
+@description('Environment for the deployment (e.g., dev, prod)')
+@allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
 @description('Azure region where resources will be deployed')
 param location string = 'spaincentral'
 
-@description('Name of the management resource group for UAMIs and federated credentials')
-param managementResourceGroupName string = 'rg-ssharer-mgmt-${environmentName}'
+@description('Project code')
+param projectCode string = 'ss'
 
-@description('Resource tags applied to all created resources')
-param tags object = {
-  Application: 'Secure Sharer'
-  environment: environmentName
-}
+@description('Service code for K8S platform')
+param serviceCode string = 'aks'
+
+@description('Cost center for billing')
+param costCenter string = '1000'
+
+@description('Created by information')
+param createdBy string = 'bicep-deployment'
+
+@description('Owner')
+param owner string = 'tiago-nunes'
+
+@description('Owner email')
+param ownerEmail string = 'tiago.nunes@example.com'
+
+@description('Creation date for tagging')
+param createdDate string = utcNow('yyyy-MM-dd')
 
 @description('GitHub organization name for federated credential setup')
 param gitHubOrganizationName string
@@ -43,24 +41,54 @@ param gitHubOrganizationName string
 @description('GitHub repository name for federated credential setup')
 param gitHubRepositoryName string
 
-@description('Shared artifacts resource group name (must exist from shared landing zone)')
-param sharedArtifactsResourceGroupName string = 'rg-ssharer-artifacts-hub'
-
 @description('K8S workload identities configuration with roles and federation settings')
 param workloadIdentities object = {
   k8s: {
-    UAMI: 'uami-ssharer-k8s-${environmentName}'
+    UAMI: 'k8s'
     ENV: environmentName
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
   k8sDeploy: {
-    UAMI: 'uami-ssharer-k8s-deploy-${environmentName}'
+    UAMI: 'k8s-deploy'
     ENV: environmentName
     ROLE: 'AcrPull'
     federationTypes: 'environment'
   }
 }
+
+// =====================================================
+// Name Generation and Tagging
+// =====================================================
+
+// Environment mapping
+var envMapping = {
+  dev: 'd'
+  prod: 'p'
+  shared: 's'
+}
+
+// Standard tags
+var standardTags = {
+  environment: environmentName
+  project: projectCode
+  service: serviceCode
+  costCenter: costCenter
+  createdBy: createdBy
+  owner: owner
+  ownerEmail: ownerEmail
+  createdDate: createdDate
+  managedBy: 'bicep'
+  deployment: deployment().name
+}
+
+// Generate resource names using naming convention
+var hubRgName = '${projectCode}-${envMapping.shared}-hub-rg'
+var k8sRgName = '${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg'
+var mgmtRgName = '${projectCode}-${envMapping[environmentName]}-mgmt-rg'
+
+// Generate UAMI names
+var uamiNames = [for item in items(workloadIdentities): '${projectCode}-${envMapping[environmentName]}-${item.value.UAMI}-id']
 
 // =====================================================
 // Variables
@@ -82,7 +110,7 @@ var roleIdMap = {
 
 // Reference to existing shared artifacts resource group (created by shared landing zone)
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
-  name: sharedArtifactsResourceGroupName
+  name: hubRgName
 }
 
 // =====================================================
@@ -91,20 +119,16 @@ resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
 
 // K8S spoke resource group for AKS cluster and related resources
 resource k8sRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ssharer-k8s-spoke-${environmentName}'
+  name: k8sRgName
   location: location
-  tags: tags
+  tags: standardTags
 }
 
 // Management resource group for UAMIs and federated credentials
 resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: managementResourceGroupName
+  name: mgmtRgName
   location: location
-  tags: {
-    Application: 'Secure Sharer'
-    environment: environmentName
-    purpose: 'management'
-  }
+  tags: standardTags
 }
 
 // =====================================================
@@ -117,8 +141,8 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
   scope: managementRg
   params: {
     uamiLocation: location
-    uamiNames: [item.value.UAMI]
-    tags: tags
+    uamiNames: [uamiNames[i]]
+    tags: standardTags
   }
 }]
 

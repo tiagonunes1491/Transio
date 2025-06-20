@@ -1,3 +1,5 @@
+// Private DNS Zone configuration
+// Creates private DNS zones and VNet links for private endpoints
 @description('Private DNS Zone name')
 param privateDnsZoneName string
 @description('Virtual Network ID for the Private DNS Zone link')

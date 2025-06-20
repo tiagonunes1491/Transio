@@ -1,23 +1,36 @@
-//  The Orchestrator for landing zone deployment for Secure Sharer shared resources
-// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure.
+// Shared Landing Zone Infrastructure for Secure Secret Sharer
+// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure
 targetScope = 'subscription'
 
-// =====================
-// Parameters
-// =====================
-
+// Resource configuration
 @description('Location for the resources')
-param location string = 'spaincentral' // Default location, can be overridden
+param location string = 'spaincentral'
 
-@description('Name of the management resource group')
-param managementResourceGroupName string = 'rg-ssharer-mgmt-shared'
+@description('Project code')
+param projectCode string = 'ss'
 
-@description('Tags for resources')
-param tags object = {
-  Application: 'Secure Sharer'
-  environment: 'shared'
-}
+@description('Service code for shared services')
+param serviceCode string = 'hub'
+@description('Service code for shared services')
+param serviceCode string = 'hub'
 
+// Tagging configuration
+@description('Cost center for billing')
+param costCenter string = '1000'
+
+@description('Created by information')
+param createdBy string = 'bicep-deployment'
+
+@description('Owner')
+param owner string = 'tiago-nunes'
+
+@description('Owner email')
+param ownerEmail string = 'tiago.nunes@example.com'
+
+@description('Creation date for tagging')
+param createdDate string = utcNow('yyyy-MM-dd')
+
+// GitHub integration configuration
 @description('GitHub organization name to federate with')
 param gitHubOrganizationName string
 
@@ -27,18 +40,50 @@ param gitHubRepositoryName string
 @description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
 param workloadIdentities object = {
     creator: {
-        UAMI: 'uami-ssharer-shared-infra-creator'
+        UAMI: 'creator'
         ENV: 'shared-protected'
         ROLE: 'contributor'
         federationTypes: 'environment'
     }
     push: {
-        UAMI: 'uami-ssharer-acr-push'
+        UAMI: 'acr-push'
         ENV: 'shared'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
 }
+
+// =====================
+// Name Generation Variables
+// =====================
+
+// Environment mapping
+var envMapping = {
+  dev: 'd'
+  prod: 'p'
+  shared: 's'
+}
+
+// Standard tags
+var standardTags = {
+  environment: 'shared'
+  project: projectCode
+  service: serviceCode
+  costCenter: costCenter
+  createdBy: createdBy
+  owner: owner
+  ownerEmail: ownerEmail
+  createdDate: createdDate
+  managedBy: 'bicep'
+  deployment: deployment().name
+}
+
+// Generate names using the naming convention
+var hubRgName = '${projectCode}-${envMapping.shared}-${serviceCode}-rg'
+var mgmtRgName = '${projectCode}-${envMapping.shared}-mgmt-rg'
+
+// Generate UAMI names
+var uamiNames = [for item in items(workloadIdentities): '${projectCode}-${envMapping.shared}-${item.value.UAMI}-id']
 
 
 // =====================
@@ -59,22 +104,16 @@ var roleIdMap = {
 
 // Create the shared artifacts resource group
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ss-shared-hub'
+  name: hubRgName
   location: location
-  tags: {
-    Application: 'Secure Sharer'
-    environment: 'Shared Artifacts'
-  }
+  tags: standardTags
 }
 
 // Create the management resource group for shared infrastructure
 resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: managementResourceGroupName
+  name: mgmtRgName
   location: location
-  tags: {
-    Application: 'Secure Sharer'
-    environment: 'Shared Management'
-  }
+  tags: standardTags
 }
 
 // =====================
@@ -82,13 +121,13 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // =====================
 
 // Dynamically create UAMIs for each workload identity in the management resource group
-module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
+module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: mgmtSharedRG
   params: {
     uamiLocation: location
-    uamiNames: [item.value.UAMI]
-    tags: tags
+    uamiNames: [uamiNames[i]]
+    tags: standardTags
   }
 }]
 

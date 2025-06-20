@@ -1,3 +1,5 @@
+// Azure Key Vault configuration
+// Creates and configures Key Vault with RBAC for secure secret management
 @minLength(3)
 @maxLength(24)
 @description('Name of the keyvault')
