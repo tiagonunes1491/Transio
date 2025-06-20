@@ -73,6 +73,22 @@ module network '../40-modules/core/network.bicep' = {
   }
 }
 
+// ========== STANDARDIZED TAGGING ==========
+
+// Generate standardized tags using the tagging module
+module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-swa-platform'
+  params: {
+    environment: 'dev'
+    project: 'ss'
+    service: 'swa'
+    costCenter: '1000'
+    createdBy: 'bicep-deployment'
+    owner: 'tiago-nunes'
+    ownerEmail: 'tiago.nunes@example.com'
+  }
+}
+
 // ========== KEY VAULT & PRIVATE ENDPOINT ==========
 @description('Key Vault name')
 param akvName string = 'kv-sec-secret-sharer'
@@ -101,7 +117,7 @@ module akv '../40-modules/core/keyvault.bicep' = {
     enableRbac:              akvRbac
     enablePurgeProtection:   akvPurgeProtection
     secretsToSet:            akvSecrets
-    tags:                    tags
+    tags:                    standardTagsModule.outputs.tags
   }
 }
 
@@ -110,7 +126,7 @@ module kvDns '../40-modules/core/private-dns-zone.bicep' = {
   params: {
     privateDnsZoneName:  'privatelink.vaultcore.azure.net'
     vnetId:              network.outputs.vnetId
-    privateDnsZoneTags:  tags
+    privateDnsZoneTags:  standardTagsModule.outputs.tags
   }
 }
 
@@ -156,7 +172,7 @@ module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
   params: {
     workspaceName: 'law-secure-sharer-swa-aca-dev'
     location:      resourceLocation
-    tags:          tags
+    tags:          standardTagsModule.outputs.tags
   }
 }
 
@@ -179,7 +195,7 @@ module uami '../40-modules/core/uami.bicep' = {
   params: {
     uamiNames:     [ 'uai-ss-aca-dev' ]
     uamiLocation:  resourceLocation
-    tags:          tags
+    tags:          standardTagsModule.outputs.tags
   }
 }
 
@@ -203,7 +219,7 @@ module stubApp '../40-modules/swa-aca/container-app.bicep' = {
     acrLoginServer:   acrLoginServer
     uamiId:           uami.outputs.uamiIds[0]
     location:         resourceLocation      // same as ACA env
-    tags:             tags
+    tags:             standardTagsModule.outputs.tags
   }
 }
 
@@ -214,7 +230,7 @@ module staticWebApp '../40-modules/swa-aca/static-web-app.bicep' = {
     swaName:  swaName
     location: 'westeurope'     // Static Web Apps aren’t supported in Spain Central (yet)
     uamiId:   uami.outputs.uamiIds[0]
-    tags:     tags
+    tags:     standardTagsModule.outputs.tags
   }
 }
 

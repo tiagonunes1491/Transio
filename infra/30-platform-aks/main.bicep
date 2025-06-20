@@ -59,6 +59,25 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' existing = {
   name: rgName
 }
 
+// =====================
+// Standardized Tagging
+// =====================
+
+// Generate standardized tags using the tagging module
+module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-aks-platform'
+  scope: rg
+  params: {
+    environment: 'dev'
+    project: 'ss'
+    service: 'aks'
+    costCenter: '1000'
+    createdBy: 'bicep-deployment'
+    owner: 'tiago-nunes'
+    ownerEmail: 'tiago.nunes@example.com'
+  }
+}
+
 // NSG
 
 @description('Name of the Network Security Group')
@@ -116,7 +135,7 @@ module appGwNsg '../40-modules/aks/nsg.bicep' = {
   scope: rg
   params: {
     nsgName: appGwNsgName
-    tags: tags
+    tags: standardTagsModule.outputs.tags
     allowRules: appGwNsgAllowRules
     denyRules: appGwNsgDenyRules
     location: resourceLocation
@@ -200,7 +219,7 @@ module akv '../40-modules/core/keyvault.bicep' = {
   params: {
     keyvaultName: akvName
     location: resourceLocation
-    tags: tags
+    tags: standardTagsModule.outputs.tags
     sku: akvSku
     tenantId: tenantId
     enableRbac: akvRbac
@@ -255,7 +274,7 @@ module aks '../40-modules/aks/aks.bicep' = {
   scope: rg
   params: {    
     location: resourceLocation
-    tags: tags
+    tags: standardTagsModule.outputs.tags
     aksAdminGroupObjectIds: aksAdminGroupObjectIds
     aksName: aksName
     dnsPrefix: dnsPrefix
@@ -286,7 +305,7 @@ module uami '../40-modules/core/uami.bicep' = {
   params: {
     uamiLocation: resourceLocation
     uamiNames: uamiNames
-    tags: tags
+    tags: standardTagsModule.outputs.tags
   }
 }
 
@@ -342,7 +361,7 @@ module appGw '../40-modules/aks/appgw.bicep' = {
   params: {
     appGwName: appGwName
     location: resourceLocation
-    tags: tags
+    tags: standardTagsModule.outputs.tags
     sku: appGwSku
     publicIpName: appGwPublicIpName
     appGwSubnetId: network.outputs.subnetIds[1]
