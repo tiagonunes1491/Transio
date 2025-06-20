@@ -33,26 +33,36 @@ param owner string = 'tiago-nunes'
 param ownerEmail string = 'tiago.nunes@example.com'
 
 @description('Image for the stub Container App')
-param stubContainerImage string = '${acrLoginServer}/hello-world:latest'
+param stubContainerImage string
 
 // ========== SHARED INFRASTRUCTURE REFERENCES ==========
+@description('Existing Platform Resource Group Name')
+param sharedResourceGroupName string
+
 @description('Existing ACR name from shared infrastructure')
 param acrName string
 
-@description('Existing ACR login server from shared infrastructure')
-param acrLoginServer string
+// Reference existing ACR resource to get its ID and login server automatically
+resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: acrName
+  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
+}
 
-@description('Existing ACR resource ID from shared infrastructure')
-param acrId string
+//Reference existing Cosmos DB account for RBAC assignment
+@description('Shared Cosmos DB account name from the shared infrastructure')
+param cosmosDbAccountName string
 
-@description('Existing Cosmos DB endpoint from shared infrastructure')
-param cosmosDbEndpoint string
-
-@description('Cosmos database name to use (existing)')
+@description('Cosmos DB database name')
 param cosmosDatabaseName string = 'paas-dev'
 
-@description('Cosmos container name to use (existing)')
+@description('Cosmos DB container name')
 param cosmosContainerName string = 'secret'
+
+resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+  name: cosmosDbAccountName
+  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
+}
+
 
 // ========== VNET & SUBNETS ==========
 var addressSpace = [ '10.0.0.0/16' ]
@@ -125,29 +135,18 @@ module lawNamingModule '../40-modules/core/naming.bicep' = {
     projectCode: projectCode
     environment: environmentName
     serviceCode: serviceCode
-    resourceType: 'law'
+    resourceType: 'log'
   }
 }
 
 module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
   scope: subscription()
   name: 'aca-env-naming'
-  params: {
+  params: {    
     projectCode: projectCode
     environment: environmentName
     serviceCode: serviceCode
     resourceType: 'cae'
-  }
-}
-
-module uamiNamingModule '../40-modules/core/naming.bicep' = {
-  scope: subscription()
-  name: 'uami-naming'
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'uai'
   }
 }
 
@@ -241,7 +240,7 @@ module acrPe '../40-modules/core/private-endpoint.bicep' = {
     privateEndpointLocation:   resourceLocation
     privateEndpointSubnetId:   network.outputs.subnetIds[1]
     privateEndpointGroupId:    'registry'
-    privateEndpointServiceId:  acrId
+    privateEndpointServiceId:  sssplatacr.id
     privateEndpointTags:       standardTagsModule.outputs.tags
     privateDnsZoneIds:         [ acrDns.outputs.privateDnsZoneId ]
   }
@@ -257,8 +256,8 @@ module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
   }
 }
 
-// ========== ACA ENVIRONMENT & UAMI ==========
-module acaEnv '../40-modules/swa-aca/aca-environment.bicep' = {
+// ========== ACA ENVIRONMENT ==========
+module acaEnv '../40-modules/swa/aca-environment.bicep' = {
   name:  'acaEnvironment'
   params: {
     acaEnvironmentName:     acaEnvNamingModule.outputs.resourceName
@@ -269,46 +268,55 @@ module acaEnv '../40-modules/swa-aca/aca-environment.bicep' = {
   }
 }
 
-module uami '../40-modules/core/uami.bicep' = {
-  name: 'uami'
-  params: {
-    uamiNames:     [ uamiNamingModule.outputs.resourceName ]
-    uamiLocation:  resourceLocation
-    tags:          standardTagsModule.outputs.tags
-  }
-}
-
-// ========== RBAC ASSIGNMENTS ==========
-module rbac '../40-modules/swa-aca/rbac.bicep' = {
-  name: 'rbac'
-  params: {
-    keyVaultId:    akv.outputs.keyvaultId
-    acrId:         acrId
-    uamiId:        uami.outputs.uamiPrincipalIds[0]
-  }
-}
-
-// ========== STUB CONTAINER APP ==========
-module stubApp '../40-modules/swa-aca/container-app.bicep' = {
+// ========== CONTAINER APP (with System Identity) ==========
+module stubApp '../40-modules/swa/container-app.bicep' = {
   name:  'stubContainerApp'
-  params: {
-    containerAppName: containerAppNamingModule.outputs.resourceName
+  params: {    containerAppName: containerAppNamingModule.outputs.resourceName
     environmentId:    acaEnv.outputs.acaEnvironmentId
     image:            stubContainerImage
-    acrLoginServer:   acrLoginServer
-    uamiId:           uami.outputs.uamiIds[0]
-    location:         resourceLocation      // same as ACA env
+    acrLoginServer:   sssplatacr.properties.loginServer
+    location:         resourceLocation
     tags:             standardTagsModule.outputs.tags
   }
 }
 
+// ========== RBAC ASSIGNMENTS (using Container App's System Identity) ==========
+
+// Deploy Key Vault RBAC in the current resource group
+module keyVaultRbac '../40-modules/swa/rbac.bicep' = {
+  name: 'keyVaultRbac'
+  scope: resourceGroup()
+  params: {
+    keyVaultId: akv.outputs.keyvaultId
+    id: stubApp.outputs.containerAppPrincipalId
+    // Only set keyVaultId, leave others empty to skip ACR/CosmosDB roles
+    acrId: ''
+    cosmosDbAccountId: ''
+    cosmosDatabaseName: ''
+  }
+}
+
+// Deploy ACR and Cosmos DB RBAC in the shared resource group
+module sharedResourcesRbac '../40-modules/swa/rbac.bicep' = {
+  name: 'sharedResourcesRbac'
+  scope: resourceGroup(sharedResourceGroupName)
+  params: {
+    acrId: sssplatacr.id
+    cosmosDbAccountId: sssplatcosmos.id
+    cosmosDatabaseName: cosmosDatabaseName
+    id: stubApp.outputs.containerAppPrincipalId
+    // Only set ACR/CosmosDB params, leave Key Vault empty to skip Key Vault roles
+    keyVaultId: ''
+  }
+}
+
 // ========== STATIC WEB APP STUB ==========
-module staticWebApp '../40-modules/swa-aca/static-web-app.bicep' = {
+module staticWebApp '../40-modules/swa/static-web-app.bicep' = {
   name:  'staticWebApp'
   params: {
     swaName:  swaNamingModule.outputs.resourceName
     location: 'westeurope'     // Static Web Apps aren’t supported in Spain Central (yet)
-    uamiId:   uami.outputs.uamiIds[0]
+    backendResourceId: stubApp.outputs.containerAppId  // Link to Container App for API routing
     tags:     standardTagsModule.outputs.tags
   }
 }
@@ -316,12 +324,13 @@ module staticWebApp '../40-modules/swa-aca/static-web-app.bicep' = {
 
 // ========== OUTPUTS ==========
 output acrName               string = acrName
-output acrLoginServer        string = acrLoginServer  // Using parameter instead of module output
+output acrLoginServer        string = sssplatacr.properties.loginServer  // Get from existing resource
 output acaEnvironmentId      string = acaEnv.outputs.acaEnvironmentId
-output uamiId                string = uami.outputs.uamiIds[0]
+output containerAppPrincipalId string = stubApp.outputs.containerAppPrincipalId  // System identity
 output keyVaultUri           string = akv.outputs.keyvaultUri
-output cosmosDbEndpoint      string = cosmosDbEndpoint
+output cosmosDbAccountName   string = cosmosDbAccountName
 output cosmosDatabaseName    string = cosmosDatabaseName
 output cosmosContainerName   string = cosmosContainerName
 output containerAppId        string = stubApp.outputs.containerAppId
 output staticWebAppId        string = staticWebApp.outputs.staticWebAppId
+output staticWebAppHostname  string = staticWebApp.outputs.staticWebAppHostname

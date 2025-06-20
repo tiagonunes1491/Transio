@@ -11,23 +11,17 @@ param image string
 @description('ACR login server (for the registries block)')
 param acrLoginServer string
 
-@description('User-assigned identity that already has AcrPull')
-param uamiId string
-
 @description('Location')
 param location string
 
 @description('Common tags')
 param tags object
 
-resource app 'Microsoft.App/containerApps@2025-02-02-preview' = {
+resource app 'Microsoft.App/containerApps@2025-01-01' = {
   name: containerAppName
   location: location
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uamiId}': {}
-    }
+    type: 'SystemAssigned'
   }
   tags: tags
   properties: {
@@ -36,12 +30,14 @@ resource app 'Microsoft.App/containerApps@2025-02-02-preview' = {
       registries: [
         {
           server: acrLoginServer
-          identity: uamiId
+          identity: 'system'  // Use system-assigned identity for ACR access
         }
       ]
       ingress: {
-        external: true
+        external: false  // Internal access only (for SWA backend linking)
         targetPort: 80
+        transport: 'http'
+        allowInsecure: true  // Since it's internal traffic from SWA
       }
       activeRevisionsMode: 'Single'
     }
@@ -65,3 +61,4 @@ resource app 'Microsoft.App/containerApps@2025-02-02-preview' = {
 }
 
 output containerAppId string = app.id
+output containerAppPrincipalId string = app.identity.principalId  // System identity principal ID for RBAC
