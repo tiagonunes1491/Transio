@@ -9,12 +9,6 @@ param acrId string
 @description('UAMI Principal IDs array to give access to Key Vault and ACR')
 param uamiId string 
 
-@description('ACA subnet ID for deployment script networking')
-param acaSubnetId string
-
-@description('ID of the Storage Account for deployment scripts')
-param storageAccountId string
-
 @description('Shared Cosmos DB account ID for RBAC assignment')
 param cosmosDbAccountId string = ''
 
@@ -34,23 +28,6 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   scope: resourceGroup()
   name: split(acrId, '/')[8]
-}
-
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = {
-  scope: resourceGroup()
-  name: split(storageAccountId, '/')[8]
-}
-
-// Define the existing virtual network resource
-resource acaVnet 'Microsoft.Network/virtualNetworks@2023-05-01' existing = {
-  scope: resourceGroup()
-  name: split(acaSubnetId, '/')[8]
-}
-
-// Define the existing subnet resource using the subnet's ID provided as parameter
-resource acaSubnet 'Microsoft.Network/virtualNetworks/subnets@2023-05-01' existing = {
-  name: split(acaSubnetId, '/')[10]
-  parent: acaVnet
 }
 
 // Reference to existing Cosmos DB account for RBAC assignment
@@ -80,27 +57,6 @@ resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-// Network Contributor role assignment for deployment script VNet integration
-resource networkRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-    scope: acaSubnet
-    name: guid(acaSubnet.id, uamiId, networkContributorRoleId)
-    properties: {
-      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', networkContributorRoleId)
-      principalId: uamiId
-      principalType: 'ServicePrincipal'
-  }
-}
-
-// Storage File Data Privileged Contributor role assignment for deployment scripts
-resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-    scope: storageAccount
-    name: guid(storageAccount.id, uamiId, 'StorageFileDataPrivilegedContributor')
-    properties: {
-      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageFileDataPrivilegedContributorRoleId)
-      principalId: uamiId
-      principalType: 'ServicePrincipal'
-  }
-}
 
 // Cosmos DB Data Contributor role assignment for managed identity
 resource cosmosDbRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = if (!empty(cosmosDbAccountId)) {
@@ -116,6 +72,4 @@ resource cosmosDbRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAs
 // Outputs
 output acrRoleAssignmentId string = acrRoleAssignment.id
 output keyVaultRoleAssignmentId string = kvRoleAssignment.id
-output networkRoleAssignmentId string = networkRoleAssignment.id
-output storageRoleAssignmentId string = storageRoleAssignment.id
 output cosmosDbRoleAssignmentId string = !empty(cosmosDbAccountId) ? cosmosDbRoleAssignment.id : ''

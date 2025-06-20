@@ -5,7 +5,7 @@
 // - GitHub federated credentials for shared infrastructure
 // - ACR push permissions for container image publishing
 
-using 'landing-zone-shared.bicep'
+using 'main.bicep'
 
 // Environment configuration
 @description('Location for the resources')

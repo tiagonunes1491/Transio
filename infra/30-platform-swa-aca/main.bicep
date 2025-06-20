@@ -1,168 +1,256 @@
-// main.bicep
-// This deploys the entire platform with stubbed ACA and SWA, ready for CI/CD artifact delivery
+// infra/30-platform-swa-aca/main.bicep
+// Single entry-point for platform: network, key vault, log analytics, PCA environment, UAMI, RBAC, plus ACA & SWA stubs
 
-// ========== PARAMETERS ==========
 targetScope = 'subscription'
 
-@description('Azure location')
-param location string = 'westeurope'
+@description('Azure AD tenant ID for Key Vault authentication')
+param tenantId string = subscription().tenantId
 
-@description('Resource Group Name')
+@description('Deployment location')
+param resourceLocation string = 'spaincentral'
+
+@description('Resource group name')
 param rgName string = 'rg-secure-sharer-swa-aca-dev'
 
-@description('Cosmos DB Info')
-param cosmosDbAccountName string
+@description('Common tags object')
+param tags object = {
+  environment: 'dev'
+  project:     'secure-secret-sharer'
+  owner:       'Tiago'
+  flavor:      'SWA-ACA'
+}
+
+@description('Name for stub Container App')
+param stubContainerAppName string = 'app-ss-aca-dev'
+
+@description('Image for the stub Container App')
+param stubContainerImage string = '${acrLoginServer}/hello-world:latest'
+
+@description('Static Web App name')
+param swaName string = 'swa-secure-sharer-dev'
+
+
+// ========== SHARED INFRASTRUCTURE REFERENCES ==========
+@description('Existing ACR name from shared infrastructure')
+param acrName string
+
+@description('Existing ACR login server from shared infrastructure')
+param acrLoginServer string
+
+@description('Existing ACR resource ID from shared infrastructure')
+param acrId string
+
+@description('Existing Cosmos DB endpoint from shared infrastructure')
 param cosmosDbEndpoint string
-param cosmosDatabaseName string = 'SecureSharer'
-param cosmosContainerName string = 'secrets'
-param sharedResourceGroupName string
 
-@description('Tag object')
-param tags object
+@description('Cosmos database name to use (existing)')
+param cosmosDatabaseName string = 'paas-dev'
 
-@description('Key Vault secrets object (secure)')
+@description('Cosmos container name to use (existing)')
+param cosmosContainerName string = 'secret'
+
+// ========== RESOURCE GROUP ==========
+resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' = {
+  name:     rgName
+  location: resourceLocation
+  tags:     tags
+}
+
+// ========== VNET & SUBNETS ==========
+@description('Name of virtual network')
+param vnetName string = 'vnet-secureSecretSharer'
+
+var addressSpace = [ '10.0.0.0/16' ]
+var subnets = [
+  {
+    name:          'snet-aca'
+    addressPrefix: '10.0.10.0/23'
+  }
+  {
+    name:                             'snet-pe'
+    addressPrefix:                    '10.0.30.0/24'
+    privateEndpointNetworkPolicies:  'Disabled'
+  }
+]
+module network '../40-modules/core/network.bicep' = {
+  name:  'network'
+  scope: rg
+  params: {
+    vnetName:      vnetName
+    location:      resourceLocation
+    addressSpace:  addressSpace
+    subnets:       subnets
+    tags:          tags
+  }
+}
+
+// ========== KEY VAULT & PRIVATE ENDPOINT ==========
+@description('Key Vault name')
+param akvName string = 'kv-sec-secret-sharer'
+
+@description('Key Vault SKU')
+@allowed([ 'standard', 'premium' ])
+param akvSku string = 'standard'
+
+@description('Enable RBAC on Key Vault')
+param akvRbac bool = true
+
+@description('Enable purge protection on Key Vault')
+param akvPurgeProtection bool = true
+
+@description('Secrets to store in Key Vault')
 @secure()
 param akvSecrets object
 
-@description('ACR name')
-param acrName string
-
-// ========== RESOURCE GROUP ==========
-resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: rgName
-  location: location
-  tags: tags
-}
-
-// ========== MODULES ==========
-module network 'common-modules/network.bicep' = {
-  name: 'network'
+module akv '../40-modules/core/keyvault.bicep' = {
+  name:  'keyvault'
   scope: rg
   params: {
-    vnetName: 'vnet-secureSecretSharer'
-    location: location
-    addressSpace: [ '10.0.0.0/16' ]
-    subnets: [
-      {
-        name: 'snet-aca'
-        addressPrefix: '10.0.10.0/23'
-      }
-      {
-        name: 'snet-pe'
-        addressPrefix: '10.0.30.0/24'
-        privateEndpointNetworkPolicies: 'Disabled'
-      }
-      {
-        name: 'snet-aci'
-        addressPrefix: '10.0.40.0/24'
-        serviceEndpoints: [
-          {
-            service: 'Microsoft.Storage'
-          }
-        ]
-        delegations: [
-          {
-            name: 'aciDelegation'
-            properties: {
-              serviceName: 'Microsoft.ContainerInstance/containerGroups'
-            }
-          }
-        ]
-      }
-    ]
+    keyvaultName:            akvName
+    location:                resourceLocation
+    sku:                     akvSku
+    tenantId:                tenantId
+    enableRbac:              akvRbac
+    enablePurgeProtection:   akvPurgeProtection
+    secretsToSet:            akvSecrets
+    tags:                    tags
   }
 }
 
-module keyvault 'common-modules/keyvault.bicep' = {
-  name: 'keyvault'
+module kvDns '../40-modules/core/private-dns-zone.bicep' = {
+  name:  'kvPrivateDns'
   scope: rg
   params: {
-    keyvaultName: 'kv-sec-secret-sharer'
-    location: location
-    sku: 'standard'
-    tenantId: subscription().tenantId
-    enableRbac: true
-    enablePurgeProtection: true
-    secretsToSet: akvSecrets
-    tags: tags
+    privateDnsZoneName:  'privatelink.vaultcore.azure.net'
+    vnetId:              network.outputs.vnetId
+    privateDnsZoneTags:  tags
   }
 }
 
-module acr 'shared-infra-modules/acr.bicep' = {
-  name: 'acr'
+module kvPe '../40-modules/core/private-endpoint.bicep' = {
+  name:  'kvPrivateEndpoint'
   scope: rg
   params: {
-    acrName: acrName
-    location: location
-    sku: 'Standard'
-    enableAdminUser: false
-    tags: tags
+    privateEndpointName:         'pe-${akv.outputs.keyvaultName}'
+    privateEndpointLocation:     resourceLocation
+    privateEndpointSubnetId:     network.outputs.subnetIds[1]
+    privateEndpointGroupId:      'vault'
+    privateEndpointServiceId:    akv.outputs.keyvaultId
+    privateEndpointTags:         tags
+    privateDnsZoneIds:           [ kvDns.outputs.privateDnsZoneId ]
   }
 }
 
-module workspace 'common-modules/workspace.bicep' = {
-  name: 'workspace'
+// ========== ACR PRIVATE ENDPOINT (existing shared ACR) ==========
+module acrDns '../40-modules/core/private-dns-zone.bicep' = {
+  name:  'acrPrivateDns'
   scope: rg
   params: {
-    workspaceName: 'ws-sec-sharer'
-    location: location
-    tags: tags
+    privateDnsZoneName:  'privatelink.azurecr.io'
+    vnetId:              network.outputs.vnetId
+    privateDnsZoneTags:  tags
   }
 }
 
-module acaEnv 'swa-aca-modules/aca-environment.bicep' = {
-  name: 'acaEnvironment'
+module acrPe '../40-modules/core/private-endpoint.bicep' = {
+  name:  'acrPrivateEndpoint'
   scope: rg
   params: {
-    acaEnvironmentName: 'cae-sharer-aca-dev'
-    acaEnvironmentLocation: location
-    workspaceId: workspace.outputs.workspaceId
-    acaEnvironmentTags: tags
+    privateEndpointName:       'pe-${acrName}'
+    privateEndpointLocation:   resourceLocation
+    privateEndpointSubnetId:   network.outputs.subnetIds[1]
+    privateEndpointGroupId:    'registry'
+    privateEndpointServiceId:  acrId
+    privateEndpointTags:       tags
+    privateDnsZoneIds:         [ acrDns.outputs.privateDnsZoneId ]
+  }
+}
+
+// ========== LOG ANALYTICS WORKSPACE ==========
+module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
+  name:  'workspace'
+  scope: rg
+  params: {
+    workspaceName: 'law-secure-sharer-swa-aca-dev'
+    location:      resourceLocation
+    tags:          tags
+  }
+}
+
+// ========== ACA ENVIRONMENT & UAMI ==========
+@description('ACA Environment name')
+param acaEnvName string = 'cae-sharer-aca-dev'
+module acaEnv '../40-modules/swa-aca/aca-environment.bicep' = {
+  name:  'acaEnvironment'
+  scope: rg
+  params: {
+    acaEnvironmentName:     acaEnvName
+    acaEnvironmentLocation: resourceLocation
+    acaEnvironmentTags:     tags
+    workspaceId:            workspace.outputs.workspaceId
     acaEnvironmentSubnetId: network.outputs.subnetIds[0]
   }
 }
 
-module uami 'common-modules/uami.bicep' = {
+module uami '../40-modules/core/uami.bicep' = {
   name: 'uami'
   scope: rg
   params: {
-    uamiLocation: location
-    uamiNames: [ 'aca-sharer-identity' ]
-    tags: tags
+    uamiNames:     [ 'uai-ss-aca-dev' ]
+    uamiLocation:  resourceLocation
+    tags:          tags
   }
 }
 
-// ========== ACA & SWA STUBS (no image or repo here, only placeholders) ==========
-module acaStub 'swa-aca-app/main.bicep' = {
-  name: 'acaStub'
+// ========== RBAC ASSIGNMENTS ==========
+module rbac '../40-modules/swa-aca/rbac.bicep' = {
+  name: 'rbac'
   scope: rg
   params: {
-    appName: 'secure-secret-sharer-aca-dev'
-    appLocation: location
-    containerImage: '${acr.outputs.acrLoginServer}/stub:latest'
-    environmentId: acaEnv.outputs.acaEnvironmentId
-    userAssignedIdentityId: uami.outputs.uamiIds[0]
-    acrLoginServer: acr.outputs.acrLoginServer
-    keyVaultUri: keyvault.outputs.keyvaultUri
-    keyVaultSecrets: akvSecrets
-    tags: tags
-    cosmosDbEndpoint: cosmosDbEndpoint
-    cosmosDatabaseName: cosmosDatabaseName
-    cosmosContainerName: cosmosContainerName
-    acaCpuLimit: '0.25'
-    acaMemoryLimit: '0.5Gi'
+    keyVaultId:    akv.outputs.keyvaultId
+    acrId:         acrId
+    uamiId:        uami.outputs.uamiPrincipalIds[0]
   }
 }
 
-module swaStub 'swa-aca-frontend/main.bicep' = {
-  name: 'swaStub'
+// ========== STUB CONTAINER APP ==========
+module stubApp '../40-modules/swa-aca/container-app.bicep' = {
+  name:  'stubContainerApp'
   scope: rg
   params: {
-    staticWebAppName: 'swa-secure-secret-sharer'
-    location: location
-    tag: tags
-    repositoryUrl: ''
-    branch: 'main'
-    backendApiResourceId: acaStub.outputs.acaAppId
+    containerAppName: stubContainerAppName
+    environmentId:    acaEnv.outputs.acaEnvironmentId
+    image:            stubContainerImage
+    acrLoginServer:   acrLoginServer
+    uamiId:           uami.outputs.uamiIds[0]
+    location:         resourceLocation      // same as ACA env
+    tags:             tags
   }
 }
+
+// ========== STATIC WEB APP STUB ==========
+module staticWebApp '../40-modules/swa-aca/static-web-app.bicep' = {
+  name:  'staticWebApp'
+  scope: rg
+  params: {
+    swaName:  swaName
+    location: 'westeurope'     // Static Web Apps aren’t supported in Spain Central (yet)
+    uamiId:   uami.outputs.uamiIds[0]
+    tags:     tags
+  }
+}
+
+
+// ========== OUTPUTS ==========
+output rgNameOut             string = rg.name
+output acrName               string = acrName
+output acrLoginServer        string = acrLoginServer  // Using parameter instead of module output
+output acaEnvironmentId      string = acaEnv.outputs.acaEnvironmentId
+output uamiId                string = uami.outputs.uamiIds[0]
+output keyVaultUri           string = akv.outputs.keyvaultUri
+output cosmosDbEndpoint      string = cosmosDbEndpoint
+output cosmosDatabaseName    string = cosmosDatabaseName
+output cosmosContainerName   string = cosmosContainerName
+output containerAppId  string = stubApp.outputs.containerAppId
+output staticWebAppId  string = staticWebApp.outputs.staticWebAppId
+

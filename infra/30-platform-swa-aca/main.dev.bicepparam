@@ -13,8 +13,10 @@ param tags = {
   flavor: 'SWA-ACA'
 }
 
-param sharedResourceGroupName = 'rg-ssharer-artifacts-hub'
-param cosmosDbAccountName = 'cosmos-sharer-hub'
+// Shared infrastructure references - these should match existing resources
+param acrName = 'acrsecsharer'
+param acrLoginServer = 'acrsecsharer.azurecr.io'
+param acrId = '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-ssharer-artifacts-hub/providers/Microsoft.ContainerRegistry/registries/acrsecsharer'
 param cosmosDbEndpoint = 'https://cosmos-sharer-hub.documents.azure.com:443/'
 param cosmosDatabaseName = 'SecureSharer'
 param cosmosContainerName = 'secrets'
@@ -31,27 +33,11 @@ param akvSecrets = {
 
 param vnetName = 'vnet-secureSecretSharer'
 
-param acrName = 'acrsecsharer'
-param acrSku = 'Standard'
-param acrEnableAdminUser = false
-
-param workspaceName = 'ws-sec-sharer'
-
 param acaEnvName = 'cae-sharer-aca-dev'
-param acaUamiName = [
-  'aca-sharer-identity'
-]
 
-param storageAccountName = 'sadeploysharerdev'
+// Container App stub configuration
+param stubContainerAppName = 'app-ss-aca-dev'
+param stubContainerImage = 'acrsecsharer.azurecr.io/hello-world:latest'
 
-// ACA App Stub Parameters
-param acaAppName = 'secure-secret-sharer-aca-dev'
-param acaCpuLimit = '0.25'
-param acaMemoryLimit = '0.5Gi'
-param acaImage = 'acrsecsharer.azurecr.io/app-placeholder:latest'
-
-// SWA App Stub Parameters
-param staticWebAppName = 'swa-secure-sharer-dev'
-param staticWebAppRepo = 'https://github.com/your-org/your-repo'
-param staticWebAppBranch = 'main'
-param staticWebAppSku = 'Standard'
+// Static Web App configuration  
+param swaName = 'swa-secure-sharer-dev'
