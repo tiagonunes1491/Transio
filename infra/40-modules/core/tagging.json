@@ -1,0 +1,150 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.36.1.42791",
+      "templateHash": "4707041946575948066"
+    }
+  },
+  "parameters": {
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod",
+        "shared"
+      ],
+      "metadata": {
+        "description": "Environment name"
+      }
+    },
+    "project": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 3,
+      "metadata": {
+        "description": "Project code (2-3 lowercase letters)"
+      }
+    },
+    "service": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 4,
+      "metadata": {
+        "description": "Service code (2-4 lowercase letters)"
+      }
+    },
+    "costCenter": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 6,
+      "metadata": {
+        "description": "Cost center (4-6 digits)"
+      }
+    },
+    "createdBy": {
+      "type": "string",
+      "metadata": {
+        "description": "Created by (letters, numbers, spaces, underscore, dash)"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "metadata": {
+        "description": "Owner (lowercase letters, numbers, dash)"
+      }
+    },
+    "ownerEmail": {
+      "type": "string",
+      "metadata": {
+        "description": "Owner email address"
+      }
+    },
+    "additionalTags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Additional tags to merge"
+      }
+    },
+    "deploymentName": {
+      "type": "string",
+      "defaultValue": "[deployment().name]",
+      "metadata": {
+        "description": "Optional deployment name for traceability"
+      }
+    },
+    "createdDate": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyy-MM-dd')]",
+      "metadata": {
+        "description": "Creation date for tagging"
+      }
+    }
+  },
+  "variables": {
+    "standardTags": {
+      "environment": "[parameters('environment')]",
+      "project": "[parameters('project')]",
+      "service": "[parameters('service')]",
+      "costCenter": "[parameters('costCenter')]",
+      "createdBy": "[parameters('createdBy')]",
+      "owner": "[parameters('owner')]",
+      "ownerEmail": "[parameters('ownerEmail')]",
+      "createdDate": "[parameters('createdDate')]",
+      "managedBy": "bicep",
+      "deployment": "[parameters('deploymentName')]"
+    },
+    "allTags": "[union(variables('standardTags'), parameters('additionalTags'))]",
+    "isValidProject": "[and(greaterOrEquals(length(parameters('project')), 2), lessOrEquals(length(parameters('project')), 3))]",
+    "isValidService": "[and(greaterOrEquals(length(parameters('service')), 2), lessOrEquals(length(parameters('service')), 4))]",
+    "isValidCostCenter": "[and(greaterOrEquals(length(parameters('costCenter')), 4), lessOrEquals(length(parameters('costCenter')), 6))]",
+    "isValidCreatedBy": "[greater(length(parameters('createdBy')), 0)]",
+    "isValidOwner": "[greater(length(parameters('owner')), 0)]",
+    "isValidEmail": "[and(contains(parameters('ownerEmail'), '@'), contains(parameters('ownerEmail'), '.'))]",
+    "isValid": "[and(and(and(and(and(variables('isValidProject'), variables('isValidService')), variables('isValidCostCenter')), variables('isValidCreatedBy')), variables('isValidOwner')), variables('isValidEmail'))]"
+  },
+  "resources": [],
+  "outputs": {
+    "tags": {
+      "type": "object",
+      "value": "[variables('allTags')]"
+    },
+    "isValid": {
+      "type": "bool",
+      "value": "[variables('isValid')]"
+    },
+    "validation": {
+      "type": "object",
+      "value": {
+        "project": {
+          "value": "[parameters('project')]",
+          "isValid": "[variables('isValidProject')]"
+        },
+        "service": {
+          "value": "[parameters('service')]",
+          "isValid": "[variables('isValidService')]"
+        },
+        "costCenter": {
+          "value": "[parameters('costCenter')]",
+          "isValid": "[variables('isValidCostCenter')]"
+        },
+        "createdBy": {
+          "value": "[parameters('createdBy')]",
+          "isValid": "[variables('isValidCreatedBy')]"
+        },
+        "owner": {
+          "value": "[parameters('owner')]",
+          "isValid": "[variables('isValidOwner')]"
+        },
+        "ownerEmail": {
+          "value": "[parameters('ownerEmail')]",
+          "isValid": "[variables('isValidEmail')]"
+        }
+      }
+    }
+  }
+}

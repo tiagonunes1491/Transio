@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.36.1.42791",
-      "templateHash": "1116348428703832385"
+      "templateHash": "1628636987514842155"
     }
   },
   "parameters": {
@@ -16,21 +16,53 @@
         "description": "Location for the resources"
       }
     },
-    "managementResourceGroupName": {
+    "projectCode": {
       "type": "string",
-      "defaultValue": "rg-ssharer-mgmt-shared",
+      "defaultValue": "ss",
       "metadata": {
-        "description": "Name of the management resource group"
+        "description": "Project code"
       }
     },
-    "tags": {
-      "type": "object",
-      "defaultValue": {
-        "Application": "Secure Sharer",
-        "environment": "shared"
-      },
+    "serviceCode": {
+      "type": "string",
+      "defaultValue": "hub",
       "metadata": {
-        "description": "Tags for resources"
+        "description": "Service code for shared services"
+      }
+    },
+    "costCenter": {
+      "type": "string",
+      "defaultValue": "1000",
+      "metadata": {
+        "description": "Cost center for billing"
+      }
+    },
+    "createdBy": {
+      "type": "string",
+      "defaultValue": "bicep-deployment",
+      "metadata": {
+        "description": "Created by information"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "defaultValue": "tiago-nunes",
+      "metadata": {
+        "description": "Owner"
+      }
+    },
+    "ownerEmail": {
+      "type": "string",
+      "defaultValue": "tiago.nunes@example.com",
+      "metadata": {
+        "description": "Owner email"
+      }
+    },
+    "createdDate": {
+      "type": "string",
+      "defaultValue": "[utcNow('yyyy-MM-dd')]",
+      "metadata": {
+        "description": "Creation date for tagging"
       }
     },
     "gitHubOrganizationName": {
@@ -49,13 +81,13 @@
       "type": "object",
       "defaultValue": {
         "creator": {
-          "UAMI": "uami-ssharer-shared-infra-creator",
+          "UAMI": "creator",
           "ENV": "shared-protected",
           "ROLE": "contributor",
           "federationTypes": "environment"
         },
         "push": {
-          "UAMI": "uami-ssharer-acr-push",
+          "UAMI": "acr-push",
           "ENV": "shared",
           "ROLE": "AcrPush",
           "federationTypes": "environment"
@@ -67,6 +99,33 @@
     }
   },
   "variables": {
+    "copy": [
+      {
+        "name": "uamiNames",
+        "count": "[length(items(parameters('workloadIdentities')))]",
+        "input": "[format('{0}-{1}-{2}-id', parameters('projectCode'), variables('envMapping').shared, items(parameters('workloadIdentities'))[copyIndex('uamiNames')].value.UAMI)]"
+      }
+    ],
+    "envMapping": {
+      "dev": "d",
+      "staging": "s",
+      "prod": "p",
+      "shared": "sh"
+    },
+    "standardTags": {
+      "environment": "shared",
+      "project": "[parameters('projectCode')]",
+      "service": "[parameters('serviceCode')]",
+      "costCenter": "[parameters('costCenter')]",
+      "createdBy": "[parameters('createdBy')]",
+      "owner": "[parameters('owner')]",
+      "ownerEmail": "[parameters('ownerEmail')]",
+      "createdDate": "[parameters('createdDate')]",
+      "managedBy": "bicep",
+      "deployment": "[deployment().name]"
+    },
+    "hubRgName": "[format('{0}-{1}-{2}-rg', parameters('projectCode'), variables('envMapping').shared, parameters('serviceCode'))]",
+    "mgmtRgName": "[format('{0}-{1}-mgmt-rg', parameters('projectCode'), variables('envMapping').shared)]",
     "ContributorRoleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c', subscription().subscriptionId)]",
     "AcrPushRoleDefinitionId": "[format('/subscriptions/{0}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec', subscription().subscriptionId)]",
     "roleIdMap": {
@@ -78,22 +137,16 @@
     {
       "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2021-04-01",
-      "name": "rg-ss-shared-hub",
+      "name": "[variables('hubRgName')]",
       "location": "[parameters('location')]",
-      "tags": {
-        "Application": "Secure Sharer",
-        "environment": "Shared Artifacts"
-      }
+      "tags": "[variables('standardTags')]"
     },
     {
       "type": "Microsoft.Resources/resourceGroups",
       "apiVersion": "2021-04-01",
-      "name": "[parameters('managementResourceGroupName')]",
+      "name": "[variables('mgmtRgName')]",
       "location": "[parameters('location')]",
-      "tags": {
-        "Application": "Secure Sharer",
-        "environment": "Shared Management"
-      }
+      "tags": "[variables('standardTags')]"
     },
     {
       "copy": {
@@ -103,7 +156,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
-      "resourceGroup": "[parameters('managementResourceGroupName')]",
+      "resourceGroup": "[variables('mgmtRgName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -115,11 +168,11 @@
           },
           "uamiNames": {
             "value": [
-              "[items(parameters('workloadIdentities'))[copyIndex()].value.UAMI]"
+              "[variables('uamiNames')[copyIndex()]]"
             ]
           },
           "tags": {
-            "value": "[parameters('tags')]"
+            "value": "[variables('standardTags')]"
           }
         },
         "template": {
@@ -201,7 +254,7 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('managementResourceGroupName'))]"
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('mgmtRgName'))]"
       ]
     },
     {
@@ -213,7 +266,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
-      "resourceGroup": "[parameters('managementResourceGroupName')]",
+      "resourceGroup": "[variables('mgmtRgName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -221,7 +274,7 @@
         "mode": "Incremental",
         "parameters": {
           "UamiName": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
           },
           "GitHubOrganizationName": {
             "value": "[parameters('gitHubOrganizationName')]"
@@ -339,9 +392,9 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('managementResourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('mgmtRgName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
       ]
     },
     {
@@ -353,7 +406,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('deploy-branch-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
-      "resourceGroup": "[parameters('managementResourceGroupName')]",
+      "resourceGroup": "[variables('mgmtRgName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -361,7 +414,7 @@
         "mode": "Incremental",
         "parameters": {
           "UamiName": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
           },
           "GitHubOrganizationName": {
             "value": "[parameters('gitHubOrganizationName')]"
@@ -479,10 +532,10 @@
         }
       },
       "dependsOn": [
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', parameters('managementResourceGroupName'))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('mgmtRgName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
       ]
     },
     {
@@ -493,7 +546,7 @@
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
       "name": "[format('deploy-rbac-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)]",
-      "resourceGroup": "rg-ss-shared-hub",
+      "resourceGroup": "[variables('hubRgName')]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -501,7 +554,7 @@
         "mode": "Incremental",
         "parameters": {
           "uamiPrincipalId": {
-            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiPrincipalIds.value[0]]"
+            "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiPrincipalIds.value[0]]"
           },
           "roleDefinitionId": {
             "value": "[variables('roleIdMap')[items(parameters('workloadIdentities'))[copyIndex()].value.ROLE]]"
@@ -552,9 +605,9 @@
         }
       },
       "dependsOn": [
-        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', 'rg-ss-shared-hub')]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
-        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', variables('hubRgName'))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]",
+        "[extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key))]"
       ]
     }
   ],
@@ -563,14 +616,14 @@
       "type": "array",
       "copy": {
         "count": "[length(items(parameters('workloadIdentities')))]",
-        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
+        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiNames.value[0]]"
       }
     },
     "uamiPrincipalIds": {
       "type": "array",
       "copy": {
         "count": "[length(items(parameters('workloadIdentities')))]",
-        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiPrincipalIds.value[0]]"
+        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-uami-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.uamiPrincipalIds.value[0]]"
       }
     },
     "federatedCredentialNames": {
@@ -578,18 +631,18 @@
       "copy": {
         "count": "[length(items(parameters('workloadIdentities')))]",
         "input": {
-          "env": "[if(contains(split(items(parameters('workloadIdentities'))[copyIndex()].value.federationTypes, ','), 'environment'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.federatedCredentialName.value, null())]",
-          "branch": "[if(contains(split(items(parameters('workloadIdentities'))[copyIndex()].value.federationTypes, ','), 'branch'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, parameters('managementResourceGroupName')), 'Microsoft.Resources/deployments', format('deploy-branch-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.federatedCredentialName.value, null())]"
+          "env": "[if(contains(split(items(parameters('workloadIdentities'))[copyIndex()].value.federationTypes, ','), 'environment'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-env-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.federatedCredentialName.value, null())]",
+          "branch": "[if(contains(split(items(parameters('workloadIdentities'))[copyIndex()].value.federationTypes, ','), 'branch'), reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, variables('mgmtRgName')), 'Microsoft.Resources/deployments', format('deploy-branch-fed-{0}', items(parameters('workloadIdentities'))[copyIndex()].key)), '2022-09-01').outputs.federatedCredentialName.value, null())]"
         }
       }
     },
     "managementResourceGroupName": {
       "type": "string",
-      "value": "[parameters('managementResourceGroupName')]"
+      "value": "[variables('mgmtRgName')]"
     },
     "artifactsResourceGroupName": {
       "type": "string",
-      "value": "rg-ss-shared-hub"
+      "value": "[variables('hubRgName')]"
     }
   }
 }
