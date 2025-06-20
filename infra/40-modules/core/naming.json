@@ -1,0 +1,105 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.36.1.42791",
+      "templateHash": "17848636303774744973"
+    }
+  },
+  "parameters": {
+    "projectCode": {
+      "type": "string",
+      "defaultValue": "ss",
+      "minLength": 2,
+      "maxLength": 3,
+      "metadata": {
+        "description": "Project code (2-3 lowercase letters)"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "allowedValues": [
+        "dev",
+        "prod",
+        "shared"
+      ],
+      "metadata": {
+        "description": "Environment (dev, prod, shared)"
+      }
+    },
+    "serviceCode": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 4,
+      "metadata": {
+        "description": "Service code (2-4 lowercase letters)"
+      }
+    },
+    "resourceType": {
+      "type": "string",
+      "allowedValues": [
+        "ca",
+        "cae",
+        "rg",
+        "vnet",
+        "sub",
+        "pe",
+        "log",
+        "swa",
+        "kv",
+        "acr",
+        "cosmos",
+        "id"
+      ],
+      "metadata": {
+        "description": "Resource type code"
+      }
+    },
+    "sequence": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional sequence number (01-99)"
+      }
+    }
+  },
+  "variables": {
+    "envMapping": {
+      "dev": "d",
+      "prod": "p",
+      "shared": "s"
+    },
+    "mappedEnv": "[variables('envMapping')[parameters('environment')]]",
+    "baseName": "[format('{0}-{1}-{2}-{3}{4}', parameters('projectCode'), variables('mappedEnv'), parameters('serviceCode'), parameters('resourceType'), if(empty(parameters('sequence')), '', parameters('sequence')))]",
+    "sanitizedName": "[if(or(equals(parameters('resourceType'), 'kv'), equals(parameters('resourceType'), 'acr')), replace(toLower(variables('baseName')), '-', ''), toLower(variables('baseName')))]",
+    "isValidProjectCode": "[and(greaterOrEquals(length(parameters('projectCode')), 2), lessOrEquals(length(parameters('projectCode')), 3))]",
+    "isValidServiceCode": "[and(greaterOrEquals(length(parameters('serviceCode')), 2), lessOrEquals(length(parameters('serviceCode')), 4))]",
+    "isValidSequence": "[or(empty(parameters('sequence')), and(and(equals(length(parameters('sequence')), 2), greaterOrEquals(int(parameters('sequence')), 1)), lessOrEquals(int(parameters('sequence')), 99)))]"
+  },
+  "resources": [],
+  "outputs": {
+    "resourceName": {
+      "type": "string",
+      "value": "[variables('sanitizedName')]"
+    },
+    "isValid": {
+      "type": "bool",
+      "value": "[and(and(variables('isValidProjectCode'), variables('isValidServiceCode')), variables('isValidSequence'))]"
+    },
+    "components": {
+      "type": "object",
+      "value": {
+        "projectCode": "[parameters('projectCode')]",
+        "environment": "[parameters('environment')]",
+        "mappedEnvironment": "[variables('mappedEnv')]",
+        "serviceCode": "[parameters('serviceCode')]",
+        "resourceType": "[parameters('resourceType')]",
+        "sequence": "[parameters('sequence')]",
+        "baseName": "[variables('baseName')]",
+        "sanitizedName": "[variables('sanitizedName')]"
+      }
+    }
+  }
+}

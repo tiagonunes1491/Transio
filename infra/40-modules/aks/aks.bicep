@@ -1,3 +1,5 @@
+// Azure Kubernetes Service (AKS) cluster configuration
+// Creates an AKS cluster with system and user node pools
 @description('Location of the AKS cluster')
 param location string
 

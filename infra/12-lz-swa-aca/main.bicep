@@ -1,40 +1,39 @@
-// landing-zone-paas.bicep
 // PaaS Landing Zone Infrastructure for Secure Secret Sharer
-// ========================================================
-//
-// This Bicep template creates PaaS-specific landing zone infrastructure including:
+// Creates PaaS-specific landing zone infrastructure including:
 // - PaaS spoke resource group for hosting Container Apps, Static Web Apps, etc.
 // - User-assigned managed identities for PaaS workloads
 // - GitHub federated credentials for CI/CD authentication
 // - RBAC role assignments for managed identities
-//
-// Prerequisites:
-// - Shared landing zone infrastructure must exist (rg-ssharer-artifacts-hub)
-// - GitHub repository configured for OIDC authentication
-//
-// Usage:
-// az deployment sub create --location spaincentral --template-file landing-zone-paas.bicep --parameters landing-zone-paas.bicepparam
-//
 targetScope = 'subscription'
 
-// ========================================================
-// Parameters
-// ========================================================
-
-@description('Environment for the deployment (e.g., dev, staging, prod)')
+// Environment configuration
+@description('Environment for the deployment (e.g., dev, prod)')
+@allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
 @description('Azure region where resources will be deployed')
 param location string = 'spaincentral'
 
-@description('Name of the management resource group for UAMIs and federated credentials')
-param managementResourceGroupName string = 'rg-ssharer-mgmt-${environmentName}'
+@description('Project code')
+param projectCode string = 'ss'
 
-@description('Resource tags applied to all created resources')
-param tags object = {
-  Application: 'Secure Sharer'
-  environment: environmentName
-}
+@description('Service code for SWA/ACA platform')
+param serviceCode string = 'swa'
+
+@description('Cost center for billing')
+param costCenter string = '1000'
+
+@description('Created by information')
+param createdBy string = 'bicep-deployment'
+
+@description('Owner')
+param owner string = 'tiago-nunes'
+
+@description('Owner email')
+param ownerEmail string = 'tiago.nunes@example.com'
+
+@description('Creation date for tagging')
+param createdDate string = utcNow('yyyy-MM-dd')
 
 @description('GitHub organization name for federated credential setup')
 param gitHubOrganizationName string
@@ -42,18 +41,48 @@ param gitHubOrganizationName string
 @description('GitHub repository name for federated credential setup')
 param gitHubRepositoryName string
 
-@description('Shared artifacts resource group name (must exist from shared landing zone)')
-param sharedArtifactsResourceGroupName string = 'rg-ssharer-artifacts-hub'
-
 @description('PaaS workload identities configuration with roles and federation settings')
 param workloadIdentities object = {
   paas: {
-    UAMI: 'uami-ssharer-paas-${environmentName}'
+    UAMI: 'paas'
     ENV: environmentName
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
 }
+
+// ========================================================
+// Name Generation and Tagging
+// ========================================================
+
+// Environment mapping
+var envMapping = {
+  dev: 'd'
+  prod: 'p'
+  shared: 's'
+}
+
+// Standard tags
+var standardTags = {
+  environment: environmentName
+  project: projectCode
+  service: serviceCode
+  costCenter: costCenter
+  createdBy: createdBy
+  owner: owner
+  ownerEmail: ownerEmail
+  createdDate: createdDate
+  managedBy: 'bicep'
+  deployment: deployment().name
+}
+
+// Generate resource names using naming convention
+var hubRgName = '${projectCode}-${envMapping.shared}-hub-rg'
+var paasRgName = '${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg'
+var mgmtRgName = '${projectCode}-${envMapping[environmentName]}-mgmt-rg'
+
+// Generate UAMI names
+var uamiNames = [for item in items(workloadIdentities): '${projectCode}-${envMapping[environmentName]}-${item.value.UAMI}-id']
 
 // ========================================================
 // Variables
@@ -73,7 +102,7 @@ var roleIdMap = {
 
 // Reference to existing shared artifacts resource group (created by shared landing zone)
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
-  name: sharedArtifactsResourceGroupName
+  name: hubRgName
 }
 
 // ========================================================
@@ -82,20 +111,16 @@ resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
 
 // PaaS spoke resource group for Container Apps, Static Web Apps, and related resources
 resource paasRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ssharer-paas-spoke-${environmentName}'
+  name: paasRgName
   location: location
-  tags: tags
+  tags: standardTags
 }
 
 // Management resource group for UAMIs and federated credentials
 resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: managementResourceGroupName
+  name: mgmtRgName
   location: location
-  tags: {
-    Application: 'Secure Sharer'
-    environment: environmentName
-    purpose: 'management'
-  }
+  tags: standardTags
 }
 
 // ========================================================
@@ -108,8 +133,8 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
   scope: managementRg
   params: {
     uamiLocation: location
-    uamiNames: [item.value.UAMI]
-    tags: tags
+    uamiNames: [uamiNames[i]]
+    tags: standardTags
   }
 }]
 
