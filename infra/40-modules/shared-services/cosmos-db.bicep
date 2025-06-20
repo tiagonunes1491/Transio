@@ -1,5 +1,3 @@
-// Azure Cosmos DB configuration
-// Creates Cosmos DB account with databases and containers for SecureSharer
 @description('Name of the Cosmos DB account')
 param cosmosDbAccountName string
 

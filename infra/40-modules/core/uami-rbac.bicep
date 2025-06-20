@@ -1,5 +1,3 @@
-// RBAC role assignment for User Assigned Managed Identity
-// Assigns Azure roles to UAMIs for resource access
 @description('Principal ID of the User-Assigned Managed Identity')
 param uamiPrincipalId string
 

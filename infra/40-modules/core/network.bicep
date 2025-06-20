@@ -1,5 +1,3 @@
-// Virtual Network configuration
-// Creates VNet with configurable subnets for Azure services
 @description('Name of the virtual network')
 param vnetName string
 

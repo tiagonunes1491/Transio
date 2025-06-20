@@ -1,30 +1,25 @@
-// Bicep parameters file for AKS platform deployment
-// This file configures the AKS platform infrastructure including:
-// - AKS cluster and node pools
-// - Application Gateway and networking
-// - Key Vault and Container Registry integration
-// - Federated identity credentials for workloads
+// This file is used to deploy the main.bicep file in the dev environment
+using 'k8s-main.bicep'
 
-using 'main.bicep'
-
-// Environment configuration
-param resourceLocation = 'spaincentral'
+// Parameters for deployment scope
+param resourceLocation  = 'spaincentral'
 param rgName = 'rg-ssharer-k8s-spoke-dev'
-param tags = {
+param tags  = {
   environment: 'dev'
   project: 'secure-secret-sharer'
   owner: 'Tiago'
 }
 
-// Virtual network configuration
+// Parameters for the vnet
 param vnetName = 'vnet-securesharer-dev'
 
-// Azure Container Registry configuration
+// Parameters for the ACR
 param acrName = 'acrsecuresecretsharerdev'
 param acrSku = 'Standard'
 param acrEnableAdminUser = false
 
-// Azure Key Vault configuration
+
+// Parameters for the AKV
 param akvName = 'kv-securesharer-dev'
 param akvSku = 'standard'
 param akvRbac = true
@@ -36,7 +31,7 @@ param akvSecrets = {
   'postgres-password': 'nQVvMqOF4CINSvYBUoUH9ZnCZnkFaluH'
 }
 
-// AKS cluster configuration
+// Parameters for the AKS
 param aksName = 'aks-securesharer-dev'
 param kubernetesVersion = '1.31.7'
 param systemNodePoolVmSize = 'Standard_D8ds_v5'
@@ -45,9 +40,9 @@ param aksAdminGroupObjectIds = [
   '881fa64b-3783-4880-8920-0d297899074c'
 ]
 
-// Federated identity configuration
-// This order is important, as the array will be used to pass configurations across the module.
-// First object is for backend and second for database.
+//Parameters for the FIC
+//This order is important, as the array will be used to pass configurations across the module.
+//First object is for backend and second for database.
 param federationConfigs = [
   {
     uamiTargetName: 'uami-securesharer-backend-dev' 
@@ -61,10 +56,9 @@ param federationConfigs = [
   }
 ]
 
-// Network security configuration
+// Parameters for secure network
 param appGwNsgName = 'nsg-securesharer-dev'
 
-// Application Gateway configuration
-param appGwName = 'appgw-securesharer-dev'
-param appGwSku = 'WAF_v2'
+//Parameters for the app gateway
+param appGwName  = 'appgw-securesharer-dev'
 param appGwPublicIpName = 'appgw-public-ip-dev'

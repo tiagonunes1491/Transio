@@ -1,5 +1,5 @@
-// Azure Container Registry configuration
-// Creates and configures ACR for container image storage
+// TO DO : Add more comments ..
+
 @description('Azure Container Registry name')
 param acrName string
 

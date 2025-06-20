@@ -11,23 +11,15 @@ using 'main.bicep'
 @description('Location for the resources')
 param location = 'spaincentral' // Default location, can be overridden
 
-@description('Project code')
-param projectCode = 'ss'
+@description('Name of the management resource group')
+param managementResourceGroupName = 'rg-ssharer-mgmt-shared'
 
-@description('Service code for shared services')
-param serviceCode = 'hub'
-
-@description('Cost center for billing')
-param costCenter = '1000'
-
-@description('Created by information')
-param createdBy = 'bicep-deployment'
-
-@description('Owner')
-param owner = 'tiago-nunes'
-
-@description('Owner email')
-param ownerEmail = 'tiago.nunes@example.com'
+// Resource tagging
+@description('Tags for resources')
+param tags = {
+  Application: 'Secure Sharer'
+  environment: 'shared'
+}
 
 // GitHub integration configuration
 @description('GitHub organization name to federate with')

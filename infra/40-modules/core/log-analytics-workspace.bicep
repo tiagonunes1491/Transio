@@ -1,5 +1,3 @@
-// Log Analytics Workspace configuration
-// Creates Log Analytics workspace for monitoring and logging
 @description('Name of the workspace')
 param workspaceName string
 @description('Location for the workspace')
