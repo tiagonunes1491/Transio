@@ -1,35 +1,18 @@
-// Shared Platform Infrastructure for Secure Secret Sharer
-// Deploys shared platform resources including ACR and Cosmos DB
+// Parameters for shared infrastructure deployment
 
-// Resource configuration
 @description('Location for the resources')
 param resourceLocation string = 'spaincentral'
 
-@description('Environment for deployment')
-@allowed(['dev', 'prod', 'shared'])
-param environment string = 'shared'
 
-@description('Project code')
-param projectCode string = 'ss'
+@description('Tags for the resources')
+param tags object = {
+  environment: 'dev'
+  project: 'secure-secret-sharer'
+  owner: 'Tiago'
+}
 
-@description('Service code for shared platform')
-param serviceCode string = 'plat'
-
-// Tagging configuration
-@description('Cost center for billing')
-param costCenter string = '1000'
-
-@description('Created by information')
-param createdBy string = 'bicep-deployment'
-
-@description('Owner')
-param owner string = 'tiago-nunes'
-
-@description('Owner email')
-param ownerEmail string = 'tiago.nunes@example.com'
-
-@description('Creation date for tagging')
-param createdDate string = utcNow('yyyy-MM-dd')
+@description('Azure Container Registry name')
+param acrName string
 
 @description('SKU for the ACR')
 @allowed([
@@ -41,6 +24,9 @@ param acrSku string = 'Premium'
 
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
+
+@description('Name of the Cosmos DB account')
+param cosmosDbAccountName string = 'cosmos-sharer-shared'
 
 @description('The names of the databases to create')
 param cosmosDatabaseNames array = [ 'swa-dev', 'swa-prod', 'k8s-dev', 'k8s-prod' ]
@@ -54,39 +40,10 @@ param cosmosEnableFreeTier bool = false
 @description('Throughput for the container (minimum 1000 RU/s for autoscale)')
 param cosmosThroughput int = 1000
 
-// =====================
-// Name Generation and Tagging
-// =====================
-
-// Environment mapping
-var envMapping = {
-  dev: 'd'
-  prod: 'p'
-  shared: 's'
-}
-
-// Standard tags
-var standardTags = {
-  environment: environment
-  project: projectCode
-  service: serviceCode
-  costCenter: costCenter
-  createdBy: createdBy
-  owner: owner
-  ownerEmail: ownerEmail
-  createdDate: createdDate
-  managedBy: 'bicep'
-  deployment: deployment().name
-}
-
-// Generate resource names using naming convention
-var acrName = replace('${projectCode}-${envMapping[environment]}-${serviceCode}-acr', '-', '') // ACR names can't contain dashes
-var cosmosDbAccountName = replace('${projectCode}-${envMapping[environment]}-${serviceCode}-cosmos', '-', '') // Cosmos DB names can't contain dashes
-
 module acr '../40-modules/shared-services/acr.bicep' = {
   name: 'acr'
   params: {
-    tags: standardTags
+    tags: tags
     acrName: acrName
     location: resourceLocation
     sku: acrSku
@@ -102,7 +59,7 @@ module cosmosDb '../40-modules/shared-services/cosmos-db.bicep' = {
     location: resourceLocation
     databaseNames: cosmosDatabaseNames
     containerName: cosmosContainerName
-    tags: standardTags
+    tags: tags
     defaultTtl: 86400 // 24 hours TTL
     enableFreeTier: cosmosEnableFreeTier // Disable free tier for internal subscriptions
     throughput: cosmosThroughput // Set valid autoscale throughput

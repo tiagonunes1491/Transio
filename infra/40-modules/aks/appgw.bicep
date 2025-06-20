@@ -1,5 +1,3 @@
-// Application Gateway configuration for AKS ingress
-// Creates and configures an Application Gateway for ingress traffic
 @description('Name of the Application Gateway')
 param appGwName string = 'appgw-securesharer-mvp'
 

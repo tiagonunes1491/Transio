@@ -1,5 +1,3 @@
-// Azure Container Apps Environment configuration
-// Creates a managed environment for Container Apps with networking and monitoring
 @description('The Azure Container Apps Environment name.')
 param acaEnvironmentName string
 @description('The location for the Azure Container Apps Environment.')

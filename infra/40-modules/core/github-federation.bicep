@@ -1,5 +1,3 @@
-// GitHub Actions federation with Azure
-// Creates federated credentials for GitHub Actions to authenticate with Azure
 @description('Name of the existing UAMI to federate with GitHub Actions')
 param UamiName string
 

@@ -1,5 +1,3 @@
-// Network Security Group configuration for AKS
-// Creates and configures NSG rules for AKS networking
 @description('Name of the Network Security Group')
 param nsgName string = 'nsg-securesharer-mvp'
 
