@@ -1,26 +1,12 @@
-// landing-zone-paas.bicep
 // PaaS Landing Zone Infrastructure for Secure Secret Sharer
-// ========================================================
-//
-// This Bicep template creates PaaS-specific landing zone infrastructure including:
+// Creates PaaS-specific landing zone infrastructure including:
 // - PaaS spoke resource group for hosting Container Apps, Static Web Apps, etc.
 // - User-assigned managed identities for PaaS workloads
 // - GitHub federated credentials for CI/CD authentication
 // - RBAC role assignments for managed identities
-//
-// Prerequisites:
-// - Shared landing zone infrastructure must exist
-// - GitHub repository configured for OIDC authentication
-//
-// Usage:
-// az deployment sub create --location spaincentral --template-file main.bicep --parameters main.bicepparam
-//
 targetScope = 'subscription'
 
-// ========================================================
-// Parameters
-// ========================================================
-
+// Environment configuration
 @description('Environment for the deployment (e.g., dev, prod)')
 @allowed(['dev', 'prod'])
 param environmentName string = 'dev'

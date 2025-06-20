@@ -1,6 +1,7 @@
 // Standardized tagging module for SecureSharer
 // Implements Cloud Adoption Framework tagging standards
 
+// Input Parameters
 @description('Environment name')
 @allowed(['dev', 'prod', 'shared'])
 param environment string
@@ -38,7 +39,7 @@ param deploymentName string = deployment().name
 @description('Creation date for tagging')
 param createdDate string = utcNow('yyyy-MM-dd')
 
-// Standard required tags
+// Standard tag generation
 var standardTags = {
   environment: environment
   project: project
@@ -52,27 +53,20 @@ var standardTags = {
   deployment: deploymentName
 }
 
-// Merge with additional tags
 var allTags = union(standardTags, additionalTags)
 
-// Basic validation - Bicep doesn't have regex support, so we'll do basic length checks
+// Validation logic
 var isValidProject = length(project) >= 2 && length(project) <= 3
 var isValidService = length(service) >= 2 && length(service) <= 4
 var isValidCostCenter = length(costCenter) >= 4 && length(costCenter) <= 6
 var isValidCreatedBy = length(createdBy) > 0
 var isValidOwner = length(owner) > 0
 var isValidEmail = contains(ownerEmail, '@') && contains(ownerEmail, '.')
-
-// All validations pass
 var isValid = isValidProject && isValidService && isValidCostCenter && isValidCreatedBy && isValidOwner && isValidEmail
 
-// Output the standardized tags
+// Outputs
 output tags object = allTags
-
-// Output validation status
 output isValid bool = isValid
-
-// Output validation details for debugging
 output validation object = {
   project: {
     value: project

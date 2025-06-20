@@ -1,20 +1,20 @@
-//  The Orchestrator for landing zone deployment for Secure Sharer shared resources
-// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure.
+// Shared Landing Zone Infrastructure for Secure Secret Sharer
+// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure
 targetScope = 'subscription'
 
-// =====================
-// Parameters
-// =====================
-
+// Resource configuration
 @description('Location for the resources')
-param location string = 'spaincentral' // Default location, can be overridden
+param location string = 'spaincentral'
 
 @description('Project code')
 param projectCode string = 'ss'
 
 @description('Service code for shared services')
 param serviceCode string = 'hub'
+@description('Service code for shared services')
+param serviceCode string = 'hub'
 
+// Tagging configuration
 @description('Cost center for billing')
 param costCenter string = '1000'
 
@@ -30,6 +30,7 @@ param ownerEmail string = 'tiago.nunes@example.com'
 @description('Creation date for tagging')
 param createdDate string = utcNow('yyyy-MM-dd')
 
+// GitHub integration configuration
 @description('GitHub organization name to federate with')
 param gitHubOrganizationName string
 

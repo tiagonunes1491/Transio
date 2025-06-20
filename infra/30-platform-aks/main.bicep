@@ -327,7 +327,7 @@ param appGwName string = 'appgw-securesharer-mvp'
   'Standard_v2'
   'WAF_v2'
 ])
-param appGwsku string ='WAF_v2'
+param appGwSku string = 'WAF_v2'
 
 
 @description('Public IP address name for the Application Gateway')
@@ -343,7 +343,7 @@ module appGw '../40-modules/aks/appgw.bicep' = {
     appGwName: appGwName
     location: resourceLocation
     tags: tags
-    sku: appGwsku
+    sku: appGwSku
     publicIpName: appGwPublicIpName
     appGwSubnetId: network.outputs.subnetIds[1]
   }

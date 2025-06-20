@@ -1,27 +1,12 @@
-// landing-zone-k8s.bicep
 // K8S Landing Zone Infrastructure for Secure Secret Sharer
-// =====================================================
-//
-// This Bicep template creates K8S-specific landing zone infrastructure including:
+// Creates K8S-specific landing zone infrastructure including:
 // - K8S spoke resource group for hosting AKS and related resources
 // - User-assigned managed identities for K8S workloads and deployments
 // - GitHub federated credentials for CI/CD authentication
 // - RBAC role assignments for managed identities
-//
-// Prerequisites:
-// - Shared landing zone infrastructure must exist
-// - GitHub repository configured for OIDC authentication
-//
-// Usage:
-// az deployment sub create --location spaincentral --template-file main.bicep --parameters main.bicepparam
-//
-
 targetScope = 'subscription'
 
-// =====================================================
-// Parameters
-// =====================================================
-
+// Environment configuration
 @description('Environment for the deployment (e.g., dev, prod)')
 @allowed(['dev', 'prod'])
 param environmentName string = 'dev'

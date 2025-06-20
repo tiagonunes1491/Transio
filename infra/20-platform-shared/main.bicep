@@ -1,5 +1,7 @@
-// Parameters for shared infrastructure deployment
+// Shared Platform Infrastructure for Secure Secret Sharer
+// Deploys shared platform resources including ACR and Cosmos DB
 
+// Resource configuration
 @description('Location for the resources')
 param resourceLocation string = 'spaincentral'
 
@@ -13,6 +15,7 @@ param projectCode string = 'ss'
 @description('Service code for shared platform')
 param serviceCode string = 'plat'
 
+// Tagging configuration
 @description('Cost center for billing')
 param costCenter string = '1000'
 

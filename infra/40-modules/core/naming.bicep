@@ -2,6 +2,7 @@
 // Implements Cloud Adoption Framework naming standards
 // Pattern: {proj}-{env}-{svc}-{rtype}{-seq}
 
+// Input Parameters
 @description('Project code (2-3 lowercase letters)')
 @minLength(2)
 @maxLength(3)
@@ -23,36 +24,29 @@ param resourceType string
 @description('Optional sequence number (01-99)')
 param sequence string = ''
 
-// Environment mapping function
+// Environment mapping and name generation
 var envMapping = {
   dev: 'd'
   prod: 'p'
   shared: 's'
 }
 
-// Get mapped environment
 var mappedEnv = envMapping[environment]
-
-// Base name construction
 var baseName = '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}${empty(sequence) ? '' : sequence}'
 
-// Sanitization rules for specific resource types
+// Apply sanitization rules for specific resource types
 var sanitizedName = resourceType == 'kv' || resourceType == 'acr' 
   ? replace(toLower(baseName), '-', '')
   : toLower(baseName)
 
-// Validation functions
+// Validation logic
 var isValidProjectCode = length(projectCode) >= 2 && length(projectCode) <= 3
 var isValidServiceCode = length(serviceCode) >= 2 && length(serviceCode) <= 4
 var isValidSequence = empty(sequence) || (length(sequence) == 2 && int(sequence) >= 1 && int(sequence) <= 99)
 
-// Output the generated name
+// Outputs
 output resourceName string = sanitizedName
-
-// Output validation results
 output isValid bool = isValidProjectCode && isValidServiceCode && isValidSequence
-
-// Output individual components for debugging
 output components object = {
   projectCode: projectCode
   environment: environment
