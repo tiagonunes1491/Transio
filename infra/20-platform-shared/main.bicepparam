@@ -19,3 +19,5 @@ param acrEnableAdminUser = false
 param cosmosDbAccountName = 'cosmos-secsharer'
 param cosmosDatabaseNames = ['paas-dev', 'paas-prod', 'aks-dev', 'aks-prod']
 param cosmosContainerName = 'secret'
+param cosmosEnableFreeTier = false
+param cosmosThroughput = 1000  // Minimum for autoscale

@@ -29,11 +29,16 @@ param acrEnableAdminUser bool = false
 param cosmosDbAccountName string = 'cosmos-sharer-shared'
 
 @description('The names of the databases to create')
-param cosmosDatabaseNames array = ['paas-dev', 'paas-prod', 'aks-dev', 'aks-prod']
+param cosmosDatabaseNames array = [ 'swa-dev', 'swa-prod', 'k8s-dev', 'k8s-prod' ]
 
 @description('The name of the container to create in each database')
 param cosmosContainerName string = 'secret'
 
+@description('Enable free tier for Cosmos DB (not supported on internal subscriptions)')
+param cosmosEnableFreeTier bool = false
+
+@description('Throughput for the container (minimum 1000 RU/s for autoscale)')
+param cosmosThroughput int = 1000
 
 module acr '../40-modules/shared-services/acr.bicep' = {
   name: 'acr'
@@ -56,6 +61,8 @@ module cosmosDb '../40-modules/shared-services/cosmos-db.bicep' = {
     containerName: cosmosContainerName
     tags: tags
     defaultTtl: 86400 // 24 hours TTL
+    enableFreeTier: cosmosEnableFreeTier // Disable free tier for internal subscriptions
+    throughput: cosmosThroughput // Set valid autoscale throughput
   }
 }
 
