@@ -59,7 +59,7 @@ var roleIdMap = {
 
 // Create the shared artifacts resource group
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ssharer-artifacts-hub'
+  name: 'rg-ss-shared-hub'
   location: location
   tags: {
     Application: 'Secure Sharer'
