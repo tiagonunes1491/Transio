@@ -82,7 +82,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2025-03-01' existing = {
 // Generate standardized tags using the tagging module
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
   name: 'standard-tags-aks-platform'
-  scope: rg
+  scope: subscription()
   params: {
     environment: environmentName
     project: projectCode
@@ -97,7 +97,7 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
 // Generate resource names using naming module
 module appGwNsgNamingModule '../40-modules/core/naming.bicep' = {
   name: 'appgw-nsg-naming'
-  scope: rg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -108,7 +108,7 @@ module appGwNsgNamingModule '../40-modules/core/naming.bicep' = {
 
 module vnetNamingModule '../40-modules/core/naming.bicep' = {
   name: 'vnet-naming'
-  scope: rg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -119,7 +119,7 @@ module vnetNamingModule '../40-modules/core/naming.bicep' = {
 
 module akvNamingModule '../40-modules/core/naming.bicep' = {
   name: 'akv-naming'
-  scope: rg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -130,7 +130,7 @@ module akvNamingModule '../40-modules/core/naming.bicep' = {
 
 module aksNamingModule '../40-modules/core/naming.bicep' = {
   name: 'aks-naming'
-  scope: rg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -141,7 +141,7 @@ module aksNamingModule '../40-modules/core/naming.bicep' = {
 
 module appGwNamingModule '../40-modules/core/naming.bicep' = {
   name: 'appgw-naming'
-  scope: rg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -396,7 +396,7 @@ module rbac '../40-modules/aks/rbac.bicep' = {
 // Generate Public IP name for Application Gateway
 module appGwPipNamingModule '../40-modules/core/naming.bicep' = {
   name: 'appgw-pip-naming'
-  scope: rg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName

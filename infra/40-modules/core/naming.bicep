@@ -2,6 +2,8 @@
 // Implements Cloud Adoption Framework naming standards
 // Pattern: {proj}-{env}-{svc}-{rtype}{-seq}
 
+targetScope = 'subscription'
+
 // Input Parameters
 @description('Project code (2-3 lowercase letters)')
 @minLength(2)

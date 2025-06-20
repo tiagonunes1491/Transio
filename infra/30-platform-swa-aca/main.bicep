@@ -82,6 +82,7 @@ module network '../40-modules/core/network.bicep' = {
 
 // Generate standardized tags using the tagging module
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  scope: subscription()
   name: 'standard-tags-swa-platform'
   params: {
     environment: environmentName
@@ -96,6 +97,7 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
 
 // Generate resource names using naming module
 module vnetNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'vnet-naming'
   params: {
     projectCode: projectCode
@@ -106,6 +108,7 @@ module vnetNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 module akvNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'akv-naming'
   params: {
     projectCode: projectCode
@@ -116,6 +119,7 @@ module akvNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 module lawNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'law-naming'
   params: {
     projectCode: projectCode
@@ -126,6 +130,7 @@ module lawNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'aca-env-naming'
   params: {
     projectCode: projectCode
@@ -136,6 +141,7 @@ module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 module uamiNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'uami-naming'
   params: {
     projectCode: projectCode
@@ -146,6 +152,7 @@ module uamiNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 module containerAppNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'container-app-naming'
   params: {
     projectCode: projectCode
@@ -156,6 +163,7 @@ module containerAppNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 module swaNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
   name: 'swa-naming'
   params: {
     projectCode: projectCode

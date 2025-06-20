@@ -52,7 +52,8 @@ param workloadIdentities object = {
 }
 
 // ========================================================
-// Naming and Tagging Functions (using same logic as modules)
+// ========================================================
+// Naming and Tagging Modules
 // ========================================================
 
 // Environment mapping (consistent with naming module)
@@ -62,16 +63,12 @@ var envMapping = {
   shared: 's'
 }
 
-// Naming function that replicates the naming module logic
-func generateResourceName(projectCode string, environment string, serviceCode string, resourceType string) string => 
-  toLower('${projectCode}-${envMapping[environment]}-${serviceCode}-${resourceType}')
+// Generate RG names using consistent naming pattern
+var hubRgName = toLower('${projectCode}-${envMapping.shared}-hub-rg')
+var paasRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')
+var mgmtRgName = toLower('${projectCode}-${envMapping[environmentName]}-mgmt-rg')
 
-// Generate RG names using the same logic as naming module
-var hubRgName = generateResourceName(projectCode, 'shared', 'hub', 'rg')
-var paasRgName = generateResourceName(projectCode, environmentName, serviceCode, 'rg')
-var mgmtRgName = generateResourceName(projectCode, environmentName, 'mgmt', 'rg')
-
-// Standard tags using the same pattern as the tagging module
+// Standard tags using consistent pattern
 var standardTags = {
   environment: environmentName
   project: projectCode
@@ -83,6 +80,22 @@ var standardTags = {
   createdDate: createdDate
   managedBy: 'bicep'
   deployment: deployment().name
+}
+
+// Generate standardized tags using the tagging module (for use within resource groups)
+module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-swa-aca'
+  scope: subscription()
+  params: {
+    environment: environmentName
+    project: projectCode
+    service: serviceCode
+    costCenter: costCenter
+    createdBy: createdBy
+    owner: owner
+    ownerEmail: ownerEmail
+    createdDate: createdDate
+  }
 }
 
 // ========================================================
@@ -129,30 +142,15 @@ resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // ========================================================
 
 // Use naming and tagging modules within the resource groups
-module standardTagsRgModule '../40-modules/core/tagging.bicep' = {
-  name: 'standard-tags-paas-rg'
-  scope: managementRg
-  params: {
-    environment: environmentName
-    project: projectCode
-    service: serviceCode
-    costCenter: costCenter
-    createdBy: createdBy
-    owner: owner
-    ownerEmail: ownerEmail
-    createdDate: createdDate
-  }
-}
-
-// Generate UAMI names using naming modules within the resource group
+// Generate UAMI names using naming modules at subscription scope
 module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(workloadIdentities): {
   name: 'uami-naming-${item.key}'
-  scope: managementRg
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
     serviceCode: item.value.UAMI
-    resourceType: 'id'
+    resourceType: 'uai'
   }
 }]
 
@@ -163,7 +161,7 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
   params: {
     uamiLocation: location
     uamiNames: [uamiNamingModules[i].outputs.resourceName]
-    tags: standardTagsRgModule.outputs.tags
+    tags: standardTags
   }
   dependsOn: [uamiNamingModules[i]]
 }]

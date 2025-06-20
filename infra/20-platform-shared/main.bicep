@@ -61,6 +61,7 @@ param cosmosThroughput int = 1000
 // Generate standardized tags using the tagging module
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
   name: 'standard-tags-platform'
+  scope: subscription()
   params: {
     environment: environment
     project: projectCode
@@ -76,6 +77,7 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
 // Generate ACR name using naming module
 module acrNamingModule '../40-modules/core/naming.bicep' = {
   name: 'acr-naming'
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environment
@@ -87,6 +89,7 @@ module acrNamingModule '../40-modules/core/naming.bicep' = {
 // Generate Cosmos DB name using naming module
 module cosmosNamingModule '../40-modules/core/naming.bicep' = {
   name: 'cosmos-naming'
+  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environment
