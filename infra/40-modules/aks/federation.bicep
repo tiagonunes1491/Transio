@@ -1,3 +1,5 @@
+// AKS workload identity federation configuration
+// Creates federated credentials for Kubernetes service accounts
 @description('Name of the UAMI that will be federated')
 param parentUserAssignedIdentityName  string
 

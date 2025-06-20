@@ -1,3 +1,5 @@
+// User Assigned Managed Identity (UAMI) configuration
+// Creates UAMIs for secure service authentication
 @description('Location of the User Assigned Managed Identity (UAMI)')
 param uamiLocation string = 'spaincentral'
 

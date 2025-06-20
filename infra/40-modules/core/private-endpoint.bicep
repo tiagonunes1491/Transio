@@ -1,3 +1,5 @@
+// Private Endpoint configuration
+// Creates private endpoints for secure access to Azure services
 @description('Private Endpoint name')
 param privateEndpointName string
 @description('Private Endpoint location')
