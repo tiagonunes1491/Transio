@@ -52,7 +52,7 @@ param workloadIdentities object = {
 }
 
 // =====================
-// Naming and Tagging (using standardized patterns)
+// Naming and Tagging Functions (using same logic as modules)
 // =====================
 
 // Environment mapping (consistent with naming module)
@@ -62,9 +62,13 @@ var envMapping = {
   shared: 's'
 }
 
-// Generate resource names using the same pattern as the naming module
-var hubRgName = '${projectCode}-${envMapping.shared}-${serviceCode}-rg'
-var mgmtRgName = '${projectCode}-${envMapping.shared}-mgmt-rg'
+// Naming function that replicates the naming module logic
+func generateResourceName(projectCode string, environment string, serviceCode string, resourceType string) string => 
+  toLower('${projectCode}-${envMapping[environment]}-${serviceCode}-${resourceType}')
+
+// Generate RG names using the same logic as naming module
+var hubRgName = generateResourceName(projectCode, 'shared', serviceCode, 'rg')
+var mgmtRgName = generateResourceName(projectCode, 'shared', 'mgmt', 'rg')
 
 // Standard tags using the same pattern as the tagging module
 var standardTags = {
