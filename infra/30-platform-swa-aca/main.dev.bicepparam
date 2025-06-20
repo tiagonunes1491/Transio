@@ -2,9 +2,7 @@
 
 using 'main.bicep'
 
-param tenantId = '00000000-0000-0000-0000-000000000000'
 param resourceLocation = 'westeurope'
-param rgName = 'rg-secure-sharer-swa-aca-dev'
 
 param tags = {
   environment: 'dev'

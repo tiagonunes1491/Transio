@@ -51,7 +51,7 @@ resource app 'Microsoft.App/containerApps@2025-02-02-preview' = {
           name: 'web'
           image: image      // e.g. “acrLoginServer/hello-world:latest”
           resources: {
-            cpu: 500
+            cpu: json('0.25')
             memory: '0.5Gi'
           }
         }
