@@ -15,7 +15,7 @@ param location = 'spaincentral' // Default location, can be overridden
 param projectCode = 'ss'
 
 @description('Service code for shared services')
-param serviceCode = 'hub'
+param serviceCode = 'plat'
 
 @description('Cost center for billing')
 param costCenter = '1000'
@@ -39,13 +39,13 @@ param gitHubRepositoryName = 'SecureSharer'
 // Shared workload identities configuration
 @description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
 param workloadIdentities = {
-    creator: {
+    contributor: {
         UAMI: 'uami-ssharer-shared-infra-creator'
         ENV: 'shared-protected'
         ROLE: 'contributor'
         federationTypes: 'environment'
     }
-    push: {
+    acrPush: {
         UAMI: 'uami-ssharer-acr-push'
         ENV: 'shared'
         ROLE: 'AcrPush'

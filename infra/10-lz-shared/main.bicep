@@ -10,7 +10,7 @@ param location string = 'spaincentral'
 param projectCode string = 'ss'
 
 @description('Service code for shared services')
-param serviceCode string = 'hub'
+param serviceCode string = 'plat'
 
 // Tagging configuration
 @description('Cost center for billing')
@@ -62,7 +62,22 @@ var envMapping = {
   shared: 's'
 }
 
+// Generate RG names using consistent module for naming
+module hubRgNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'rg-hub-naming'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: 'shared'
+    serviceCode: serviceCode
+    resourceType: 'rg'
+  }
+}
+
+
+
 // Generate RG names using consistent naming pattern
+// Exceptionally uses variable for RG creation because they no be compiled at runtime
 var hubRgName = toLower('${projectCode}-${envMapping.shared}-${serviceCode}-rg')
 var mgmtRgName = toLower('${projectCode}-${envMapping.shared}-mgmt-rg')
 
@@ -138,8 +153,9 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(
   params: {
     projectCode: projectCode
     environment: 'shared'
-    serviceCode: item.value.UAMI
-    resourceType: 'uai'
+    serviceCode: serviceCode
+    resourceType: 'id'
+    suffix: item.key
   }
 }]
 
