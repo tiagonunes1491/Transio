@@ -5,7 +5,7 @@
 // - GitHub federated credentials for K8S deployments
 // - RBAC assignments for K8S resources
 
-using 'landing-zone-k8s.bicep'
+using 'main.bicep'
 
 // Environment configuration
 param environmentName = 'dev'

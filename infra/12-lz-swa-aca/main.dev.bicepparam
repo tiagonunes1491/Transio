@@ -5,7 +5,7 @@
 // - GitHub federated credentials for PaaS deployments
 // - RBAC assignments for PaaS resources
 
-using 'landing-zone-paas.bicep'
+using 'main.bicep'
 
 // Environment configuration
 param environmentName = 'dev'

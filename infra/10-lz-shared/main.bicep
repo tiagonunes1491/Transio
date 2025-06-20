@@ -28,21 +28,17 @@ param gitHubRepositoryName string
 param workloadIdentities object = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'shared-infra'
+        ENV: 'shared-protected'
         ROLE: 'contributor'
-        federationTypes: 'branch,environment'
+        federationTypes: 'environment'
     }
     push: {
         UAMI: 'uami-ssharer-acr-push'
-        ENV: 'shared-artifacts'
+        ENV: 'shared'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
 }
-
-@description('Custom Reader with What-If Role Definition GUID (for use with custom RBAC roles)')
-param ReaderWhatIfRoleDefinitionGuid string = '<REPLACE_WITH_YOUR_CUSTOM_ROLE_ID>'
-
 
 
 // =====================
@@ -51,12 +47,10 @@ param ReaderWhatIfRoleDefinitionGuid string = '<REPLACE_WITH_YOUR_CUSTOM_ROLE_ID
 
 var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
 var AcrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
-var ReaderWhatIfRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${ReaderWhatIfRoleDefinitionGuid}' // What-If Reader role definition ID
 
 var roleIdMap = {
   contributor: ContributorRoleDefinitionId
   AcrPush: AcrPushRoleDefinitionId
-  readerWithWhatIf: ReaderWhatIfRoleDefinitionId
 }
 
 // =====================
