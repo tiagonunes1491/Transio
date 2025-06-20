@@ -4,6 +4,9 @@ param vnetName string
 @description('Location for all the resources')
 param location string
 
+@description('Tags to apply to all resources')
+param tags object = {}
+
 @description('Address space for the virtual network')
 param addressSpace array = [
   '10.0.0.0/16'
@@ -21,6 +24,7 @@ param subnets array = [
 resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
   name: vnetName
   location: location
+  tags: tags
   properties: {
     addressSpace: {
       addressPrefixes: addressSpace

@@ -28,20 +28,18 @@ param gitHubRepositoryName string
 param workloadIdentities object = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'shared-infra'
+        ENV: 'shared-protected'
         ROLE: 'contributor'
-        federationTypes: 'branch,environment'
+        federationTypes: 'environment'
     }
     push: {
         UAMI: 'uami-ssharer-acr-push'
-        ENV: 'shared-artifacts'
+        ENV: 'shared'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
 }
 
-@description('Custom Reader with What-If Role Definition GUID (for use with custom RBAC roles)')
-param ReaderWhatIfRoleDefinitionGuid string = '<REPLACE_WITH_YOUR_CUSTOM_ROLE_ID>'
 
 // =====================
 // Role Definition IDs
@@ -49,12 +47,10 @@ param ReaderWhatIfRoleDefinitionGuid string = '<REPLACE_WITH_YOUR_CUSTOM_ROLE_ID
 
 var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
 var AcrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
-var ReaderWhatIfRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/${ReaderWhatIfRoleDefinitionGuid}' // What-If Reader role definition ID
 
 var roleIdMap = {
   contributor: ContributorRoleDefinitionId
   AcrPush: AcrPushRoleDefinitionId
-  readerWithWhatIf: ReaderWhatIfRoleDefinitionId
 }
 
 // =====================
@@ -63,7 +59,7 @@ var roleIdMap = {
 
 // Create the shared artifacts resource group
 resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: 'rg-ssharer-artifacts-hub'
+  name: 'rg-ss-shared-hub'
   location: location
   tags: {
     Application: 'Secure Sharer'
@@ -86,7 +82,7 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // =====================
 
 // Dynamically create UAMIs for each workload identity in the management resource group
-module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloadIdentities): {
+module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -97,7 +93,7 @@ module uamiModules 'common-modules/uami.bicep' = [for (item, i) in items(workloa
 }]
 
 // Create Environment Federated Credentials for each UAMI if specified in federationTypes
-module envFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
+module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -112,7 +108,7 @@ module envFederationModules 'common-modules/github-federation.bicep' = [for (ite
 }]
 
 // Create Branch Federated Credentials for all workload identities that specify 'branch' in federationTypes
-module branchFederationModules 'common-modules/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'branch')) {
+module branchFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'branch')) {
   name: 'deploy-branch-fed-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -131,7 +127,7 @@ module branchFederationModules 'common-modules/github-federation.bicep' = [for (
 // =====================
 
 // Assign RBAC roles to all UAMIs in the shared artifacts resource group
-module rbacAssignments 'common-modules/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../40-modules/core/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
   params: {

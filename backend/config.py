@@ -35,52 +35,29 @@ class Config:
     MAX_SECRET_LENGTH_KB = int(os.getenv("MAX_SECRET_LENGTH_KB", "100"))
     MAX_SECRET_LENGTH_BYTES = MAX_SECRET_LENGTH_KB * 1024
 
-    # --- Database Configuration ---
-    # 1) Prefer a fully-formed DATABASE_URL if provided (e.g. by docker-compose).
-    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
+    # --- Cosmos DB Configuration ---
+    COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT")
+    COSMOS_KEY = os.getenv("COSMOS_KEY")  # Optional - will use managed identity if not provided
+    COSMOS_DATABASE_NAME = os.getenv("COSMOS_DATABASE_NAME", "SecureSharer")
+    COSMOS_CONTAINER_NAME = os.getenv("COSMOS_CONTAINER_NAME", "secrets")
+    
+    # Use managed identity for authentication (prefer this for production)
+    USE_MANAGED_IDENTITY = os.getenv("USE_MANAGED_IDENTITY", "false").lower() in ("true", "1", "t")
 
-    if not SQLALCHEMY_DATABASE_URI:
-        # 2) Otherwise build it from individual parts.
-        DB_USER = os.getenv("DATABASE_USER")
-        DB_PASSWORD = os.getenv("DATABASE_PASSWORD")
-        DB_HOST = os.getenv("DATABASE_HOST")
-        DB_PORT = os.getenv("DATABASE_PORT")
-        DB_NAME = os.getenv("DATABASE_NAME")
+    # Validate Cosmos DB configuration
+    if not COSMOS_ENDPOINT:
+        logging.warning("COSMOS_ENDPOINT not set. Using default local emulator endpoint.")
+        COSMOS_ENDPOINT = "https://localhost:8081"
+    
+    # For local development, default to emulator key if no managed identity and no key provided
+    if not COSMOS_KEY and not USE_MANAGED_IDENTITY and COSMOS_ENDPOINT == "https://localhost:8081":
+        logging.warning("COSMOS_KEY not set and managed identity not enabled. Using default local emulator key.")
+        # This is the well-known emulator key for local development
+        COSMOS_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 
-        if all([DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME]):
-            # Get SSL mode from environment variable, default to 'disable' for development
-            # Set DATABASE_SSL_MODE=require for production Azure PostgreSQL
-            ssl_mode = os.getenv("DATABASE_SSL_MODE", "disable")
-
-            SQLALCHEMY_DATABASE_URI = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={ssl_mode}"
-            logging.info(
-                "Database URI constructed: "
-                f"postgresql://{DB_USER}:<PASSWORD_HIDDEN>@{DB_HOST}:{DB_PORT}/{DB_NAME}?sslmode={ssl_mode}"
-            )
-        else:
-            # 3) Log which pieces are missing (no unpacking bug).
-            missing = [
-                name
-                for name, value in {
-                    "DATABASE_USER": DB_USER,
-                    "DATABASE_PASSWORD": DB_PASSWORD,
-                    "DATABASE_HOST": DB_HOST,
-                    "DATABASE_PORT": DB_PORT,
-                    "DATABASE_NAME": DB_NAME,
-                }.items()
-                if not value
-            ]
-            logging.error(
-                "CRITICAL: Database URI could not be constructed. "
-                f"Missing environment variables: {', '.join(missing)}."
-            )
-            SQLALCHEMY_DATABASE_URI = None  # will make the app exit later
-
+    # Legacy database configuration (keeping for backward compatibility during migration)
+    # This will be removed after full migration    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    # Defines time that secret expires in minutes
-    # Default to 60 minutes if not set in .env
-    SECRET_EXPIRY_MINUTES = int(os.getenv("SECRET_EXPIRY_MINUTES", "60"))
 
     if not MASTER_ENCRYPTION_KEY:
         # Fail fast - encryption key is required for this security application
