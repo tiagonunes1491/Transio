@@ -55,39 +55,54 @@ param cosmosEnableFreeTier bool = false
 param cosmosThroughput int = 1000
 
 // =====================
-// Name Generation and Tagging
+// Naming and Tagging Modules
 // =====================
 
-// Environment mapping
-var envMapping = {
-  dev: 'd'
-  prod: 'p'
-  shared: 's'
+// Generate standardized tags using the tagging module
+module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-platform'
+  scope: subscription()
+  params: {
+    environment: environment
+    project: projectCode
+    service: serviceCode
+    costCenter: costCenter
+    createdBy: createdBy
+    owner: owner
+    ownerEmail: ownerEmail
+    createdDate: createdDate
+  }
 }
 
-// Standard tags
-var standardTags = {
-  environment: environment
-  project: projectCode
-  service: serviceCode
-  costCenter: costCenter
-  createdBy: createdBy
-  owner: owner
-  ownerEmail: ownerEmail
-  createdDate: createdDate
-  managedBy: 'bicep'
-  deployment: deployment().name
+// Generate ACR name using naming module
+module acrNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'acr-naming'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: environment
+    serviceCode: serviceCode
+    resourceType: 'acr'
+  }
 }
 
-// Generate resource names using naming convention
-var acrName = replace('${projectCode}-${envMapping[environment]}-${serviceCode}-acr', '-', '') // ACR names can't contain dashes
-var cosmosDbAccountName = replace('${projectCode}-${envMapping[environment]}-${serviceCode}-cosmos', '-', '') // Cosmos DB names can't contain dashes
+// Generate Cosmos DB name using naming module
+module cosmosNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'cosmos-naming'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: environment
+    serviceCode: serviceCode
+    resourceType: 'cosmos'
+  }
+}
 
 module acr '../40-modules/shared-services/acr.bicep' = {
   name: 'acr'
   params: {
-    tags: standardTags
-    acrName: acrName
+    tags: standardTagsModule.outputs.tags
+    acrName: acrNamingModule.outputs.resourceName
     location: resourceLocation
     sku: acrSku
     enableAdminUser: acrEnableAdminUser
@@ -98,11 +113,11 @@ module acr '../40-modules/shared-services/acr.bicep' = {
 module cosmosDb '../40-modules/shared-services/cosmos-db.bicep' = {
   name: 'deploy-cosmos-db'
   params: {
-    cosmosDbAccountName: cosmosDbAccountName
+    cosmosDbAccountName: cosmosNamingModule.outputs.resourceName
     location: resourceLocation
     databaseNames: cosmosDatabaseNames
     containerName: cosmosContainerName
-    tags: standardTags
+    tags: standardTagsModule.outputs.tags
     defaultTtl: 86400 // 24 hours TTL
     enableFreeTier: cosmosEnableFreeTier // Disable free tier for internal subscriptions
     throughput: cosmosThroughput // Set valid autoscale throughput

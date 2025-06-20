@@ -52,17 +52,23 @@ param workloadIdentities object = {
 }
 
 // ========================================================
-// Name Generation and Tagging
+// ========================================================
+// Naming and Tagging Modules
 // ========================================================
 
-// Environment mapping
+// Environment mapping (consistent with naming module)
 var envMapping = {
   dev: 'd'
   prod: 'p'
   shared: 's'
 }
 
-// Standard tags
+// Generate RG names using consistent naming pattern
+var hubRgName = toLower('${projectCode}-${envMapping.shared}-hub-rg')
+var paasRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')
+var mgmtRgName = toLower('${projectCode}-${envMapping[environmentName]}-mgmt-rg')
+
+// Standard tags using consistent pattern
 var standardTags = {
   environment: environmentName
   project: projectCode
@@ -76,13 +82,21 @@ var standardTags = {
   deployment: deployment().name
 }
 
-// Generate resource names using naming convention
-var hubRgName = '${projectCode}-${envMapping.shared}-hub-rg'
-var paasRgName = '${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg'
-var mgmtRgName = '${projectCode}-${envMapping[environmentName]}-mgmt-rg'
-
-// Generate UAMI names
-var uamiNames = [for item in items(workloadIdentities): '${projectCode}-${envMapping[environmentName]}-${item.value.UAMI}-id']
+// Generate standardized tags using the tagging module (for use within resource groups)
+module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-swa-aca'
+  scope: subscription()
+  params: {
+    environment: environmentName
+    project: projectCode
+    service: serviceCode
+    costCenter: costCenter
+    createdBy: createdBy
+    owner: owner
+    ownerEmail: ownerEmail
+    createdDate: createdDate
+  }
+}
 
 // ========================================================
 // Variables
@@ -127,15 +141,29 @@ resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // Managed Identities and Federated Credentials
 // ========================================================
 
+// Use naming and tagging modules within the resource groups
+// Generate UAMI names using naming modules at subscription scope
+module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(workloadIdentities): {
+  name: 'uami-naming-${item.key}'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: item.value.UAMI
+    resourceType: 'uai'
+  }
+}]
+
 // Create user-assigned managed identities for each PaaS workload
 module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: managementRg
   params: {
     uamiLocation: location
-    uamiNames: [uamiNames[i]]
+    uamiNames: [uamiNamingModules[i].outputs.resourceName]
     tags: standardTags
   }
+  dependsOn: [uamiNamingModules[i]]
 }]
 
 // Create GitHub environment federated credentials for CI/CD authentication

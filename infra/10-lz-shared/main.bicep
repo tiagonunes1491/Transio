@@ -11,8 +11,6 @@ param projectCode string = 'ss'
 
 @description('Service code for shared services')
 param serviceCode string = 'hub'
-@description('Service code for shared services')
-param serviceCode string = 'hub'
 
 // Tagging configuration
 @description('Cost center for billing')
@@ -54,17 +52,21 @@ param workloadIdentities object = {
 }
 
 // =====================
-// Name Generation Variables
+// Naming and Tagging Modules
 // =====================
 
-// Environment mapping
+// Environment mapping (consistent with naming module)
 var envMapping = {
   dev: 'd'
   prod: 'p'
   shared: 's'
 }
 
-// Standard tags
+// Generate RG names using consistent naming pattern
+var hubRgName = toLower('${projectCode}-${envMapping.shared}-${serviceCode}-rg')
+var mgmtRgName = toLower('${projectCode}-${envMapping.shared}-mgmt-rg')
+
+// Standard tags using consistent pattern
 var standardTags = {
   environment: 'shared'
   project: projectCode
@@ -78,12 +80,21 @@ var standardTags = {
   deployment: deployment().name
 }
 
-// Generate names using the naming convention
-var hubRgName = '${projectCode}-${envMapping.shared}-${serviceCode}-rg'
-var mgmtRgName = '${projectCode}-${envMapping.shared}-mgmt-rg'
-
-// Generate UAMI names
-var uamiNames = [for item in items(workloadIdentities): '${projectCode}-${envMapping.shared}-${item.value.UAMI}-id']
+// Generate standardized tags using the tagging module (for use within resource groups)
+module standardTagsModule '../40-modules/core/tagging.bicep' = {
+  name: 'standard-tags-shared'
+  scope: subscription()
+  params: {
+    environment: 'shared'
+    project: projectCode
+    service: serviceCode
+    costCenter: costCenter
+    createdBy: createdBy
+    owner: owner
+    ownerEmail: ownerEmail
+    createdDate: createdDate
+  }
+}
 
 
 // =====================
@@ -120,15 +131,28 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 // Managed Identities and Federated Credentials
 // =====================
 
+// Generate UAMI names using naming modules at subscription scope
+module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(workloadIdentities): {
+  name: 'uami-naming-${item.key}'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: 'shared'
+    serviceCode: item.value.UAMI
+    resourceType: 'uai'
+  }
+}]
+
 // Dynamically create UAMIs for each workload identity in the management resource group
 module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: mgmtSharedRG
   params: {
     uamiLocation: location
-    uamiNames: [uamiNames[i]]
+    uamiNames: [uamiNamingModules[i].outputs.resourceName]
     tags: standardTags
   }
+  dependsOn: [uamiNamingModules[i]]
 }]
 
 // Create Environment Federated Credentials for each UAMI if specified in federationTypes

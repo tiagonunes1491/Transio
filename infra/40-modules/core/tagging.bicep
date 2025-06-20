@@ -1,6 +1,8 @@
 // Standardized tagging module for SecureSharer
 // Implements Cloud Adoption Framework tagging standards
 
+targetScope = 'subscription'
+
 // Input Parameters
 @description('Environment name')
 @allowed(['dev', 'prod', 'shared'])
