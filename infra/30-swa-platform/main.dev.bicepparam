@@ -3,7 +3,7 @@
 using 'main.bicep'
 
 // Basic configuration
-param resourceLocation = 'westeurope'
+param resourceLocation = 'spaincentral'
 param projectCode = 'ss'
 param serviceCode = 'swa'
 param environmentName = 'dev'
@@ -16,9 +16,6 @@ param ownerEmail = 'tiago.nunes@example.com'
 
 // Shared infrastructure references - these should match existing resources
 param acrName = 'sssplatacr'
-param cosmosDbAccountName = 'cosmos-sharer-hub'
-param cosmosDatabaseName = 'SecureSharer'
-param cosmosContainerName = 'secrets'
 param sharedResourceGroupName = 'ss-s-plat-rg'
 
 // Key Vault configuration
@@ -26,8 +23,7 @@ param akvSku = 'standard'
 param akvRbac = true
 param akvPurgeProtection = false
 param akvSecrets = {
-  masterEncryptionKey: 'master-key-secret-name'
+  'cosmos-connection-string': 'https://ss-s-plat-cosmos.documents.azure.com:443/'
+  'encryption-key': '=fF3jdnJGZiQWSTrGD9kM2I5_7oP8qRsT6uVwXyZaBcE='
 }
 
-// Container App stub configuration
-param stubContainerImage = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'

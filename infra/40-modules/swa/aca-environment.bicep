@@ -16,6 +16,9 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
   name: acaEnvironmentName
   location: acaEnvironmentLocation
   tags: acaEnvironmentTags
+  identity: {
+    type: 'SystemAssigned'  // Enable system-assigned managed identity for CAE
+  }
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
@@ -34,3 +37,4 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
 
 output acaEnvironmentId string = acaEnvironment.id
 output acaDefaultDomain string = acaEnvironment.properties.defaultDomain
+output acaEnvironmentPrincipalId string = acaEnvironment.identity.principalId  // System identity principal ID for RBAC

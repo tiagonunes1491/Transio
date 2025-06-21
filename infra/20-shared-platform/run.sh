@@ -1,0 +1,1 @@
+az deployment group create --name "shared-platform-$(date +%Y%m%d%H%M%S)" --resource-group "ss-s-plat-rg" --template-file "main.bicep" --parameters "main.bicepparam"

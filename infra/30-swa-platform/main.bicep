@@ -32,8 +32,6 @@ param owner string = 'tiago-nunes'
 @description('Owner email')
 param ownerEmail string = 'tiago.nunes@example.com'
 
-@description('Image for the stub Container App')
-param stubContainerImage string
 
 // ========== SHARED INFRASTRUCTURE REFERENCES ==========
 @description('Existing Platform Resource Group Name')
@@ -45,21 +43,6 @@ param acrName string
 // Reference existing ACR resource to get its ID and login server automatically
 resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
-  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
-}
-
-//Reference existing Cosmos DB account for RBAC assignment
-@description('Shared Cosmos DB account name from the shared infrastructure')
-param cosmosDbAccountName string
-
-@description('Cosmos DB database name')
-param cosmosDatabaseName string = 'paas-dev'
-
-@description('Cosmos DB container name')
-param cosmosContainerName string = 'secret'
-
-resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
-  name: cosmosDbAccountName
   scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
 }
 
@@ -150,27 +133,7 @@ module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module containerAppNamingModule '../40-modules/core/naming.bicep' = {
-  scope: subscription()
-  name: 'container-app-naming'
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'ca'
-  }
-}
 
-module swaNamingModule '../40-modules/core/naming.bicep' = {
-  scope: subscription()
-  name: 'swa-naming'
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'swa'
-  }
-}
 
 // ========== KEY VAULT & PRIVATE ENDPOINT ==========
 @description('Key Vault SKU')
@@ -268,69 +231,12 @@ module acaEnv '../40-modules/swa/aca-environment.bicep' = {
   }
 }
 
-// ========== CONTAINER APP (with System Identity) ==========
-module stubApp '../40-modules/swa/container-app.bicep' = {
-  name:  'stubContainerApp'
-  params: {    containerAppName: containerAppNamingModule.outputs.resourceName
-    environmentId:    acaEnv.outputs.acaEnvironmentId
-    image:            stubContainerImage
-    acrLoginServer:   sssplatacr.properties.loginServer
-    location:         resourceLocation
-    tags:             standardTagsModule.outputs.tags
-  }
-}
 
-// ========== RBAC ASSIGNMENTS (using Container App's System Identity) ==========
-
-// Deploy Key Vault RBAC in the current resource group
-module keyVaultRbac '../40-modules/swa/rbac.bicep' = {
-  name: 'keyVaultRbac'
-  scope: resourceGroup()
-  params: {
-    keyVaultId: akv.outputs.keyvaultId
-    id: stubApp.outputs.containerAppPrincipalId
-    // Only set keyVaultId, leave others empty to skip ACR/CosmosDB roles
-    acrId: ''
-    cosmosDbAccountId: ''
-    cosmosDatabaseName: ''
-  }
-}
-
-// Deploy ACR and Cosmos DB RBAC in the shared resource group
-module sharedResourcesRbac '../40-modules/swa/rbac.bicep' = {
-  name: 'sharedResourcesRbac'
-  scope: resourceGroup(sharedResourceGroupName)
-  params: {
-    acrId: sssplatacr.id
-    cosmosDbAccountId: sssplatcosmos.id
-    cosmosDatabaseName: cosmosDatabaseName
-    id: stubApp.outputs.containerAppPrincipalId
-    // Only set ACR/CosmosDB params, leave Key Vault empty to skip Key Vault roles
-    keyVaultId: ''
-  }
-}
-
-// ========== STATIC WEB APP STUB ==========
-module staticWebApp '../40-modules/swa/static-web-app.bicep' = {
-  name:  'staticWebApp'
-  params: {
-    swaName:  swaNamingModule.outputs.resourceName
-    location: 'westeurope'     // Static Web Apps aren’t supported in Spain Central (yet)
-    backendResourceId: stubApp.outputs.containerAppId  // Link to Container App for API routing
-    tags:     standardTagsModule.outputs.tags
-  }
-}
 
 
 // ========== OUTPUTS ==========
 output acrName               string = acrName
 output acrLoginServer        string = sssplatacr.properties.loginServer  // Get from existing resource
 output acaEnvironmentId      string = acaEnv.outputs.acaEnvironmentId
-output containerAppPrincipalId string = stubApp.outputs.containerAppPrincipalId  // System identity
+output acaEnvironmentPrincipalId string = acaEnv.outputs.acaEnvironmentPrincipalId  // CAE system identity
 output keyVaultUri           string = akv.outputs.keyvaultUri
-output cosmosDbAccountName   string = cosmosDbAccountName
-output cosmosDatabaseName    string = cosmosDatabaseName
-output cosmosContainerName   string = cosmosContainerName
-output containerAppId        string = stubApp.outputs.containerAppId
-output staticWebAppId        string = staticWebApp.outputs.staticWebAppId
-output staticWebAppHostname  string = staticWebApp.outputs.staticWebAppHostname

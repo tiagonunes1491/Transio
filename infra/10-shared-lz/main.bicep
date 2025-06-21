@@ -137,7 +137,7 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(
     environment: 'shared'
     serviceCode: serviceCode
     resourceType: 'id'
-    suffix: item.key
+    suffix: 'gh-${item.key}'
   }
 }]
 
@@ -188,7 +188,7 @@ module branchFederationModules '../40-modules/core/github-federation.bicep' = [f
 // =====================
 
 // Assign RBAC roles to all UAMIs in the shared artifacts resource group
-module rbacAssignments '../40-modules/core/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../40-modules/shared-services/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
   params: {

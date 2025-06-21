@@ -20,8 +20,8 @@ resource swa 'Microsoft.Web/staticSites@2024-04-01' = {
   name: swaName
   location: location   // must be one of the allowed regions
   sku: {
-    name: 'Free'
-    tier: 'Free'
+    name: 'Standard'
+    tier: 'Standard'
   }
   tags: tags
   properties: {

@@ -1,0 +1,1 @@
+az deployment sub create --name "paas-lz-$(date +%Y%m%d%H%M%S)" --location "spaincentral" --template-file "main.bicep" --parameters "main.bicepparam"

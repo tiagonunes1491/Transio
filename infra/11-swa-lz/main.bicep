@@ -134,8 +134,8 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(
     environment: environmentName
     serviceCode: serviceCode
     resourceType: 'id'
-    suffix: item.key 
-   }
+    suffix: 'gh-${item.key}'
+  }
 }]
 
 // Create user-assigned managed identities for each PaaS workload
@@ -170,7 +170,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
 // ========================================================
 
 // Assign appropriate roles to UAMIs in the PaaS spoke resource group
-module rbacAssignmentsPaas '../40-modules/core/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignmentsPaas '../40-modules/shared-services/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: paasRG
   params: {
