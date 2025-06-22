@@ -17,6 +17,7 @@ param ownerEmail = 'tiago.nunes@example.com'
 // Shared infrastructure references - these should match existing resources
 param acrName = 'sssplatacr'
 param sharedResourceGroupName = 'ss-s-plat-rg'
+param cosmosDbAccountName = 'ss-s-plat-cosmos'
 
 // Key Vault configuration
 param akvSku = 'standard'

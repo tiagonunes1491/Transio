@@ -22,6 +22,6 @@ param acrEnableAdminUser = false
 
 // Cosmos DB configuration
 param cosmosDatabaseNames = ['swa-dev', 'swa-prod', 'aks-dev', 'aks-prod']
-param cosmosContainerName = 'secret'
+param cosmosContainerName = 'secrets'
 param cosmosEnableFreeTier = false
 param cosmosThroughput = 1000  // Minimum for autoscale

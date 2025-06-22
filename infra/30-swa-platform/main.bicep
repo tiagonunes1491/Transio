@@ -40,9 +40,18 @@ param sharedResourceGroupName string
 @description('Existing ACR name from shared infrastructure')
 param acrName string
 
+@description('Existing Cosmos DB account name from shared infrastructure')
+param cosmosDbAccountName string
+
 // Reference existing ACR resource to get its ID and login server automatically
 resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
+  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
+}
+
+// Reference existing Cosmos DB account for private endpoint creation
+resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+  name: cosmosDbAccountName
   scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
 }
 
@@ -206,6 +215,29 @@ module acrPe '../40-modules/core/private-endpoint.bicep' = {
     privateEndpointServiceId:  sssplatacr.id
     privateEndpointTags:       standardTagsModule.outputs.tags
     privateDnsZoneIds:         [ acrDns.outputs.privateDnsZoneId ]
+  }
+}
+
+// ========== COSMOS DB PRIVATE ENDPOINT (existing shared Cosmos DB) ==========
+module cosmosDns '../40-modules/core/private-dns-zone.bicep' = {
+  name:  'cosmosPrivateDns'
+  params: {
+    privateDnsZoneName:  'privatelink.documents.azure.com'
+    vnetId:              network.outputs.vnetId
+    privateDnsZoneTags:  standardTagsModule.outputs.tags
+  }
+}
+
+module cosmosPe '../40-modules/core/private-endpoint.bicep' = {
+  name:  'cosmosPrivateEndpoint'
+  params: {
+    privateEndpointName:       'pe-${cosmosDbAccountName}'
+    privateEndpointLocation:   resourceLocation
+    privateEndpointSubnetId:   network.outputs.subnetIds[1]
+    privateEndpointGroupId:    'Sql'
+    privateEndpointServiceId:  cosmosDbAccount.id
+    privateEndpointTags:       standardTagsModule.outputs.tags
+    privateDnsZoneIds:         [ cosmosDns.outputs.privateDnsZoneId ]
   }
 }
 
