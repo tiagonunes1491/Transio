@@ -104,6 +104,14 @@ module swaNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
+// Dynamically add AZURE_CLIENT_ID to environment variables
+var containerAppEnvironmentVariables = union(environmentVariables, [
+  {
+    name: 'AZURE_CLIENT_ID'
+    value: uami.properties.clientId
+  }
+])
+
 // ========== CONTAINER APP (using UAMI) ==========
 module containerApp '../40-modules/swa/container-app.bicep' = {
   name: 'containerApp'
@@ -115,7 +123,7 @@ module containerApp '../40-modules/swa/container-app.bicep' = {
     tags: standardTagsModule.outputs.tags
     userAssignedIdentityId: uami.id
     secrets: keyVaultSecrets
-    environmentVariables: environmentVariables
+    environmentVariables: containerAppEnvironmentVariables
     secretEnvironmentVariables: secretEnvironmentVariables
   }
 }

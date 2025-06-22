@@ -163,7 +163,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
     GitHubRepositoryName: gitHubRepositoryName
     environmentName: item.value.ENV
     fedType: 'environment'
-    federatedCredentialName: 'gh-env-${item.value.ENV}-${item.key}'
+    federatedCredentialName: 'fc-env-${item.value.ENV}-${item.key}'
   }
   dependsOn: [uamiModules[i]]
 }]

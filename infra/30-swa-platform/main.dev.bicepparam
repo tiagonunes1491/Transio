@@ -23,7 +23,9 @@ param akvSku = 'standard'
 param akvRbac = true
 param akvPurgeProtection = false
 param akvSecrets = {
-  'cosmos-connection-string': 'https://ss-s-plat-cosmos.documents.azure.com:443/'
+  'cosmos-endpoint': 'https://ss-s-plat-cosmos.documents.azure.com:443/'
   'encryption-key': '=fF3jdnJGZiQWSTrGD9kM2I5_7oP8qRsT6uVwXyZaBcE='
+  'cosmos-database-name': 'swa-dev'
+  'cosmos-container-name': 'secrets'
 }
 

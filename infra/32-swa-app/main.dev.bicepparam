@@ -24,17 +24,25 @@ param containerImage = 'sssplatacr.azurecr.io/secure-secret-sharer:dev'
 // Key Vault secrets configuration
 param keyVaultSecrets = [
   {
-    name: 'cosmos-connection-string'
-    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-connection-string'
+    name: 'cosmos-endpoint'
+    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-endpoint'
   }
   {
     name: 'encryption-key'
     keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/encryption-key'
   }
+  {
+    name: 'cosmos-database-name'
+    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-database-name'
+  }
+  {
+    name: 'cosmos-container-name'
+    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-container-name'
+  }
 ]
 
 // Environment variables
-param environmentVariables = [
+param environmentVariables = [  
   {
     name: 'ENVIRONMENT'
     value: 'development'
@@ -44,23 +52,35 @@ param environmentVariables = [
     value: 'DEBUG'
   }
   {
-    name: 'COSMOS_DATABASE_NAME'
-    value: 'swa-dev'
-  }
-  {
     name: 'SECRET_EXPIRY_HOURS'
     value: '24'
+  }
+  {
+    name: 'USE_MANAGED_IDENTITY'
+    value: 'true'
+  }
+  {
+    name: 'MAX_SECRET_LENGTH_KB'
+    value: '100'
   }
 ]
 
 // Secret environment variables (referencing Key Vault secrets)
 param secretEnvironmentVariables = [
   {
-    name: 'COSMOS_CONNECTION_STRING'
-    secretRef: 'cosmos-connection-string'
+    name: 'COSMOS_ENDPOINT'
+    secretRef: 'cosmos-endpoint'
   }
   {
-    name: 'ENCRYPTION_KEY'
+    name: 'MASTER_ENCRYPTION_KEY'
     secretRef: 'encryption-key'
+  }
+  {
+    name: 'COSMOS_DATABASE_NAME'
+    secretRef: 'cosmos-database-name'
+  }
+  {
+    name: 'COSMOS_CONTAINER_NAME'
+    secretRef: 'cosmos-container-name'
   }
 ]
