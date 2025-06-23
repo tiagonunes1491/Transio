@@ -138,7 +138,6 @@ module staticWebApp '../40-modules/swa/static-web-app.bicep' = {
     location: 'westeurope' // Static Web Apps aren't supported in Spain Central (yet)
     backendResourceId: containerApp.outputs.containerAppId // Link to Container App for API routing
     tags: standardTagsModule.outputs.tags
-    enableAuthentication: false // Disable authentication
   }
 }
 
