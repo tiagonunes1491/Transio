@@ -42,17 +42,56 @@ param acrSku string = 'Premium'
 @description('Enable admin user for the ACR')
 param acrEnableAdminUser bool = false
 
-@description('The names of the databases to create')
-param cosmosDatabaseNames array = [ 'swa-dev', 'swa-prod', 'aks-dev', 'aks-prod' ]
-
-@description('The name of the container to create in each database')
-param cosmosContainerName string = 'secret'
+@description('The databases to create with their containers')
+param cosmosDbConfig array = [
+  {
+    name: 'swa-dev'
+    containers: [
+      {
+        name: 'secret'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+  {
+    name: 'swa-prod'
+    containers: [
+      {
+        name: 'secret'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+  {
+    name: 'aks-dev'
+    containers: [
+      {
+        name: 'secret'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+  {
+    name: 'aks-prod'
+    containers: [
+      {
+        name: 'secret'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+]
 
 @description('Enable free tier for Cosmos DB (not supported on internal subscriptions)')
 param cosmosEnableFreeTier bool = false
-
-@description('Throughput for the container (minimum 1000 RU/s for autoscale)')
-param cosmosThroughput int = 1000
 
 // =====================
 // Naming and Tagging Modules
@@ -98,7 +137,7 @@ module cosmosNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module acr '../40-modules/shared-services/acr.bicep' = {
+module acr '../40-modules/core/acr.bicep' = {
   name: 'acr'
   params: {
     tags: standardTagsModule.outputs.tags
@@ -110,17 +149,14 @@ module acr '../40-modules/shared-services/acr.bicep' = {
 }
 
 // Deploy Cosmos DB for shared use across AKS and SWA deployments
-module cosmosDb '../40-modules/shared-services/cosmos-db.bicep' = {
+module cosmosDb '../40-modules/core/cosmos-db.bicep' = {
   name: 'deploy-cosmos-db'
   params: {
     cosmosDbAccountName: cosmosNamingModule.outputs.resourceName
     location: resourceLocation
-    databaseNames: cosmosDatabaseNames
-    containerName: cosmosContainerName
+    databases: cosmosDbConfig
     tags: standardTagsModule.outputs.tags
-    defaultTtl: 86400 // 24 hours TTL
     enableFreeTier: cosmosEnableFreeTier // Disable free tier for internal subscriptions
-    throughput: cosmosThroughput // Set valid autoscale throughput
   }
 }
 
@@ -132,5 +168,4 @@ output acrName string = acr.outputs.acrName
 output acrLoginServer string = acr.outputs.acrLoginServer
 output cosmosDbEndpoint string = cosmosDb.outputs.cosmosDbEndpoint
 output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
-output cosmosDatabaseNames array = cosmosDb.outputs.databaseNames
-output cosmosContainerName string = cosmosDb.outputs.containerName
+output cosmosDbDatabases array = cosmosDb.outputs.databases

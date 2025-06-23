@@ -1,64 +1,114 @@
-// Module: core/naming.bicep
-// Description: Standardized naming convention module for Azure resources in the Secure Secret Sharer project.
-// Generates consistent, validated resource names following the pattern: {projectCode}-{env}-{serviceCode}-{resourceType}[-{suffix}]
-// Handles special cases like Key Vault and Container Registry that require alphanumeric-only names.
-//
-// Parameters:
-//   - projectCode: 2-3 character project identifier (default: 'ss')
-//   - environment: Environment name (dev, prod, shared) - mapped to single character
-//   - serviceCode: 2-4 character service identifier
-//   - resourceType: Azure resource type code (ca, rg, kv, acr, etc.)
-//   - suffix: Optional suffix for resource differentiation
-//
-// Environment Mapping:
-//   - dev → 'd'
-//   - prod → 'p' 
-//   - shared → 's'
-//
-// Special Handling:
-//   - Key Vault (kv) and Container Registry (acr): Removes hyphens for alphanumeric-only names
-//   - All other resources: Maintains hyphen-separated naming
-//
-// Outputs:
-//   - resourceName: Final sanitized resource name
-//   - isValid: Boolean validation result for all input parameters
-//   - components: Detailed breakdown of naming components for debugging
-//
-// Usage:
-//   Use this module to ensure consistent naming across all Azure resources in the project.
-//   Validates input parameters and provides standardized naming patterns.
-//
-// Example:
-//   module naming 'core/naming.bicep' = {
-//     name: 'resource-naming'
-//     scope: subscription()
-//     params: {
-//       projectCode: 'ss'
-//       environment: 'dev'
-//       serviceCode: 'web'
-//       resourceType: 'rg'
-//       suffix: 'frontend'
-//     }
-//   }
-//   // Output: ss-d-web-rg-frontend
+/*
+ * =============================================================================
+ * Standardized Naming Convention Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module provides centralized, standardized naming conventions for
+ * all Azure resources in the Secure Secret Sharer project. It ensures consistent,
+ * predictable, and compliant resource names across all environments and services.
+ * 
+ * NAMING STRATEGY OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                    Resource Naming Components                           │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  {projectCode}-{env}-{serviceCode}-{resourceType}[-{suffix}]            │
+ * │                                                                         │
+ * │  Examples:                                                              │
+ * │  • ss-d-swa-rg              (Development SWA Resource Group)            │
+ * │  • ss-p-plat-kv             (Production Platform Key Vault)             │
+ * │  • ssdswaacr                (Development SWA Container Registry)        │
+ * │  • ss-s-plat-id-gh-creator  (Shared Platform Identity with suffix)     │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Centralized Naming: Single source of truth for all resource naming
+ * • Environment Mapping: Consistent abbreviation strategy (dev→d, prod→p, shared→s)
+ * • Service-Specific Rules: Special handling for Azure services with naming constraints
+ * • Validation Logic: Built-in parameter validation and compliance checking
+ * • Debugging Support: Detailed component breakdown for troubleshooting
+ * • Scalable Design: Extensible for new resource types and environments
+ * 
+ * AZURE SERVICE COMPATIBILITY:
+ * • Standard Resources: Uses hyphen-separated naming (Resource Groups, VNets, etc.)
+ * • Key Vault & ACR: Alphanumeric-only naming (removes hyphens automatically)
+ * • Length Constraints: Validates against Azure service naming limits
+ * • Character Restrictions: Ensures lowercase, valid character usage
+ * 
+ * GOVERNANCE BENEFITS:
+ * • Policy Compliance: Meets organizational naming standards
+ * • Cost Allocation: Enables accurate cost tracking and chargeback
+ * • Resource Discovery: Predictable names simplify automation and scripts
+ * • Audit Trail: Clear naming patterns support compliance and governance
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at subscription scope to support resource group
+ * naming and cross-resource naming consistency.
+ */
 targetScope = 'subscription'
 
-// Input Parameters
-@description('Project code (2-3 lowercase letters)')
+/*
+ * =============================================================================
+ * PARAMETER DEFINITIONS
+ * =============================================================================
+ * 
+ * These parameters define the components used to construct standardized
+ * Azure resource names. All parameters include validation to ensure
+ * compliance with Azure naming requirements and organizational standards.
+ */
+
+/*
+ * PROJECT IDENTIFICATION PARAMETER
+ * Core identifier that groups all resources belonging to the same project
+ * Must be 2-3 characters to balance brevity with clarity
+ */
+@description('Project code identifier (2-3 lowercase letters) - identifies the Secure Secret Sharer project')
 @minLength(2)
 @maxLength(3)
 param projectCode string = 'ss'
 
-@description('Environment (dev, prod, shared)')
+/*
+ * ENVIRONMENT CLASSIFICATION PARAMETER
+ * Specifies the deployment environment for proper resource segregation
+ * Maps to single-character codes to optimize resource name length
+ */
+@description('Environment classification (dev, prod, shared) - determines resource isolation and configuration')
 @allowed(['dev', 'prod', 'shared'])
 param environment string
 
-@description('Service code (2-4 lowercase letters)')
+/*
+ * SERVICE COMPONENT PARAMETER
+ * Identifies the specific service or component within the project
+ * Enables logical grouping of resources by functional area
+ */
+@description('Service code identifier (2-4 lowercase letters) - identifies the specific service component')
 @minLength(2)
 @maxLength(4)
 param serviceCode string
 
-@description('Resource type code')
+/*
+ * AZURE RESOURCE TYPE PARAMETER
+ * Specifies the type of Azure resource being named
+ * Uses standardized abbreviations for consistency and recognition
+ * 
+ * Supported Resource Types:
+ * • ca: Container Apps
+ * • cae: Container Apps Environment
+ * • rg: Resource Group
+ * • vnet: Virtual Network
+ * • sub: Subnet
+ * • pe: Private Endpoint
+ * • log: Log Analytics Workspace
+ * • swa: Static Web App
+ * • kv: Key Vault (special alphanumeric handling)
+ * • acr: Azure Container Registry (special alphanumeric handling)
+ * • cosmos: Cosmos DB
+ * • id: Managed Identity
+ * • nsg: Network Security Group
+ * • aks: Azure Kubernetes Service
+ * • agw: Application Gateway
+ * • pip: Public IP Address
+ */
+@description('Azure resource type code - standardized abbreviation for the resource being named')
 @allowed([
   'ca'
   'cae'
@@ -80,11 +130,34 @@ param serviceCode string
 ])
 param resourceType string
 
-@description('Optional suffix to append (e.g. "creator", "push")')
+/*
+ * OPTIONAL DIFFERENTIATION PARAMETER
+ * Provides additional context or differentiation when multiple resources
+ * of the same type exist within the same scope
+ * Examples: 'frontend', 'backend', 'creator', 'push'
+ */
+@description('Optional suffix for resource differentiation (e.g., "creator", "push", "frontend")')
 param suffix string = ''
 
-// Map full environment names to single-character codes for concise naming
-// This reduces resource name length while maintaining readability
+/*
+ * =============================================================================
+ * ENVIRONMENT MAPPING AND NAME CONSTRUCTION
+ * =============================================================================
+ * 
+ * This section transforms the input parameters into standardized resource names
+ * following Azure best practices and organizational naming conventions.
+ */
+
+/*
+ * ENVIRONMENT ABBREVIATION MAPPING
+ * Maps full environment names to single-character codes for optimal name length
+ * This strategy ensures resource names remain within Azure limits while maintaining clarity
+ * 
+ * Mapping Strategy:
+ * • dev → 'd': Development environment for feature development and testing
+ * • prod → 'p': Production environment for live workloads
+ * • shared → 's': Shared resources used across multiple environments
+ */
 var envMapping = {
   dev: 'd'      // Development environment
   prod: 'p'     // Production environment
@@ -92,22 +165,64 @@ var envMapping = {
 }
 var mappedEnv = envMapping[environment]
 
-// Construct base resource name following the standardized pattern
-// Pattern: {projectCode}-{env}-{serviceCode}-{resourceType}[-{suffix}]
-// Suffix is only appended when provided to allow resource differentiation
+/*
+ * BASE NAME CONSTRUCTION
+ * Builds the foundation resource name using the standardized pattern
+ * Pattern: {projectCode}-{env}-{serviceCode}-{resourceType}[-{suffix}]
+ * 
+ * Construction Logic:
+ * • Always includes: project code, environment, service code, resource type
+ * • Conditionally includes: suffix (only when provided for differentiation)
+ * • Uses hyphens as separators for readability and Azure compatibility
+ * 
+ * Examples:
+ * • Without suffix: ss-d-swa-rg
+ * • With suffix: ss-d-swa-id-gh-creator
+ */
 var baseName = empty(suffix)
   ? '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}'
   : '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}-${suffix}'
 
-// Apply special naming rules for Azure services with specific requirements
-// Key Vault and Container Registry require alphanumeric-only names (no hyphens)
-// All other resources use the standard hyphen-separated format
+/*
+ * AZURE SERVICE-SPECIFIC NAME SANITIZATION
+ * Applies service-specific naming rules required by different Azure resources
+ * 
+ * Special Cases:
+ * • Key Vault (kv): Requires alphanumeric characters only (3-24 characters)
+ * • Container Registry (acr): Requires alphanumeric characters only (5-50 characters)
+ * • Standard Resources: Use hyphen-separated format for readability
+ * 
+ * This approach ensures compatibility while maintaining naming consistency
+ */
 var sanitizedName = (resourceType == 'kv' || resourceType == 'acr')
-  ? replace(toLower(baseName), '-', '')  // Remove hyphens for KV/ACR
+  ? replace(toLower(baseName), '-', '')  // Remove hyphens for KV/ACR compliance
   : toLower(baseName)                    // Standard lowercase with hyphens
 
-// Validate input parameters to ensure they meet naming requirements
-// These validations help catch configuration errors early in deployment
+/*
+ * =============================================================================
+ * INPUT VALIDATION AND COMPLIANCE CHECKING
+ * =============================================================================
+ * 
+ * Comprehensive validation logic to ensure all input parameters meet
+ * Azure naming requirements and organizational standards before name generation.
+ */
+
+/*
+ * PARAMETER VALIDATION RULES
+ * Validates each input parameter against specific business and technical requirements
+ * Early validation prevents deployment failures and ensures compliance
+ * 
+ * Validation Criteria:
+ * • Suffix: Optional parameter - if provided, must be non-empty string
+ * • Project Code: Must be 2-3 characters (balances brevity with clarity)
+ * • Service Code: Must be 2-4 characters (allows flexibility for service identification)
+ * 
+ * Benefits:
+ * • Early error detection during template compilation
+ * • Prevents invalid resource names that would fail Azure validation
+ * • Ensures consistency across all deployments
+ * • Supports automated compliance checking
+ */
 var isValidSuffix = empty(suffix) || length(suffix) >= 1        // Suffix optional but must be non-empty if provided
 var isValidProjectCode = length(projectCode) >= 2 && length(projectCode) <= 3  // Project code: 2-3 characters
 var isValidServiceCode = length(serviceCode) >= 2 && length(serviceCode) <= 4  // Service code: 2-4 characters

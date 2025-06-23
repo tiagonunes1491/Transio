@@ -381,7 +381,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * • Principle of least privilege strictly enforced
  * • Audit logging enabled through Azure Activity Log
  */
-module rbacAssignments '../40-modules/core/roleAssignment.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
   params: {

@@ -350,7 +350,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * - Built-in roles preferred over custom roles
  * - Regular access reviews recommended
  */
-module rbacAssignmentsPaas '../40-modules/core/roleAssignment.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignmentsPaas '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: paasRG
   params: {

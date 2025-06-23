@@ -21,7 +21,50 @@ param acrSku = 'Premium'
 param acrEnableAdminUser = false
 
 // Cosmos DB configuration
-param cosmosDatabaseNames = ['swa-dev', 'swa-prod', 'aks-dev', 'aks-prod']
-param cosmosContainerName = 'secrets'
+param cosmosDbConfig = [
+  {
+    name: 'swa-dev'
+    containers: [
+      {
+        name: 'secrets'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+  {
+    name: 'swa-prod'
+    containers: [
+      {
+        name: 'secrets'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+  {
+    name: 'aks-dev'
+    containers: [
+      {
+        name: 'secrets'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+  {
+    name: 'aks-prod'
+    containers: [
+      {
+        name: 'secrets'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+]
 param cosmosEnableFreeTier = false
-param cosmosThroughput = 1000  // Minimum for autoscale

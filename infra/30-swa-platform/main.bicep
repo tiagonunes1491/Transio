@@ -278,14 +278,20 @@ module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
 }
 
 // ========== ACA ENVIRONMENT ==========
-module acaEnv '../40-modules/swa/aca-environment.bicep' = {
+module acaEnv '../40-modules/core/aca-environment.bicep' = {
   name:  'acaEnvironment'
   params: {
-    acaEnvironmentName:     acaEnvNamingModule.outputs.resourceName
-    acaEnvironmentLocation: resourceLocation
-    acaEnvironmentTags:     standardTagsModule.outputs.tags
-    workspaceId:            workspace.outputs.workspaceId
-    acaEnvironmentSubnetId: network.outputs.subnetIds[0]
+    caeName: acaEnvNamingModule.outputs.resourceName
+    location: resourceLocation
+    tags: standardTagsModule.outputs.tags
+    logAnalyticsWorkspaceId: workspace.outputs.workspaceId
+    enableLogAnalytics: true
+    vnetConfiguration: {
+      internal: false
+      infrastructureSubnetId: network.outputs.subnetIds[0]
+    }
+    enableVnetIntegration: true
+    enableZoneRedundancy: false
   }
 }
 
@@ -365,8 +371,10 @@ module peNsg '../40-modules/core/nsg.bicep' = {
 // ========== OUTPUTS ==========
 output acrName               string = acrName
 output acrLoginServer        string = sssplatacr.properties.loginServer  // Get from existing resource
-output acaEnvironmentId      string = acaEnv.outputs.acaEnvironmentId
-output acaEnvironmentPrincipalId string = acaEnv.outputs.acaEnvironmentPrincipalId  // CAE system identity
+output caeEnvironmentId      string = acaEnv.outputs.caeId
+output caeEnvironmentName    string = acaEnv.outputs.caeName
+output caeDefaultDomain      string = acaEnv.outputs.caeDefaultDomain
+output caeStaticIp           string = acaEnv.outputs.caeStaticIp
 output keyVaultUri           string = akv.outputs.keyvaultUri
 output acaNsgId              string = acaNsg.outputs.nsgId
 output peNsgId               string = peNsg.outputs.nsgId

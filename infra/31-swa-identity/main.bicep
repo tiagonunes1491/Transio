@@ -107,52 +107,44 @@ module uami '../40-modules/core/uami.bicep' = {
 
 // ========== RBAC ASSIGNMENTS ==========
 
-// Deploy ACR RBAC in the shared resource group
-module acrRbac '../40-modules/swa/rbac.bicep' = {
+// Deploy ACR RBAC at the ACR scope
+module acrRbac '../40-modules/core/rbacAcr.bicep' = {
   name: 'acrRbac'
-  scope: resourceGroup(sharedResourceGroupName)
   params: {
-    acrId: sssplatacr.id
-    id: uami.outputs.uamiPrincipalIds[0]
-    deployAcrRole: true
-    deployKeyVaultRole: false
-    deployCosmosDbRole: false
+    registryId: sssplatacr.id
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull role
   }
 }
 
-// Deploy Key Vault RBAC in the Key Vault resource group
-module keyVaultRbac '../40-modules/swa/rbac.bicep' = {
+// Deploy Key Vault RBAC at the Key Vault scope
+module keyVaultRbac '../40-modules/core/rbacKv.bicep' = {
   name: 'keyVaultRbac'
-  scope: resourceGroup(subscription().subscriptionId, keyVaultResourceGroupName)
   params: {
-    keyVaultId: akv.id
-    id: uami.outputs.uamiPrincipalIds[0]
-    deployKeyVaultRole: true
-    deployAcrRole: false
-    deployCosmosDbRole: false
+    vaultId: akv.id
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
   }
 }
 
 // Deploy Cosmos DB RBAC in the shared resource group
-module cosmosRbac '../40-modules/swa/rbac.bicep' = {
+module cosmosRbac '../40-modules/core/rbacCosmos.bicep' = {
   name: 'cosmosRbac'
   scope: resourceGroup(sharedResourceGroupName)
   params: {
-    cosmosDatabaseName: cosmosDatabaseName
-    cosmosDbAccountId: sssplatcosmos.id
-    id: uami.outputs.uamiPrincipalIds[0]
-    deployCosmosDbRole: true
-    deployKeyVaultRole: false
-    deployAcrRole: false
+    accountName: sssplatcosmos.name
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor role
+    databaseName: cosmosDatabaseName
   }
 }
 
 
 // ========== OUTPUTS ==========
-output uamiId string = uami.outputs.uamiIds[0]
-output uamiClientId string = uami.outputs.uamiClientIds[0]
-output uamiPrincipalId string = uami.outputs.uamiPrincipalIds[0]
-output uamiName string = uami.outputs.uamiNames[0]
-output acrRoleAssignmentId string = acrRbac.outputs.acrRoleAssignmentId
-output keyVaultRoleAssignmentId string = keyVaultRbac.outputs.keyVaultRoleAssignmentId
-output cosmosDbRoleAssignmentId string = cosmosRbac.outputs.cosmosDbRoleAssignmentId
+output uamiId string = uami.outputs.uamis[0].id
+output uamiClientId string = uami.outputs.uamis[0].clientId
+output uamiPrincipalId string = uami.outputs.uamis[0].principalId
+output uamiName string = uami.outputs.uamis[0].name
+output acrRoleAssignmentId string = acrRbac.outputs.assignmentId
+output keyVaultRoleAssignmentId string = keyVaultRbac.outputs.assignmentId
+output cosmosDbRoleAssignmentId string = cosmosRbac.outputs.assignmentId
