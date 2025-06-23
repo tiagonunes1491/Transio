@@ -57,8 +57,7 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
-      '${userAssignedIdentityId}': {}
-    }
+      '${userAssignedIdentityId}': {}    }
   }
   properties: {
     environmentId: environmentId
@@ -67,6 +66,14 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
         external: externalIngress
         targetPort: targetPort
         transport: 'http'
+        ipSecurityRestrictions: [
+          {
+            name: 'AllowStaticWebApps'
+            description: 'Allow traffic from Azure Static Web Apps'
+            ipAddressRange: 'AzureStaticApps'
+            action: 'Allow'
+          }
+        ]
       }
       secrets: [for secret in secrets: {
         name: secret.name
