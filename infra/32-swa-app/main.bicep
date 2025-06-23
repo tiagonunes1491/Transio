@@ -125,6 +125,8 @@ module containerApp '../40-modules/swa/container-app.bicep' = {
     secrets: keyVaultSecrets
     environmentVariables: containerAppEnvironmentVariables
     secretEnvironmentVariables: secretEnvironmentVariables
+    targetPort: 5000 // Flask app runs on port 5000
+    externalIngress: true // Enable external access
   }
 }
 
@@ -136,6 +138,7 @@ module staticWebApp '../40-modules/swa/static-web-app.bicep' = {
     location: 'westeurope' // Static Web Apps aren't supported in Spain Central (yet)
     backendResourceId: containerApp.outputs.containerAppId // Link to Container App for API routing
     tags: standardTagsModule.outputs.tags
+    enableAuthentication: false // Disable authentication
   }
 }
 

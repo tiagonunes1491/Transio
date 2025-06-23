@@ -82,7 +82,8 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
       ]
     }
     template: {
-      containers: [        {
+      containers: [        
+      {
           name: containerAppName
           image: image
           resources: {
@@ -90,7 +91,7 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
             memory: memoryLimit
           }
           env: union(secretEnvironmentVariables, environmentVariables)
-        }
+        }      
       ]
       scale: {
         minReplicas: minReplicas
