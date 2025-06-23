@@ -113,7 +113,7 @@ var containerAppEnvironmentVariables = union(environmentVariables, [
 ])
 
 // ========== CONTAINER APP (using UAMI) ==========
-module containerApp '../40-modules/swa/container-app.bicep' = {
+module containerApp '../40-modules/core/container-app.bicep' = {
   name: 'containerApp'
   params: {
     containerAppName: containerAppNamingModule.outputs.resourceName
@@ -121,23 +121,46 @@ module containerApp '../40-modules/swa/container-app.bicep' = {
     image: containerImage
     location: resourceLocation
     tags: standardTagsModule.outputs.tags
-    userAssignedIdentityId: uami.id
-    secrets: keyVaultSecrets
+    identity: {
+      type: 'UserAssigned'
+      userAssignedIdentities: {
+        '${uami.id}': {}
+      }
+    }
+    secrets: [for secret in keyVaultSecrets: {
+      name: secret.name
+      keyVaultUrl: secret.keyVaultUrl
+      identity: uami.id
+    }]
+    registries: [
+      {
+        server: split(containerImage, '/')[0] // Extract ACR server from image
+        identity: uami.id
+      }
+    ]
     environmentVariables: containerAppEnvironmentVariables
     secretEnvironmentVariables: secretEnvironmentVariables
     targetPort: 5000 // Flask app runs on port 5000
     externalIngress: true // Enable external access
+    enableIngress: true
+    ingressTransport: 'auto'
   }
 }
 
 // ========== STATIC WEB APP ==========
-module staticWebApp '../40-modules/swa/static-web-app.bicep' = {
+module staticWebApp '../40-modules/core/static-web-app.bicep' = {
   name: 'staticWebApp'
   params: {
     swaName: swaNamingModule.outputs.resourceName
     location: 'westeurope' // Static Web Apps aren't supported in Spain Central (yet)
     backendResourceId: containerApp.outputs.containerAppId // Link to Container App for API routing
     tags: standardTagsModule.outputs.tags
+    sku: 'Standard' // Use Standard SKU for production features
+    allowConfigFileUpdates: true
+    provider: 'None' // Manual deployment, not from repository
+    stagingEnvironmentPolicy: 'Enabled'
+    enterpriseGradeCdnStatus: 'Disabled'
+    linkedBackendName: 'containerapp'
   }
 }
 
