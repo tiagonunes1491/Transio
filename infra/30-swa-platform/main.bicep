@@ -62,11 +62,13 @@ var subnets = [
   {
     name:          'snet-aca'
     addressPrefix: '10.0.10.0/23'
+    nsgId:         acaNsg.outputs.nsgId
   }
   {
     name:                             'snet-pe'
     addressPrefix:                    '10.0.30.0/24'
     privateEndpointNetworkPolicies:  'Disabled'
+    nsgId:                           peNsg.outputs.nsgId
   }
 ]
 module network '../40-modules/core/network.bicep' = {
@@ -139,6 +141,30 @@ module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
     environment: environmentName
     serviceCode: serviceCode
     resourceType: 'cae'
+  }
+}
+
+module acaNsgNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
+  name: 'aca-nsg-naming'
+  params: {    
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'nsg'
+    suffix: 'ca'
+  }
+}
+
+module peNsgNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
+  name: 'pe-nsg-naming'
+  params: {    
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'nsg'
+    suffix: 'pe'
   }
 }
 
@@ -263,8 +289,78 @@ module acaEnv '../40-modules/swa/aca-environment.bicep' = {
   }
 }
 
+// ========== NETWORK SECURITY GROUPS ==========
 
+// NSG for Container Apps subnet (snet-aca)
+var acaAllowRules = [
+  {
+    name: 'AllowStaticWebAppsInbound'
+    properties: {
+      priority: 100
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourceAddressPrefix: 'AzureCloud'
+      sourcePortRange: '*'
+      destinationAddressPrefix: '10.0.10.0/23'
+      destinationPortRange: '443'
+    }
+  }
+  {
+    name: 'AllowPrivateEndpointsOutbound'
+    properties: {
+      priority: 100
+      direction: 'Outbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourceAddressPrefix: '10.0.10.0/23'
+      sourcePortRange: '*'
+      destinationAddressPrefix: '10.0.30.0/24'
+      destinationPortRange: '443'
+    }
+  }
+]
 
+module acaNsg '../40-modules/core/nsg.bicep' = {
+  name: 'acaNsg'
+  params: {
+    nsgName: acaNsgNamingModule.outputs.resourceName
+    location: resourceLocation
+    allowRules: acaAllowRules
+    denyRules: []
+    tags: standardTagsModule.outputs.tags
+    includeDefaultDenyRule: true
+  }
+}
+
+// NSG for Private Endpoints subnet (snet-pe)
+var peAllowRules = [
+  {
+    name: 'AllowFromContainerApps'
+    properties: {
+      priority: 100
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourceAddressPrefix: '10.0.10.0/23'
+      sourcePortRange: '*'
+      destinationAddressPrefix: '10.0.30.0/24'
+      destinationPortRange: '443'
+    }
+  }
+]
+
+module peNsg '../40-modules/core/nsg.bicep' = {
+  name: 'peNsg'
+  params: {
+    nsgName: peNsgNamingModule.outputs.resourceName
+    location: resourceLocation
+    allowRules: peAllowRules
+    denyRules: []
+    tags: standardTagsModule.outputs.tags
+    includeDefaultDenyRule: true
+  }
+}
 
 // ========== OUTPUTS ==========
 output acrName               string = acrName
@@ -272,3 +368,5 @@ output acrLoginServer        string = sssplatacr.properties.loginServer  // Get 
 output acaEnvironmentId      string = acaEnv.outputs.acaEnvironmentId
 output acaEnvironmentPrincipalId string = acaEnv.outputs.acaEnvironmentPrincipalId  // CAE system identity
 output keyVaultUri           string = akv.outputs.keyvaultUri
+output acaNsgId              string = acaNsg.outputs.nsgId
+output peNsgId               string = peNsg.outputs.nsgId
