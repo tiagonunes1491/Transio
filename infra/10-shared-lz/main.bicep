@@ -1,5 +1,41 @@
-// Shared Landing Zone Infrastructure for Secure Secret Sharer
-// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure
+// Module: 10-shared-lz/main.bicep
+// Description: Shared Landing Zone Infrastructure for Secure Secret Sharer
+// Provisions shared resource groups, managed identities, federated credentials, and RBAC for shared infrastructure.
+// This template creates the foundational infrastructure for supporting workload identities with GitHub federation
+// and appropriate RBAC assignments across shared resource groups.
+//
+// Parameters:
+//   - location: Azure region for resource deployment (default: spaincentral)
+//   - projectCode: Project identifier code (default: ss)
+//   - serviceCode: Service identifier for shared services (default: plat)
+//   - costCenter: Cost center for billing purposes
+//   - createdBy, owner, ownerEmail: Resource ownership and tagging information
+//   - gitHubOrganizationName: GitHub organization for federation
+//   - gitHubRepositoryName: GitHub repository for federation
+//   - workloadIdentities: Object defining UAMIs, their environments, roles, and federation types
+//
+// Resources Created:
+//   - Resource Groups: Hub (shared artifacts) and management resource groups
+//   - User Assigned Managed Identities (UAMIs): One for each workload identity
+//   - Federated Credentials: GitHub environment-based federation for each UAMI
+//   - RBAC Assignments: Role assignments for UAMIs in the hub resource group
+//
+// Outputs:
+//   - uamiNames: Array of all created UAMI names
+//   - uamiPrincipalIds: Array of all UAMI principal IDs
+//   - federatedCredentialNames: Array of federated credential names for each identity
+//   - managementResourceGroupName: Name of the management resource group
+//   - artifactsResourceGroupName: Name of the hub/artifacts resource group
+//
+// Usage:
+//   Deploy this template to establish the shared infrastructure foundation for the Secure Secret Sharer project.
+//   Ensures proper naming conventions, tagging, and secure identity management for CI/CD workflows.
+//
+// Example:
+//   az deployment sub create \
+//     --location spaincentral \
+//     --template-file main.bicep \
+//     --parameters gitHubOrganizationName=myorg gitHubRepositoryName=myrepo
 targetScope = 'subscription'
 
 // Resource configuration
@@ -98,12 +134,9 @@ var standardTags = {
 // Role Definition IDs
 // =====================
 
-var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
-var AcrPushRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
-
 var roleIdMap = {
-  contributor: ContributorRoleDefinitionId
-  AcrPush: AcrPushRoleDefinitionId
+  contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role definition ID
+  AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec' // AcrPush role definition ID
 }
 
 // =====================
@@ -158,7 +191,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
   name: 'deploy-env-fed-${item.key}'
   scope: mgmtSharedRG
   params: {
-    UamiName: uamiModules[i].outputs.uamiNames[0]
+    UamiName: uamiModules[i].outputs.uamis[0].name
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
     environmentName: item.value.ENV
@@ -168,31 +201,17 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
   dependsOn: [uamiModules[i]]
 }]
 
-// Create Branch Federated Credentials for all workload identities that specify 'branch' in federationTypes
-module branchFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'branch')) {
-  name: 'deploy-branch-fed-${item.key}'
-  scope: mgmtSharedRG
-  params: {
-    UamiName: uamiModules[i].outputs.uamiNames[0]
-    GitHubOrganizationName: gitHubOrganizationName
-    GitHubRepositoryName: gitHubRepositoryName
-    branchName: 'main'
-    fedType: 'branch'
-    federatedCredentialName: 'gh-branch-main-${item.value.UAMI}'
-  }
-  dependsOn: [uamiModules[i], envFederationModules[i]]
-}]
 
 // =====================
 // RBAC Assignments
 // =====================
 
 // Assign RBAC roles to all UAMIs in the shared artifacts resource group
-module rbacAssignments '../40-modules/shared-services/uami-rbac.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../40-modules/core/roleAssignment.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
   params: {
-    uamiPrincipalId: uamiModules[i].outputs.uamiPrincipalIds[0]
+    principalId: uamiModules[i].outputs.uamis[0].principalId
     roleDefinitionId: roleIdMap[item.value.ROLE]
   }
   dependsOn: [uamiModules[i]]
@@ -202,11 +221,10 @@ module rbacAssignments '../40-modules/shared-services/uami-rbac.bicep' = [for (i
 // Outputs
 // =====================
 
-output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiNames[0]] // All UAMI names
-output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamiPrincipalIds[0]] // All UAMI principal IDs
+output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name] // All UAMI names
+output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].principalId] // All UAMI principal IDs
 output federatedCredentialNames array = [for (item, i) in items(workloadIdentities): {
   env: contains(split(item.value.federationTypes, ','), 'environment') ? envFederationModules[i].outputs.federatedCredentialName : null
-  branch: contains(split(item.value.federationTypes, ','), 'branch') ? branchFederationModules[i].outputs.federatedCredentialName : null
 }] // Federated credential names for each identity
 output managementResourceGroupName string = mgmtSharedRG.name // Management RG name
 output artifactsResourceGroupName string = hubRG.name // Shared artifacts RG name
