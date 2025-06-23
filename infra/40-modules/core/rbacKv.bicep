@@ -1,36 +1,27 @@
-// Assigns an Azure Key Vault RBAC role to a principal at the Key Vault resource level.
+@description('ID of the Azure Key Vault (optional - set if Key Vault is in this RG)')
+param keyVaultId string = ''
 
-@description('Full resource ID of the Key Vault')
-param vaultId string
+@description('Principal ID of the managed identity to give access to Key Vault, ACR, and Cosmos DB')
+param id string
 
-@description('Object ID of the principal (UAMI, SP, AKS, etc.)')
-param principalId string
+@description('Role definition ID for Key Vault Secrets User role')
+param keyVaultSecretsUserRoleId string = '4633458b-17de-408a-b874-0445c86b69e6'
 
-@description('Full roleDefinitionId path or built-in GUID of the role to assign')
-param roleDefinitionId string
-
-// Parse out the resource group and vault name from the vaultId
-var segments = split(vaultId, '/')
-var vaultRg   = segments[4]
-var vaultName = segments[8]
-
-// Reference the existing Key Vault
-resource kv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
-  scope: resourceGroup(vaultRg)
-  name: vaultName
+resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+  scope: resourceGroup()
+  name: split(keyVaultId, '/')[8]
 }
 
-// Apply the role assignment as an extension resource on the KV
-resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(kv.id, principalId, roleDefinitionId)
-  properties: {
-    principalId     : principalId
-    roleDefinitionId: contains(roleDefinitionId, '/providers/')
-      ? roleDefinitionId
-      : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
-    principalType   : 'ServicePrincipal'
+resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+    scope: keyVault
+    name: guid(keyVaultId, id, 'KeyVaultSecretsUser')
+    properties: {
+      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', keyVaultSecretsUserRoleId)
+      principalId: id
+      principalType: 'ServicePrincipal'
   }
 }
 
-output assignmentId string = assignment.id
-  
+
+// Outputs
+output keyVaultRoleAssignmentId string = kvRoleAssignment.id

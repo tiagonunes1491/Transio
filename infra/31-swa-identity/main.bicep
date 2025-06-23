@@ -46,7 +46,7 @@ param cosmosDbAccountName string
 param keyVaultName string
 
 @description('Cosmos DB database name to scope the RBAC assignment to')
-param cosmosDatabaseName string = 'secrets-db'
+param cosmosDatabaseName string = 'swa-dev'
 
 // Reference existing shared resources
 resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
@@ -110,6 +110,7 @@ module uami '../40-modules/core/uami.bicep' = {
 // Deploy ACR RBAC at the ACR scope
 module acrRbac '../40-modules/core/rbacAcr.bicep' = {
   name: 'acrRbac'
+  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
   params: {
     registryId: sssplatacr.id
     principalId: uami.outputs.uamis[0].principalId
@@ -120,12 +121,14 @@ module acrRbac '../40-modules/core/rbacAcr.bicep' = {
 // Deploy Key Vault RBAC at the Key Vault scope
 module keyVaultRbac '../40-modules/core/rbacKv.bicep' = {
   name: 'keyVaultRbac'
+  scope: resourceGroup(subscription().subscriptionId, keyVaultResourceGroupName)
   params: {
-    vaultId: akv.id
-    principalId: uami.outputs.uamis[0].principalId
-    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
+    keyVaultId: akv.id
+    id: uami.outputs.uamis[0].principalId
+    keyVaultSecretsUserRoleId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
   }
 }
+
 
 // Deploy Cosmos DB RBAC in the shared resource group
 module cosmosRbac '../40-modules/core/rbacCosmos.bicep' = {
@@ -146,5 +149,5 @@ output uamiClientId string = uami.outputs.uamis[0].clientId
 output uamiPrincipalId string = uami.outputs.uamis[0].principalId
 output uamiName string = uami.outputs.uamis[0].name
 output acrRoleAssignmentId string = acrRbac.outputs.assignmentId
-output keyVaultRoleAssignmentId string = keyVaultRbac.outputs.assignmentId
+output keyVaultRoleAssignmentId string = keyVaultRbac.outputs.keyVaultRoleAssignmentId
 output cosmosDbRoleAssignmentId string = cosmosRbac.outputs.assignmentId

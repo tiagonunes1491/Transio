@@ -91,8 +91,7 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
         transport: ingressTransport
         ipSecurityRestrictions: ipSecurityRestrictions
       } : null
-      secrets: [for secret in secrets: {
-        name: secret.name
+      secrets: [for secret in secrets: {        name: secret.name
         keyVaultUrl: secret.keyVaultUrl
         identity: secret.identity
       }]

@@ -22,22 +22,21 @@ param uamiName = 'ss-d-swa-id-ca-backend'
 param containerImage = 'sssplatacr.azurecr.io/secure-secret-sharer:dev'
 
 // Key Vault secrets configuration
-param keyVaultSecrets = [
-  {
+param keyVaultSecrets = [  {
     name: 'cosmos-endpoint'
-    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-endpoint'
+    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/cosmos-endpoint'
   }
   {
     name: 'encryption-key'
-    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/encryption-key'
+    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/encryption-key'
   }
   {
     name: 'cosmos-database-name'
-    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-database-name'
+    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/cosmos-database-name'
   }
   {
     name: 'cosmos-container-name'
-    keyVaultUri: 'https://ssdswakv.vault.azure.net/secrets/cosmos-container-name'
+    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/cosmos-container-name'
   }
 ]
 

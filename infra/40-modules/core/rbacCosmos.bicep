@@ -1,4 +1,5 @@
 // Module for assigning Cosmos DB SQL roles within the target resource group
+// This module should be deployed at the same scope where the Cosmos DB account exists.
 
 @description('Name of the Cosmos DB account')
 param accountName string
@@ -12,7 +13,7 @@ param roleDefinitionId string
 @description('Optional database name to scope the role assignment to (leave empty for account-level)')
 param databaseName string = ''
 
-// Reference existing Cosmos DB account (no scope needed - we're in the right RG)
+// Reference existing Cosmos DB account in the current resource group
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: accountName
 }

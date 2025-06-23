@@ -127,8 +127,7 @@ module containerApp '../40-modules/core/container-app.bicep' = {
         '${uami.id}': {}
       }
     }
-    secrets: [for secret in keyVaultSecrets: {
-      name: secret.name
+    secrets: [for secret in keyVaultSecrets: {      name: secret.name
       keyVaultUrl: secret.keyVaultUrl
       identity: uami.id
     }]
