@@ -126,14 +126,8 @@ param backupPolicy object = {
 /*
  * NETWORK SECURITY PARAMETERS
  * Settings that control network access and security boundaries
+ * // CKV_AZURE_101: public network access is hardcoded to 'Disabled' for compliance
  */
-@description('Public network access setting - controls internet accessibility and security posture')
-@allowed([
-  'Enabled'              // Account accessible from internet (with optional firewall rules)
-  'Disabled'             // Account only accessible through private endpoints
-  'SecuredByPerimeter'   // Account secured by network perimeter configuration
-])
-param publicNetworkAccess string = 'Enabled'
 
 /*
  * DATABASE AND CONTAINER CONFIGURATION
@@ -218,8 +212,11 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     enableAutomaticFailover: enableAutomaticFailover   // Disaster recovery automation
     enableMultipleWriteLocations: enableMultipleWriteLocations  // Global write capability
     enableFreeTier: enableFreeTier                     // Cost optimization option
-    publicNetworkAccess: publicNetworkAccess           // Network security setting
+    publicNetworkAccess: 'Disabled'                    // CKV_AZURE_101 & CKV_AZURE_99 compliant: disables public network access and restricts access
+    networkAclBypass: 'None'                           // CKV_AZURE_99 compliant: no network ACL bypass allowed
     backupPolicy: backupPolicy                         // Data protection configuration
+    disableKeyBasedMetadataWriteAccess: true           // CKV_AZURE_132 compliant: restricts management plane changes to Entra ID only
+    disableLocalAuth: true                             // CKV_AZURE_140 compliant: disables local authentication, requires Entra ID
   }
 }
 
