@@ -100,26 +100,6 @@ param gitHubOrganizationName string
 param gitHubRepositoryName string
 
 /*
- * WORKLOAD IDENTITY CONFIGURATION
- * Defines the managed identities needed for different workload types and their permissions
- * Each identity can have different roles and federation types based on its purpose
- * 
- * Structure:
- * - Key: Identifier for the workload type
- * - ENV: Environment where the identity operates
- * - ROLE: Azure RBAC role to assign (maps to built-in role definitions)
- * - federationTypes: Types of federated credentials to create (comma-separated)
- */
-@description('PaaS workload identities configuration with roles and federation settings')
-param workloadIdentities object = {
-  contributor: {
-    ENV: environmentName
-    ROLE: 'contributor'
-    federationTypes: 'environment'
-  }
-}
-
-/*
  * =============================================================================
  * NAMING CONVENTION AND TAGGING CONFIGURATION
  * =============================================================================
@@ -267,17 +247,17 @@ resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' existing =
  * Pattern: {projectCode}-{env}-{serviceCode}-id-gh-{workloadType}
  * Example: ss-d-swa-id-gh-contributor
  */
-module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(workloadIdentities): {
-  name: 'uami-naming-${item.key}'
+module uamiNamingContributor '../40-modules/core/naming.bicep' = {
+  name: 'uami-naming-contributor'
   scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
     serviceCode: serviceCode
     resourceType: 'id'
-    suffix: 'gh-${item.key}'
+    suffix: 'gh-contributor'
   }
-}]
+}
 
 /*
  * USER-ASSIGNED MANAGED IDENTITIES CREATION
@@ -291,16 +271,15 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(
  * 
  * Each UAMI is created in the management resource group for centralized identity governance
  */
-module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(workloadIdentities): {
-  name: 'deploy-uami-${item.key}'
+module uamiContributor '../40-modules/core/uami.bicep' = {
+  name: 'deploy-uami-contributor'
   scope: managementRg
   params: {
     uamiLocation: location
-    uamiNames: [uamiNamingModules[i].outputs.resourceName]
+    uamiNames: [uamiNamingContributor.outputs.resourceName]
     tags: standardTags
   }
-  dependsOn: [uamiNamingModules[i]]
-}]
+}
 
 /*
  * GITHUB FEDERATED IDENTITY CREDENTIALS
@@ -315,19 +294,18 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
  * 
  * Only creates federation for workloads that specify 'environment' federation type
  */
-module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
-  name: 'deploy-env-fed-${item.key}'
+module envFederationContributor '../40-modules/core/github-federation.bicep' = {
+  name: 'deploy-env-fed-contributor'
   scope: managementRg
   params: {
-    UamiName: uamiModules[i].outputs.uamis[0].name
+    UamiName: uamiContributor.outputs.uamis[0].name
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    environmentName: item.value.ENV
+    environmentName: environmentName
     fedType: 'environment'
-    federatedCredentialName: 'fc-env-${item.value.ENV}-${item.key}'
+    federatedCredentialName: 'fc-env-${environmentName}-contributor'
   }
-  dependsOn: [uamiModules[i]]
-}]
+}
 
 /*
  * =============================================================================
@@ -350,15 +328,14 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * - Built-in roles preferred over custom roles
  * - Regular access reviews recommended
  */
-module rbacAssignmentsPaas '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
-  name: 'deploy-rbac-${item.key}'
+module rbacContributor '../40-modules/core/rbacRg.bicep' = {
+  name: 'deploy-rbac-contributor'
   scope: paasRG
   params: {
-    principalId: uamiModules[i].outputs.uamis[0].principalId
-    roleDefinitionId: roleIdMap[item.value.ROLE]
+    principalId: uamiContributor.outputs.uamis[0].principalId
+    roleDefinitionId: roleIdMap.contributor
   }
-  dependsOn: [uamiModules[i]]
-}]
+}
 
 /*
  * =============================================================================
@@ -374,15 +351,21 @@ module rbacAssignmentsPaas '../40-modules/core/rbacRg.bicep' = [for (item, i) in
  * Essential identity information for workload authentication and authorization
  */
 @description('Array of User-Assigned Managed Identity names for workload authentication')
-output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name]
+output uamiNames array = [
+  uamiContributor.outputs.uamis[0].name
+]
 
 @description('Array of User-Assigned Managed Identity principal IDs for RBAC assignments')
-output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].principalId]
+output uamiPrincipalIds array = [
+  uamiContributor.outputs.uamis[0].principalId
+]
 
 @description('Array of federated credential names for GitHub integration')
-output federatedCredentialNames array = [for (item, i) in items(workloadIdentities): {
-  env: contains(split(item.value.federationTypes, ','), 'environment') ? envFederationModules[i].outputs.federatedCredentialName : null
-}]
+output federatedCredentialNames array = [
+  {
+    env: envFederationContributor.outputs.federatedCredentialName
+  }
+]
 
 /*
  * RESOURCE GROUP OUTPUTS
