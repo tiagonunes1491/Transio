@@ -166,6 +166,14 @@ param backupPolicy object = {
 param databases array = []
 
 /*
+ * ALLOWED SUBNETS
+ * Array of allowed subnet resource IDs for Cosmos DB VNET integration
+ * Used for Checkov compliance, does not affect Private Endpoints
+ */
+@description('Array of allowed subnet resource IDs for Cosmos DB VNET integration (for Checkov compliance, not required for Private Endpoints)')
+param allowedSubnets array = []
+
+/*
  * =============================================================================
  * AZURE COSMOS DB DEPLOYMENT
  * =============================================================================
@@ -214,6 +222,12 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     enableFreeTier: enableFreeTier                     // Cost optimization option
     publicNetworkAccess: 'Disabled'                    // CKV_AZURE_101 & CKV_AZURE_99 compliant: disables public network access and restricts access
     networkAclBypass: 'None'                           // CKV_AZURE_99 compliant: no network ACL bypass allowed
+    isVirtualNetworkFilterEnabled: true                // CKV_AZURE_99: for Checkov compliance, does not affect Private Endpoints
+    ipRules: []                                       // CKV_AZURE_99: for Checkov compliance, no public IPs allowed
+    virtualNetworkRules: [for subnetId in allowedSubnets: {
+      id: subnetId
+      ignoreMissingVNetServiceEndpoint: false
+    }]                                                // CKV_AZURE_99: for Checkov compliance, not required for Private Endpoints
     backupPolicy: backupPolicy                         // Data protection configuration
     disableKeyBasedMetadataWriteAccess: true           // CKV_AZURE_132 compliant: restricts management plane changes to Entra ID only
     disableLocalAuth: true                             // CKV_AZURE_140 compliant: disables local authentication, requires Entra ID
