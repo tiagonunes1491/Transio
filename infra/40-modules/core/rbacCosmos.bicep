@@ -44,13 +44,9 @@ resource sqlRole 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-
   parent: account
   name: guid(account.id, principalId, roleDefinitionId, databaseName)
   properties: {
-    roleDefinitionId: contains(roleDefinitionId, '/providers/')
-      ? roleDefinitionId
-      : '${account.id}/sqlRoleDefinitions/${roleDefinitionId}'
+    roleDefinitionId: contains(roleDefinitionId, '/providers/') ? roleDefinitionId : '${account.id}/sqlRoleDefinitions/${roleDefinitionId}'
     principalId: principalId
-    scope: empty(databaseName)
-      ? account.id
-      : '${account.id}/dbs/${databaseName}'
+    scope: empty(databaseName) ? account.id : '${account.id}/dbs/${databaseName}'
   }
 }
 

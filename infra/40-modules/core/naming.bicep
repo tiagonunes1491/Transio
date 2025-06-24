@@ -179,9 +179,7 @@ var mappedEnv = envMapping[environment]
  * • Without suffix: ss-d-swa-rg
  * • With suffix: ss-d-swa-id-gh-creator
  */
-var baseName = empty(suffix)
-  ? '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}'
-  : '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}-${suffix}'
+var baseName = empty(suffix) ? '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}' : '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}-${suffix}'
 
 /*
  * AZURE SERVICE-SPECIFIC NAME SANITIZATION
@@ -194,9 +192,7 @@ var baseName = empty(suffix)
  * 
  * This approach ensures compatibility while maintaining naming consistency
  */
-var sanitizedName = (resourceType == 'kv' || resourceType == 'acr')
-  ? replace(toLower(baseName), '-', '')  // Remove hyphens for KV/ACR compliance
-  : toLower(baseName)                    // Standard lowercase with hyphens
+var sanitizedName = (resourceType == 'kv' || resourceType == 'acr') ? replace(toLower(baseName), '-', '') : toLower(baseName)
 
 /*
  * =============================================================================

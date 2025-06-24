@@ -93,7 +93,7 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   properties: {
     tenantId: tenantId
     enableRbacAuthorization: enableRbac
-    ...enablePurgeProtection ? { enablePurgeProtection: true } : {}
+    enablePurgeProtection: enablePurgeProtection ? true : null
     sku: {
       family: 'A'
       name: sku

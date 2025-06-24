@@ -53,9 +53,7 @@ resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     // Handle both full resource IDs and role GUIDs
     // If the roleDefinitionId contains '/providers/', treat it as a full resource ID
     // Otherwise, convert the GUID to a subscription-scoped role definition resource ID
-    roleDefinitionId: contains(roleDefinitionId, '/providers/')
-      ? roleDefinitionId
-      : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    roleDefinitionId: contains(roleDefinitionId, '/providers/') ? roleDefinitionId : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
     // Principal type is set to ServicePrincipal for UAMIs and Service Principals
     // Note: This works for User Assigned Managed Identities despite the name
     principalType: 'ServicePrincipal'
