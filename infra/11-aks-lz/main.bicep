@@ -130,7 +130,21 @@ param gitHubRepositoryName string
  * • k8s: Full contributor access for cluster and resource management
  * • k8sDeploy: Container registry pull permissions for image deployment
  */
-@description('AKS workload identities configuration with environment-specific roles and federation settings')
+@description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
+param workloadIdentities object = {
+    creator: {
+        UAMI: 'uami-ssharer-shared-infra-creator'
+        ENV: 'shared-protected'
+        ROLE: 'contributor'
+        federationTypes: 'environment'
+    }
+    push: {
+        UAMI: 'uami-ssharer-acr-push'
+        ENV: 'shared'
+        ROLE: 'AcrPush'
+        federationTypes: 'environment'
+    }
+}
 /*
  * =============================================================================
  * NAMING CONVENTION AND TAGGING STRATEGY
@@ -294,29 +308,21 @@ resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
  * Naming Pattern: {projectCode}-{environment}-{serviceCode}-{resourceType}-gh-{workloadType}
  * Examples: ss-d-aks-id-gh-k8s, ss-d-aks-id-gh-k8sDeploy
  */
-module uamiNamingK8s '../40-modules/core/naming.bicep' = {
-  name: 'uami-naming-k8s'
-  scope: subscription()
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'id'
-    suffix: 'gh-k8s'
-  }
-}
 
-module uamiNamingK8sDeploy '../40-modules/core/naming.bicep' = {
-  name: 'uami-naming-k8sDeploy'
-  scope: subscription()
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'id'
-    suffix: 'gh-k8sDeploy'
+module uamiNamingModules '../40-modules/core/naming.bicep' = [
+  for (item, i) in items(workloadIdentities): {
+    name: 'uami-naming-${item.key}'
+    scope: subscription()
+    params: {
+      projectCode: projectCode
+      environment: 'shared'
+      serviceCode: serviceCode
+      resourceType: 'id'
+      suffix: 'gh-${item.key}'
+    }
   }
-}
+]
+
 
 /*
  * USER-ASSIGNED MANAGED IDENTITIES CREATION
@@ -332,26 +338,15 @@ module uamiNamingK8sDeploy '../40-modules/core/naming.bicep' = {
  * Each identity is created in the management resource group for centralized
  * governance and security management
  */
-module uamiK8s '../40-modules/core/uami.bicep' = {
-  name: 'deploy-uami-k8s'
+module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
+  name: 'deploy-uami-${item.key}'
   scope: managementRg
   params: {
     uamiLocation: location
-    uamiNames: [uamiNamingK8s.outputs.resourceName]
+    uamiNames: [uamiNamingModules[i].outputs.resourceName]
     tags: standardTags
   }
-}
-
-module uamiK8sDeploy '../40-modules/core/uami.bicep' = {
-  name: 'deploy-uami-k8sDeploy'
-  scope: managementRg
-  params: {
-    uamiLocation: location
-    uamiNames: [uamiNamingK8sDeploy.outputs.resourceName]
-    tags: standardTags
-  }
-}
-
+}]
 /*
  * GITHUB FEDERATED IDENTITY CREDENTIALS
  * Establishes OIDC trust relationship between GitHub Actions and Azure AD
@@ -368,31 +363,20 @@ module uamiK8sDeploy '../40-modules/core/uami.bicep' = {
  * 'environment' in their federationTypes configuration. This conditional
  * approach supports flexible authentication patterns while maintaining security.
  */
-module envFederationK8s '../40-modules/core/github-federation.bicep' = {
-  name: 'deploy-env-fed-k8s'
+module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
+  name: 'deploy-env-fed-${item.key}'
   scope: managementRg
   params: {
-    UamiName: uamiK8s.outputs.uamis[0].name
+    UamiName: uamiModules[i].outputs.uamis[0].name
     GitHubOrganizationName: gitHubOrganizationName
     GitHubRepositoryName: gitHubRepositoryName
-    environmentName: environmentName
+    environmentName: item.value.ENV
     fedType: 'environment'
-    federatedCredentialName: 'fc-env-${environmentName}-k8s'
+    federatedCredentialName: 'gh-env-${item.value.ENV}-${item.key}'
   }
-}
+  dependsOn: [uamiModules[i]]
+}]
 
-module envFederationK8sDeploy '../40-modules/core/github-federation.bicep' = {
-  name: 'deploy-env-fed-k8sDeploy'
-  scope: managementRg
-  params: {
-    UamiName: uamiK8sDeploy.outputs.uamis[0].name
-    GitHubOrganizationName: gitHubOrganizationName
-    GitHubRepositoryName: gitHubRepositoryName
-    environmentName: environmentName
-    fedType: 'environment'
-    federatedCredentialName: 'fc-env-${environmentName}-k8sDeploy'
-  }
-}
 
 /*
  * =============================================================================
@@ -420,23 +404,15 @@ module envFederationK8sDeploy '../40-modules/core/github-federation.bicep' = {
  * • Principle of least privilege strictly enforced
  * • Audit logging enabled through Azure Activity Log
  */
-module rbacK8s '../40-modules/core/rbacRg.bicep' = {
-  name: 'deploy-rbac-k8s'
+module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
+  name: 'deploy-rbac-${item.key}'
   scope: k8sRG
   params: {
-    principalId: uamiK8s.outputs.uamis[0].principalId
-    roleDefinitionId: roleIdMap.contributor
+    principalId: uamiModules[i].outputs.uamis[0].principalId
+    roleDefinitionId: roleIdMap[item.value.ROLE]
   }
-}
-
-module rbacK8sDeploy '../40-modules/core/rbacRg.bicep' = {
-  name: 'deploy-rbac-k8sDeploy'
-  scope: k8sRG
-  params: {
-    principalId: uamiK8sDeploy.outputs.uamis[0].principalId
-    roleDefinitionId: roleIdMap.AcrPull
-  }
-}
+  dependsOn: [uamiModules[i]]
+}]
 
 /*
  * =============================================================================
@@ -452,26 +428,19 @@ module rbacK8sDeploy '../40-modules/core/rbacRg.bicep' = {
  * Critical identity information for downstream authentication and authorization.
  * These outputs enable dependent templates to reference AKS identities securely.
  */
-@description('Array of all created User-Assigned Managed Identity names for AKS workload authentication')
+@description('Array of all created User-Assigned Managed Identity names for workload authentication')
 output uamiNames array = [
-  uamiK8s.outputs.uamis[0].name
-  uamiK8sDeploy.outputs.uamis[0].name
+  for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name
 ]
 
 @description('Array of all User-Assigned Managed Identity principal IDs for RBAC role assignments')
 output uamiPrincipalIds array = [
-  uamiK8s.outputs.uamis[0].principalId
-  uamiK8sDeploy.outputs.uamis[0].principalId
+  for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].principalId
 ]
 
-@description('Array of federated credential configurations for GitHub Actions integration')
+@description('Array of federated credential names for GitHub Actions integration')
 output federatedCredentialNames array = [
-  {
-    env: envFederationK8s.outputs.federatedCredentialName
-  }
-  {
-    env: envFederationK8sDeploy.outputs.federatedCredentialName
-  }
+  for (item, i) in items(workloadIdentities): contains(split(item.value.federationTypes, ','), 'environment') ? 'gh-env-${item.value.ENV}-${item.key}' : ''
 ]
 
 /*
