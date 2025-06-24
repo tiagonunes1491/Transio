@@ -1,33 +1,63 @@
-// Module: core/github-federation.bicep
-// Description: Creates federated identity credentials for GitHub Actions to authenticate with Azure using OpenID Connect (OIDC).
-// Enables secure, passwordless authentication from GitHub workflows to Azure resources using User Assigned Managed Identities.
-// Supports both branch-based and environment-based federation scenarios for flexible CI/CD pipeline authentication.
-//
-// Parameters:
-//   - UamiName: Name of the existing User Assigned Managed Identity to federate with
-//   - GitHubOrganizationName: GitHub organization name containing the repository
-//   - GitHubRepositoryName: GitHub repository name for federation
-//   - branchName: Git branch name for branch-based federation (default: main)
-//   - environmentName: GitHub environment name for environment-based federation (default: production)
-//   - federatedCredentialName: Name for the federated credential resource (default: github-federation)
-//   - fedType: Federation type - either 'environment' or 'branch' (default: branch)
-//
-// Resources Created:
-//   - Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials: The federated credential linking GitHub to Azure
-//
-// Federation Types:
-//   - Branch: Allows authentication from specific Git branches (subject: repo:org/repo:ref:refs/heads/branch)
-//   - Environment: Allows authentication from GitHub environments (subject: repo:org/repo:environment:env-name)
-//
-// Outputs:
-//   - federatedCredentialId: Resource ID of the created federated credential
-//   - federatedCredentialName: Name of the created federated credential
-//   - uamiClientId: Client ID of the User Assigned Managed Identity
-//   - uamiPrincipalId: Principal ID of the User Assigned Managed Identity
-//
-// Usage:
-//   Use this module to establish secure OIDC-based authentication between GitHub Actions workflows and Azure.
-//   Eliminates the need for storing Azure credentials as GitHub secrets.
+/*
+ * =============================================================================
+ * GitHub Federation Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates federated identity credentials for GitHub Actions
+ * to authenticate with Azure using OpenID Connect (OIDC). It enables secure,
+ * passwordless authentication from GitHub workflows to Azure resources using
+ * User-Assigned Managed Identities, eliminating the need for stored credentials.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                GitHub Federation Architecture                            │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  GitHub Actions Workflow                                                │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ OIDC Token Request                                                  ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Workflow Context    │  │ Token Claims                        │   ││
+ * │  │ │ • Repository        │  │ • Subject (branch/environment)      │   ││
+ * │  │ │ • Branch/Environment│  │ • Issuer (GitHub OIDC)             │   ││
+ * │  │ │ • Workflow trigger  │  │ • Audience (Azure AD)               │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                               │                                     ││
+ * │  └───────────────────────────────┼─────────────────────────────────────┘│
+ * │                                  ▼                                      │
+ * │  Azure AD Verification                                                  │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Federated Credential Validation                                     ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Token Verification  │  │ Identity Mapping                    │   ││
+ * │  │ │ • Issuer validation │  │ • UAMI association                  │   ││
+ * │  │ │ • Subject matching  │  │ • Principal ID mapping              │   ││
+ * │  │ │ • Audience check    │  │ • Azure token generation            │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Passwordless Authentication: No stored credentials in GitHub secrets
+ * • Flexible Federation Types: Support for branch-based and environment-based authentication
+ * • OIDC Integration: Industry-standard OpenID Connect for secure token exchange
+ * • Granular Control: Specific repository and branch/environment targeting
+ * • Audit Trail: Complete audit log of all authentication events
+ * • Zero Trust Security: Continuous verification of identity claims
+ * • CI/CD Optimization: Seamless integration with GitHub Actions workflows
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Eliminates credential storage reducing attack surface and credential theft risk
+ * • Short-lived tokens with automatic expiration for enhanced security
+ * • Subject claim validation ensures only authorized workflows can authenticate
+ * • Issuer verification prevents token replay and manipulation attacks
+ * • Audience restriction limits token usage to intended Azure AD tenants
+ * • Comprehensive audit logging for security monitoring and compliance
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at resource group scope to create federated
+ * identity credentials that link GitHub Actions workflows to Azure
+ * User-Assigned Managed Identities for secure CI/CD operations.
+ */
 //
 // Example:
 //   module githubFed 'core/github-federation.bicep' = {

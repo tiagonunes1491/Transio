@@ -1,5 +1,55 @@
-// Standardized tagging module for SecureSharer
-// Implements Cloud Adoption Framework tagging standards
+/*
+ * =============================================================================
+ * Standardized Tagging Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module implements Cloud Adoption Framework tagging standards
+ * for the Secure Secret Sharer project. It provides centralized, consistent
+ * tagging across all Azure resources to enable governance, cost management,
+ * and operational excellence through comprehensive resource metadata.
+ * 
+ * TAGGING STRATEGY OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                     Resource Tagging Framework                          │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Governance Tags                │  Operational Tags                     │
+ * │  ┌─────────────────────────────┐ │  ┌─────────────────────────────────┐ │
+ * │  │ • Environment               │ │  │ • Created By                    │ │
+ * │  │ • Project                   │ │  │ • Owner                         │ │
+ * │  │ • Service                   │ │  │ • Owner Email                   │ │
+ * │  │ • Cost Center               │ │  │ • Creation Date                 │ │
+ * │  └─────────────────────────────┘ │  └─────────────────────────────────┘ │
+ * │                                 │                                      │
+ * │  Compliance Tags                │  Business Tags                       │
+ * │  ┌─────────────────────────────┐ │  ┌─────────────────────────────────┐ │
+ * │  │ • Data Classification       │ │  │ • Business Unit                 │ │
+ * │  │ • Compliance Requirements   │ │  │ • Application                   │ │
+ * │  │ • Backup Policy             │ │  │ • Customer                      │ │
+ * │  │ • Retention Period          │ │  │ • SLA Requirements              │ │
+ * │  └─────────────────────────────┘ │  └─────────────────────────────────┘ │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Cloud Adoption Framework Compliance: Follows Microsoft recommended tagging patterns
+ * • Centralized Tag Management: Single source of truth for all resource tags
+ * • Automatic Tag Generation: Dynamic tag creation based on deployment context
+ * • Cost Management Integration: Tags optimized for Azure Cost Management reporting
+ * • Governance Support: Tags aligned with enterprise governance requirements
+ * • Automation Friendly: Designed for CI/CD pipeline integration
+ * • Extensible Design: Easy addition of new tag categories and values
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • No sensitive information in tag values following security best practices
+ * • Owner email validation for accountability and incident response
+ * • Creation tracking for audit and compliance requirements
+ * • Cost center tracking for financial governance and chargeback models
+ * • Environment classification for security policy application
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at subscription scope to provide consistent
+ * tagging across all resource groups and resources within the
+ * Secure Secret Sharer project deployment.
+ */
 
 targetScope = 'subscription'
 

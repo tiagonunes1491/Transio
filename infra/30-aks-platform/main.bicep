@@ -1,52 +1,138 @@
-// Platform AKS infrastructure deployment
-// Deploys AKS platform resources including Cosmos DB integration
+/*
+ * =============================================================================
+ * AKS Platform Infrastructure for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep template deploys the complete Azure Kubernetes Service (AKS) platform
+ * infrastructure for the Secure Secret Sharer application. It establishes a
+ * production-ready Kubernetes environment with comprehensive security, networking,
+ * and application gateway capabilities for hosting containerized workloads.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                         AKS Platform Infrastructure                     │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Networking Layer           │  Security Layer                           │
+ * │  ┌─────────────────────┐   │  ┌─────────────────────────────────────┐  │
+ * │  │ Virtual Network     │   │  │ Azure Key Vault                     │  │
+ * │  │ • AKS Subnet        │───┼──│ • Secrets Management                │  │
+ * │  │ • AppGW Subnet      │   │  │ • Certificate Storage               │  │
+ * │  │ • Network Security  │   │  │ • RBAC Integration                  │  │
+ * │  │   Groups            │   │  │                                     │  │
+ * │  └─────────────────────┘   │  │ Managed Identities                  │  │
+ * │                             │  │ • Workload Identity                 │  │
+ * │  Application Gateway        │  │ • Federated Credentials             │  │
+ * │  ┌─────────────────────┐   │  │ • Service Account Binding           │  │
+ * │  │ WAF_v2 SKU          │   │  └─────────────────────────────────────┘  │
+ * │  │ SSL Termination     │   │                                          │
+ * │  │ Load Balancing      │───┼──┐ AKS Cluster                           │
+ * │  │ AGIC Integration    │   │  │ ┌─────────────────────────────────┐  │
+ * │  └─────────────────────┘   │  │ │ System Node Pool               │  │
+ * │                             │  │ │ User Node Pool                 │  │
+ * └─────────────────────────────┘  │ │ OIDC Issuer                    │  │
+ *                                  │ │ Azure CNI Networking           │  │
+ *                                  │ │ Container Registry Integration │  │
+ *                                  │ │ Cosmos DB Connectivity         │  │
+ *                                  │ └─────────────────────────────────┘  │
+ *                                  └─────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Production-Ready AKS: Multi-node pool cluster with auto-scaling capabilities
+ * • Application Gateway: WAF-enabled ingress with SSL termination and load balancing
+ * • Comprehensive Security: Key Vault integration, managed identities, and RBAC
+ * • Network Isolation: Dedicated VNet with subnet segmentation and NSG protection
+ * • Workload Identity: Federated authentication for Kubernetes service accounts
+ * • Platform Integration: Seamless connectivity to shared ACR and Cosmos DB services
+ * • Infrastructure as Code: Complete automation with standardized naming and tagging
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Network segmentation with dedicated subnets for AKS and Application Gateway
+ * • Web Application Firewall (WAF) protection for ingress traffic
+ * • Azure Key Vault integration for secrets and certificate management
+ * • Managed identities for secure service-to-service authentication
+ * • RBAC-enabled Key Vault with granular access controls
+ * • Federated identity credentials for GitHub Actions integration
+ * • Container image security through shared Azure Container Registry
+ * • Network Security Groups with least privilege access rules
+ * 
+ * DEPLOYMENT SCOPE:
+ * This template operates at subscription scope and deploys comprehensive
+ * AKS platform infrastructure within the resource group created by the
+ * corresponding AKS landing zone template.
+ */
 targetScope = 'subscription'
 
-@description('The Azure AD tenant ID that should be used for authenticating requests to the key vault. Defaults to the current subscription tenant ID.')
+/*
+ * =============================================================================
+ * PARAMETER DEFINITIONS
+ * =============================================================================
+ * 
+ * These parameters configure the AKS platform deployment, establishing
+ * cluster specifications, networking configurations, security settings,
+ * and integration points with shared platform services.
+ */
+
+/*
+ * INFRASTRUCTURE CONFIGURATION PARAMETERS
+ * Core settings that define the deployment environment and resource targeting
+ */
+@description('Azure Active Directory tenant ID for Key Vault authentication and RBAC configuration')
 param tenantId string = subscription().tenantId
 
-@description('Location for the resources')
+@description('Azure region where AKS platform resources will be deployed')
 param resourceLocation string = 'spaincentral'
 
-@description('Name of the resource group')
+@description('Target resource group name for AKS platform deployment - created by landing zone')
 param rgName string = 'rg-ssharer-k8s-spoke-dev'
 
-@description('Project code')
+/*
+ * ORGANIZATIONAL NAMING PARAMETERS
+ * These parameters establish the naming hierarchy for all resources:
+ * Pattern: {projectCode}-{environment}-{serviceCode}-{resourceType}
+ */
+@description('Project code - root identifier for the Secure Secret Sharer project')
 param projectCode string = 'ss'
 
-@description('Service code for AKS platform')
+@description('Service code for AKS platform - identifies Kubernetes infrastructure components')
 param serviceCode string = 'aks'
 
-@description('Environment name')
+@description('Environment name for deployment targeting and resource isolation')
 @allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
-// Tagging configuration
-@description('Cost center for billing')
+/*
+ * GOVERNANCE AND COMPLIANCE PARAMETERS
+ * Essential metadata for resource governance, cost management, and audit compliance
+ */
+@description('Cost center for billing allocation and financial tracking')
 param costCenter string = '1000'
 
-@description('Created by information')
+@description('Deployment method identifier - tracks infrastructure provisioning source')
 param createdBy string = 'bicep-deployment'
 
-@description('Owner')
+@description('Primary resource owner - accountable person for these infrastructure components')
 param owner string = 'tiago-nunes'
 
-@description('Owner email')
+@description('Owner contact email - primary point of contact for operational issues')
 param ownerEmail string = 'tiago.nunes@example.com'
 
-@description('Shared Cosmos DB account name from the shared infrastructure')
+/*
+ * SHARED INFRASTRUCTURE INTEGRATION PARAMETERS
+ * Configuration for connecting to shared platform services deployed separately
+ */
+@description('Shared Cosmos DB account name from the shared platform infrastructure')
 param cosmosDbAccountName string
 
-@description('Shared Cosmos DB database name')
+@description('Cosmos DB database name for application data storage')
 param cosmosDatabaseName string = 'SecureSharer'
 
-@description('Shared Cosmos DB container name')
+@description('Cosmos DB container name for secrets storage')
 param cosmosContainerName string = 'secrets'
 
 @description('Shared infrastructure resource group name where Cosmos DB and ACR are deployed')
 param sharedResourceGroupName string = 'rg-ssharer-artifacts-hub'
 
-@description('Shared Azure Container Registry name from the shared infrastructure')
+@description('Shared Azure Container Registry name from the shared platform infrastructure')
 param acrName string
 
 // Construct the Cosmos DB account ID from the shared resource group and account name

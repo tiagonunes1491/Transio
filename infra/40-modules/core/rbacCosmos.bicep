@@ -1,5 +1,26 @@
-// Module for assigning Cosmos DB SQL roles within the target resource group
-// This module should be deployed at the same scope where the Cosmos DB account exists.
+/*
+ * =============================================================================
+ * Cosmos DB RBAC Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module assigns Cosmos DB SQL roles to principals for secure
+ * database access. It supports both account-level and database-scoped role
+ * assignments with proper RBAC governance for NoSQL database operations
+ * in the Secure Secret Sharer application.
+ * 
+ * KEY FEATURES:
+ * • SQL Role Assignment: Native Cosmos DB SQL role assignment support
+ * • Flexible Scoping: Account-level or database-scoped role assignments
+ * • Principal Support: Works with UAMIs, Service Principals, and other identities
+ * • Deterministic Naming: Conflict-free role assignment creation
+ * • Built-in Role Support: Standard Cosmos DB roles (Reader, Contributor, etc.)
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Least privilege access through precise role and scope assignment
+ * • Database-level access control for sensitive data protection
+ * • Audit trail for all database access operations
+ * • Role-based access control replacing connection string authentication
+ */
 
 @description('Name of the Cosmos DB account')
 param accountName string

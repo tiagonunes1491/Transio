@@ -1,5 +1,59 @@
-// Azure Container Apps Environment configuration
-// Creates a managed environment for Container Apps with networking and monitoring
+/*
+ * =============================================================================
+ * Container Apps Environment Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures Azure Container Apps Environment
+ * for the Secure Secret Sharer application. It provides a managed serverless
+ * platform for containerized applications with integrated networking, monitoring,
+ * and security features optimized for microservices architectures.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                Container Apps Environment Architecture                   │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Container Apps Environment                                             │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Control Plane (Azure Managed)                                      ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Environment Manager │  │ Load Balancer                       │   ││
+ * │  │ │ • Container runtime │  │ • Traffic distribution              │   ││
+ * │  │ │ • Scaling engine    │  │ • Health checks                     │   ││
+ * │  │ │ • Secret management │  │ • SSL termination                   │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ Data Plane (Customer Subnet)                                       ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Container Instances │  │ Monitoring Integration              │   ││
+ * │  │ │ • Application pods  │  │ • Log Analytics                     │   ││
+ * │  │ │ • Sidecar services  │  │ • Application logs                  │   ││
+ * │  │ │ • Network isolation │  │ • System metrics                    │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Managed Serverless Platform: Azure-managed control plane with automatic scaling
+ * • VNET Integration: Custom subnet deployment for network isolation
+ * • Log Analytics Integration: Centralized logging for all container applications
+ * • Health Monitoring: Built-in health checks and observability features
+ * • Traffic Management: Automatic load balancing and SSL termination
+ * • Secret Management: Secure injection of secrets and configuration
+ * • Multi-Container Support: Sidecar patterns and service mesh capabilities
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Network isolation through dedicated subnet deployment
+ * • Secure secret injection without environment variable exposure
+ * • Log Analytics integration for security monitoring and audit trails
+ * • Container runtime security with Azure security baselines
+ * • Traffic encryption with automatic SSL/TLS certificate management
+ * • Access control through Azure RBAC and managed identities
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at resource group scope to create a Container Apps
+ * Environment that can host multiple containerized applications with shared
+ * networking and monitoring infrastructure.
+ */
 @description('The Azure Container Apps Environment name.')
 param acaEnvironmentName string
 @description('The location for the Azure Container Apps Environment.')

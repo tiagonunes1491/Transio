@@ -1,23 +1,59 @@
-// Module: core/uami.bicep
-// Description: Deploys one or more Azure User Assigned Managed Identities (UAMIs) for secure service authentication.
-// Parameters:
-//   - uamiLocation: Location where the UAMIs will be created. Defaults to the resource group's location.
-//   - uamiNames: Array of UAMI names to create.
-//   - tags: Tags to apply to each UAMI resource.
-// Resources:
-//   - Microsoft.ManagedIdentity/userAssignedIdentities: Creates a UAMI for each name provided in uamiNames.
-// Outputs:
-//   - uamis: Array of objects containing the name, resource ID, clientId, and principalId for each created UAMI.
-// Usage:
-//   Use this module to provision one or more managed identities for use by Azure resources, supporting secure authentication and authorization.
-//
-// Example:
-//   module uami 'core/uami.bicep' = {
-//     name: 'create-uami'
-//     scope: resourceGroup()
-//     params: {
-//       uamiLocation: 'westeurope'
-//       uamiNames: ['my-identity']
+/*
+ * =============================================================================
+ * User-Assigned Managed Identity Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates one or more Azure User-Assigned Managed Identities
+ * (UAMIs) for secure service authentication in the Secure Secret Sharer project.
+ * It eliminates the need for credential management while providing a centralized
+ * identity solution for Azure resource authentication and authorization.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                 User-Assigned Managed Identity                          │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Identity Management                                                    │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Azure AD Integration                                                ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Principal ID        │  │ Client ID                           │   ││
+ * │  │ │ • Azure AD identity │  │ • Application identity              │   ││
+ * │  │ │ • RBAC assignments  │  │ • Service authentication            │   ││
+ * │  │ │ • Audit trail       │  │ • Federation support                │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ Integration Points                                                  ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Azure Services      │  │ External Systems                    │   ││
+ * │  │ │ • Container Apps    │  │ • GitHub Actions                    │   ││
+ * │  │ │ • Key Vault         │  │ • Third-party services              │   ││
+ * │  │ │ • Storage Accounts  │  │ • Federation credentials            │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Multi-Identity Support: Creates multiple UAMIs from a single module deployment
+ * • Zero-Credential Authentication: Eliminates password and certificate management
+ * • Federation Ready: Supports federated identity credentials for CI/CD systems
+ * • RBAC Integration: Seamless integration with Azure role-based access control
+ * • Cross-Resource Access: Identity reusable across multiple Azure resources
+ * • Audit Capabilities: Complete audit trail for identity operations and access
+ * • Scalable Design: Array-based parameter input for efficient bulk deployments
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Azure AD native integration for consistent identity management
+ * • No stored credentials reducing attack surface and maintenance overhead
+ * • Federation support for secure external system integration
+ * • Principal ID and Client ID separation for different authentication scenarios
+ * • Comprehensive audit logging for all identity operations
+ * • Role assignment separation for principle of least privilege implementation
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at resource group scope to create managed identities
+ * that can be referenced and used by other Azure resources within the
+ * subscription for secure authentication scenarios.
+ */
 //       tags: {
 //         environment: 'dev'
 //         owner: 'alice@example.com'

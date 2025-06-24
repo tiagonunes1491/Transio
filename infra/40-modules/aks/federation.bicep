@@ -1,5 +1,57 @@
-// AKS workload identity federation configuration
-// Creates federated credentials for Kubernetes service accounts
+/*
+ * =============================================================================
+ * AKS Workload Identity Federation Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates federated identity credentials for Kubernetes
+ * service accounts to authenticate with Azure services. It implements workload
+ * identity patterns that eliminate the need for stored credentials in
+ * Kubernetes pods while providing secure Azure service access.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                Workload Identity Federation                             │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Kubernetes Pod                                                         │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Service Account Token                                               ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ JWT Token           │  │ OIDC Claims                         │   ││
+ * │  │ │ • Kubernetes issued │  │ • Namespace                         │   ││
+ * │  │ │ • Service account   │  │ • Service account name              │   ││
+ * │  │ │ • Pod identity      │  │ • Cluster issuer                    │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                               │                                     ││
+ * │  └───────────────────────────────┼─────────────────────────────────────┘│
+ * │                                  ▼                                      │
+ * │  Azure AD Token Exchange                                                │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Federated Credential Validation                                     ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ OIDC Validation     │  │ Azure AD Token                      │   ││
+ * │  │ │ • Issuer check      │  │ • Access token generation           │   ││
+ * │  │ │ • Audience match    │  │ • UAMI impersonation               │   ││
+ * │  │ │ • Subject claim     │  │ • Azure service access             │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Workload Identity: Native Kubernetes service account to Azure AD integration
+ * • Zero Credentials: No stored secrets or certificates in Kubernetes
+ * • OIDC Integration: Standards-based token exchange using OpenID Connect
+ * • Namespace Isolation: Service account federation scoped to specific namespaces
+ * • Automatic Token Refresh: Kubernetes handles token lifecycle automatically
+ * • Multi-Service Support: Single UAMI can be federated to multiple service accounts
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Eliminates credential storage in Kubernetes reducing attack surface
+ * • Short-lived tokens with automatic rotation and renewal
+ * • Subject claim validation ensures only authorized service accounts authenticate
+ * • Namespace-based isolation prevents cross-namespace identity access
+ * • OIDC issuer validation prevents token spoofing and replay attacks
+ * • Comprehensive audit logging for all workload identity operations
+ */
 @description('Name of the UAMI that will be federated')
 param parentUserAssignedIdentityName  string
 

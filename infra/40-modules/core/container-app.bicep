@@ -1,5 +1,59 @@
-// infra/40-modules/swa/container-app.bicep
-// Deploys Azure Container App - Unopinionated module
+/*
+ * =============================================================================
+ * Container App Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures individual Azure Container Apps
+ * within an existing Container Apps Environment. It provides a flexible,
+ * unopinionated deployment pattern for containerized applications with
+ * comprehensive configuration options for scaling, networking, and security.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                     Container App Architecture                          │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Container App Instance                                                 │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Application Container                                               ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Application Runtime │  │ Ingress Configuration               │   ││
+ * │  │ │ • Custom image      │  │ • HTTP/HTTPS endpoints              │   ││
+ * │  │ │ • Environment vars  │  │ • Traffic splitting                 │   ││
+ * │  │ │ • Secrets injection │  │ • Custom domains                    │   ││
+ * │  │ │ • Volume mounts     │  │ • SSL termination                   │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ Scaling Configuration                                               ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Horizontal Scaling  │  │ Health Monitoring                   │   ││
+ * │  │ │ • Min/Max replicas  │  │ • Liveness probes                   │   ││
+ * │  │ │ • CPU/Memory rules  │  │ • Readiness probes                  │   ││
+ * │  │ │ • Custom metrics    │  │ • Startup probes                    │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Flexible Container Deployment: Support for custom images with full configuration control
+ * • Horizontal Auto-scaling: CPU, memory, and custom metric-based scaling policies
+ * • Ingress Management: HTTP/HTTPS endpoints with custom domain and SSL support
+ * • Secret Management: Secure injection of secrets from Key Vault or environment
+ * • Health Monitoring: Comprehensive health check configuration options
+ * • Traffic Management: Built-in load balancing and traffic splitting capabilities
+ * • Resource Optimization: Configurable CPU and memory limits with efficient allocation
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Secure secret injection without environment variable exposure
+ * • Managed identity integration for Azure service authentication
+ * • Network isolation through Container Apps Environment networking
+ * • Resource limits to prevent resource exhaustion attacks
+ * • Health probe validation to ensure application security and stability
+ * • Traffic encryption with automatic SSL/TLS certificate management
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at resource group scope to deploy individual
+ * container applications within an existing Container Apps Environment.
+ */
 
 // ========== PARAMETERS ==========
 

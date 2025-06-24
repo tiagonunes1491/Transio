@@ -1,5 +1,59 @@
-// Azure Key Vault configuration
-// Creates and configures Key Vault with RBAC for secure secret management
+/*
+ * =============================================================================
+ * Key Vault Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures Azure Key Vault for secure secrets
+ * management in the Secure Secret Sharer application. It implements enterprise-grade
+ * security features including RBAC, purge protection, and private endpoint support
+ * to ensure secure storage and access to application secrets and certificates.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                        Key Vault Security Architecture                  │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Azure Key Vault                                                        │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Security Features                                                   ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ RBAC Authorization  │  │ Audit Logging                       │   ││
+ * │  │ │ • Secrets User      │  │ • Access Logs                       │   ││
+ * │  │ │ • Certificates User │  │ • Operation Logs                    │   ││
+ * │  │ │ • Keys User         │  │ • Security Events                   │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ Protection Features                                                 ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Purge Protection    │  │ Soft Delete                         │   ││
+ * │  │ │ • 90-day retention  │  │ • Recovery capability               │   ││
+ * │  │ │ • Permanent delete  │  │ • Version history                   │   ││
+ * │  │ │   prevention        │  │ • Backup support                    │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • RBAC Authorization: Role-based access control replacing legacy access policies
+ * • Purge Protection: Permanent deletion prevention for critical secrets
+ * • Soft Delete: Recovery capability for accidentally deleted items
+ * • Premium/Standard SKU: Flexible pricing tiers based on HSM requirements
+ * • Private Endpoint Support: Network isolation for enterprise security
+ * • Audit Logging: Comprehensive access and operation logging
+ * • Tenant Integration: Azure AD tenant binding for identity security
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • RBAC replaces access policies for improved security and governance
+ * • Purge protection prevents permanent deletion of critical secrets
+ * • Soft delete enables recovery from accidental deletions
+ * • Private endpoint support for network-isolated access
+ * • Azure AD integration for consistent identity management
+ * • Comprehensive audit logging for compliance and security monitoring
+ * • Least privilege access through fine-grained RBAC roles
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at resource group scope to create Key Vault
+ * with security features optimized for application secrets management.
+ */
 @minLength(3)
 @maxLength(24)
 @description('Name of the keyvault')
