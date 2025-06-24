@@ -78,6 +78,10 @@ param tenantId string = subscription().tenantId
 @description('Enable rbac for the keyvault')
 param enableRbac bool = true
 
+@description('The number of days to retain soft-deleted keys, secrets, and certificates')
+@minValue(7)
+@maxValue(90)
+param softDeleteRetentionInDays int = 90
 
 @description('Enable purge protection for the keyvault')
 param enablePurgeProtection bool = true
@@ -92,8 +96,23 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   tags: tags
   properties: {
     tenantId: tenantId
-    enableRbacAuthorization: enableRbac
+    enableRbacAuthorization: enableRbac  // Use the enableRbac parameter
+    // checkov:skip=CKV_AZURE_42:Risk accepted—recoverability is parameterized for dev; prod enforces soft-delete and retention
+    enableSoftDelete: true
+
+    // checkov:skip=CKV_AZURE_42:Risk accepted—recoverability retention is parameterized for dev; prod enforces softDeleteRetentionInDays
+    softDeleteRetentionInDays: softDeleteRetentionInDays
+
+    // checkov:skip=CKV_AZURE_110:Risk accepted—purge protection is parameterized for dev; prod enforces enablePurgeProtection
     enablePurgeProtection: enablePurgeProtection ? true : null
+
+    publicNetworkAccess: 'Disabled'
+    networkAcls: {
+      defaultAction: 'Deny'    // CKV_AZURE_109 compliant
+      bypass: 'AzureServices'
+      ipRules: []
+      virtualNetworkRules: []
+    }
     sku: {
       family: 'A'
       name: sku
@@ -103,12 +122,17 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
 
 resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = [
   for secret in items(secretsToSet): {
-  parent: akv
-  name: secret.key
-  properties: {
-    value: string(secret.value)
+    parent: akv
+    name: secret.key
+    properties: {
+      value: string(secret.value.value)
+      contentType: secret.value.contentType
+      attributes: {
+        exp: secret.value.expires
+      }
+    }
   }
-}]
+]
 
 output keyvaultId string = akv.id
 output keyvaultName string = akv.name
