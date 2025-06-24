@@ -1,51 +1,112 @@
-// infra/31-swa-identity/main.bicep
-// SWA Identity deployment: Creates UAMI and configures RBAC for services
-
+/*
+ * =============================================================================
+ * SWA Identity Management Infrastructure for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep template creates the identity management infrastructure specifically
+ * for Static Web App deployments. It establishes user-assigned managed identities
+ * with comprehensive role-based access control (RBAC) assignments to enable
+ * secure, keyless authentication to Azure services.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                    SWA Identity Management                              │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Identity Resource Group                                                │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ User-Assigned Managed Identity (UAMI)                              ││
+ * │  │ ┌─────────────────────┐                                           ││
+ * │  │ │ GitHub Federation   │                                           ││
+ * │  │ │ Credentials         │                                           ││
+ * │  │ └─────────────────────┘                                           ││
+ * │  │         │                                                          ││
+ * │  │         │ RBAC Assignments                                         ││
+ * │  │         ▼                                                          ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Shared Services     │  │ Platform Services                   │   ││
+ * │  │ │ • ACR Pull         │  │ • Key Vault Secrets User           │   ││
+ * │  │ │ • Cosmos DB User   │  │ • Resource Group Contributor       │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Managed Identity Creation: User-assigned managed identity for SWA workloads
+ * • GitHub Federation: Federated identity credentials for secure CI/CD
+ * • Least Privilege RBAC: Minimal required permissions for operation
+ * • Cross-Resource Access: Secure access to shared platform services
+ * • Service-Specific Permissions: Tailored access controls for each service type
+ * • Audit Trail: Comprehensive logging of identity operations
+ * • Zero-Credential Authentication: Eliminates password and key management
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Federated identity credentials prevent credential exposure in CI/CD
+ * • Principle of least privilege with service-specific role assignments
+ * • Cross-resource group permissions controlled through explicit RBAC
+ * • Managed identity lifecycle tied to deployment automation
+ * • Audit logging for all identity operations and access attempts
+ * • Role assignments scoped to specific resources where possible
+ * 
+ * DEPLOYMENT SCOPE:
+ * This template operates at resource group scope to create identity
+ * resources and assign cross-resource group permissions to shared
+ * services like ACR, Cosmos DB, and Key Vault.
+ */
 targetScope = 'resourceGroup'
 
-@description('Deployment location')
+/*
+ * =============================================================================
+ * PARAMETERS
+ * =============================================================================
+ */
+
+// ========== CORE DEPLOYMENT PARAMETERS ==========
+
+@description('Azure region for managed identity deployment')
 param resourceLocation string = 'spaincentral'
 
-@description('Project code')
+@description('Short project identifier used in resource naming conventions')
 param projectCode string = 'ss'
 
-@description('Service code for SWA/ACA platform')
+@description('Service identifier for this SWA identity deployment')
 param serviceCode string = 'swa'
 
-@description('Environment name')
+@description('Target environment affecting identity configuration and permissions')
 @allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
-// Tagging configuration
-@description('Cost center for billing')
+// ========== GOVERNANCE AND TAGGING PARAMETERS ==========
+
+@description('Cost center identifier for billing allocation and financial tracking')
 param costCenter string = '1000'
 
-@description('Created by information')
+@description('Deployment method identifier for tracking automation sources')
 param createdBy string = 'bicep-deployment'
 
-@description('Owner')
+@description('Resource owner identifier for accountability and governance')
 param owner string = 'tiago-nunes'
 
-@description('Owner email')
+@description('Resource owner email for notifications and governance contacts')
 param ownerEmail string = 'tiago.nunes@example.com'
 
 // ========== SHARED INFRASTRUCTURE REFERENCES ==========
-@description('Shared Resource Group Name (where ACR and CosmosDB are located)')
+
+@description('Name of resource group containing shared services (ACR and Cosmos DB)')
 param sharedResourceGroupName string
 
-@description('Key Vault Resource Group Name (where Key Vault is located)')
+@description('Name of resource group containing Key Vault for secrets access')
 param keyVaultResourceGroupName string
 
-@description('Existing ACR name from shared infrastructure')
+@description('Name of existing Azure Container Registry for pull permissions')
 param acrName string
 
-@description('Existing Cosmos DB account name from shared infrastructure')
+@description('Name of existing Cosmos DB account for data access permissions')
 param cosmosDbAccountName string
 
-@description('Existing Key Vault name')
+@description('Name of existing Key Vault for secrets management')
 param keyVaultName string
 
-@description('Cosmos DB database name to scope the RBAC assignment to')
+@description('Cosmos DB database name for scoped RBAC assignment')
 param cosmosDatabaseName string = 'swa-dev'
 
 // Reference existing shared resources

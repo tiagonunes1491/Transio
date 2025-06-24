@@ -1,46 +1,113 @@
-// infra/30-platform-swa-aca/main.bicep
-// Single entry-point for platform: network, key vault, log analytics, PCA environment, UAMI, RBAC, plus ACA & SWA stubs
-
+/*
+ * =============================================================================
+ * SWA Platform Infrastructure for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep template establishes the Static Web App (SWA) platform infrastructure
+ * for the Secure Secret Sharer application. It creates a comprehensive platform
+ * environment that supports both Container Apps and Static Web Apps with secure
+ * networking, identity management, and monitoring capabilities.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                       SWA Platform Infrastructure                       │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Virtual Network (10.0.0.0/16)                                         │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Container Apps Subnet (10.0.10.0/23)                              ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐  ││
+ * │  │ │ Container Apps      │  │ Static Web Apps                     │  ││
+ * │  │ │ Environment         │  │ Frontend Applications               │  ││
+ * │  │ │                     │  │                                     │  ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘  ││
+ * │  │                                                                    ││
+ * │  │ Private Endpoints Subnet (10.0.30.0/24)                          ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐  ││
+ * │  │ │ Key Vault PE        │  │ Cosmos DB PE                        │  ││
+ * │  │ │ Log Analytics PE    │  │ Container Registry PE               │  ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘  ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                                                         │
+ * │  Supporting Services:                                                   │
+ * │  • User-Assigned Managed Identity with federated credentials           │
+ * │  • Key Vault for secure secrets management                             │
+ * │  • Log Analytics workspace for monitoring and observability            │
+ * │  • Network Security Groups with appropriate access controls            │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Comprehensive Platform: Complete SWA/ACA platform with networking and security
+ * • Container Apps Environment: Managed serverless container platform
+ * • Static Web Apps: Frontend hosting with global CDN and automatic scaling
+ * • Private Connectivity: Secure access to shared services via private endpoints
+ * • Network Segmentation: Dedicated subnets for different workload types
+ * • Identity Integration: Managed identities with GitHub federation support
+ * • Centralized Monitoring: Log Analytics integration for platform observability
+ * • Security Best Practices: Network security groups and private endpoint protection
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Network isolation through dedicated virtual network and subnets
+ * • Private endpoint connectivity to shared services (ACR, Cosmos DB)
+ * • Network Security Groups with restrictive rules for each subnet
+ * • Managed identity-based authentication eliminating credential management
+ * • GitHub federation for secure CI/CD workflows
+ * • Key Vault integration for secure secret management
+ * • Audit logging through Log Analytics workspace integration
+ * 
+ * DEPLOYMENT SCOPE:
+ * This template operates at resource group scope to create platform
+ * infrastructure that can host multiple SWA and Container Apps workloads
+ * while maintaining secure connectivity to shared services.
+ */
 targetScope = 'resourceGroup'
 
-@description('Azure AD tenant ID for Key Vault authentication')
+/*
+ * =============================================================================
+ * PARAMETERS
+ * =============================================================================
+ */
+
+// ========== CORE DEPLOYMENT PARAMETERS ==========
+
+@description('Azure AD tenant ID for Key Vault authentication and managed identity federation')
 param tenantId string = subscription().tenantId
 
-@description('Deployment location')
+@description('Azure region for all resource deployments')
 param resourceLocation string = 'spaincentral'
 
-@description('Project code')
+@description('Short project identifier used in resource naming conventions')
 param projectCode string = 'ss'
 
-@description('Service code for SWA/ACA platform')
+@description('Service identifier for this SWA/ACA platform deployment')
 param serviceCode string = 'swa'
 
-@description('Environment name')
+@description('Target environment for deployment affecting resource configuration and naming')
 @allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
-// Tagging configuration
-@description('Cost center for billing')
+// ========== GOVERNANCE AND TAGGING PARAMETERS ==========
+
+@description('Cost center identifier for billing allocation and financial tracking')
 param costCenter string = '1000'
 
-@description('Created by information')
+@description('Deployment method identifier for tracking automation sources')
 param createdBy string = 'bicep-deployment'
 
-@description('Owner')
+@description('Resource owner identifier for accountability and governance')
 param owner string = 'tiago-nunes'
 
-@description('Owner email')
+@description('Resource owner email for notifications and governance contacts')
 param ownerEmail string = 'tiago.nunes@example.com'
 
-
 // ========== SHARED INFRASTRUCTURE REFERENCES ==========
-@description('Existing Platform Resource Group Name')
+
+@description('Name of existing shared platform resource group containing ACR and Cosmos DB')
 param sharedResourceGroupName string
 
-@description('Existing ACR name from shared infrastructure')
+@description('Name of existing Azure Container Registry for container image storage')
 param acrName string
 
-@description('Existing Cosmos DB account name from shared infrastructure')
+@description('Name of existing Cosmos DB account for database connectivity via private endpoints')
 param cosmosDbAccountName string
 
 // Reference existing ACR resource to get its ID and login server automatically
