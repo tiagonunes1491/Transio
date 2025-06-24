@@ -29,7 +29,18 @@ def init_cosmos_db(app):
         # Initialize client with managed identity if enabled, otherwise use key
         if use_managed_identity:
             logger.info("Using managed identity for Cosmos DB authentication")
-            credential = DefaultAzureCredential()
+            
+            # Check if a User-assigned managed identity client ID is provided
+            import os
+            client_id = os.environ.get('AZURE_CLIENT_ID')
+            
+            if client_id:
+                logger.info(f"Using User-assigned managed identity with client ID: {client_id}")
+                credential = DefaultAzureCredential(managed_identity_client_id=client_id)
+            else:
+                logger.info("No AZURE_CLIENT_ID found, using system-assigned managed identity or default credential chain")
+                credential = DefaultAzureCredential()
+                
             cosmos_client = CosmosClient(endpoint, credential, connection_verify=connection_verify)
         elif key:
             logger.info("Using access key for Cosmos DB authentication")

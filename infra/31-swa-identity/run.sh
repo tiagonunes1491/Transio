@@ -1,0 +1,1 @@
+az deployment group create --name "swa-identity-$(date +%Y%m%d%H%M%S)" --resource-group "ss-i-mgmt-rg" --template-file "main.bicep" --parameters "main.dev.bicepparam"
