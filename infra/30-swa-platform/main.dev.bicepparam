@@ -27,22 +27,22 @@ param akvSecrets = {
   'cosmos-endpoint': {
     value: 'https://ss-s-plat-cosmos.documents.azure.com:443/'
     contentType: 'uri'
-    expires: '2026-06-24T00:00:00Z'
+    expires: 1782585600
   }
   'encryption-key': {
     value: '=fF3jdnJGZiQWSTrGD9kM2I5_7oP8qRsT6uVwXyZaBcE='
     contentType: 'base64'
-    expires: '2026-06-24T00:00:00Z'
+    expires: 1782585600
   }
   'cosmos-database-name': {
     value: 'swa-dev'
     contentType: 'string'
-    expires: '2026-06-24T00:00:00Z'
+    expires: 1782585600
   }
   'cosmos-container-name': {
     value: 'secrets'
     contentType: 'string'
-    expires: '2026-06-24T00:00:00Z'
+    expires: 1782585600
   }
 }
 
