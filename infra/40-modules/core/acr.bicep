@@ -168,7 +168,7 @@ param enableDedicatedDataEndpoint bool = false
  * • Customer-managed encryption support
  * • Zone redundancy for business continuity
  */
-resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
+resource acr 'Microsoft.ContainerRegistry/registries@2025-04-01' = {
   name: acrName
   location: location
   tags: tags
