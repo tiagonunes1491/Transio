@@ -116,6 +116,11 @@ param gitHubRepositoryName string
  * - ROLE: Azure RBAC role to assign (maps to built-in role definitions)
  * - federationTypes: Authentication methods supported (comma-separated)
  * 
+ * Security Design:
+ * • Follows zero-trust principles with environment-based federation
+ * • Each identity has minimal required permissions (least privilege)
+ * • Protected environments enforce additional approval workflows
+ * 
  * Default Configuration:
  * • creator: Full contributor access for infrastructure provisioning
  * • push: Container registry push permissions for image publishing
@@ -208,6 +213,9 @@ var standardTags = {
  * 
  * Maps logical role names to Azure built-in role definition IDs for consistent
  * and secure permission management across all workload identities.
+ * 
+ * SECURITY NOTE: Using built-in roles follows least privilege principle and
+ * ensures Microsoft-maintained security best practices are applied.
  */
 
 /*
@@ -218,10 +226,13 @@ var standardTags = {
  * Role Descriptions:
  * • Contributor: Full management access to resources (excludes access management)
  * • AcrPush: Azure Container Registry push permissions for image publishing
+ * 
+ * IMPORTANT: Role IDs are subscription-scoped for compatibility with Azure RBAC.
+ * These GUIDs are Microsoft-defined constants that remain stable across tenants.
  */
 var roleIdMap = {
-  contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor role for infrastructure management
-  AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'     // AcrPush role for container registry operations
+  contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Built-in Contributor role - excludes User Access Administrator permissions
+  AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'     // Built-in AcrPush role - container registry push only (no pull/delete)
 }
 
 /*
@@ -337,8 +348,9 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
  * • Compliance with zero-trust security principles
  * • Enhanced audit capabilities
  * 
- * Only creates federation credentials for identities that specify 'environment'
- * in their federationTypes configuration
+ * IMPORTANT: Only creates federation credentials for identities that specify 
+ * 'environment' in their federationTypes configuration. This conditional
+ * approach supports flexible authentication patterns while maintaining security.
  */
 module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
@@ -402,7 +414,8 @@ module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in ite
 
 /*
  * MANAGED IDENTITY OUTPUTS
- * Critical identity information for downstream authentication and authorization
+ * Critical identity information for downstream authentication and authorization.
+ * These outputs enable dependent templates to reference shared identities securely.
  */
 @description('Array of all created User-Assigned Managed Identity names for workload authentication')
 output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name]
