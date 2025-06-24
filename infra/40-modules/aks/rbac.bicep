@@ -1,5 +1,56 @@
-// RBAC role assignments for AKS platform services
-// Configures access permissions for Key Vault, ACR, and AKS resources
+/*
+ * =============================================================================
+ * AKS RBAC Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module configures comprehensive RBAC role assignments for AKS
+ * platform services in the Secure Secret Sharer application. It establishes
+ * secure access permissions for Key Vault, Azure Container Registry, and
+ * Application Gateway integration with proper least-privilege principles.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                      AKS RBAC Architecture                              │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  User-Assigned Managed Identities                                      │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ UAMI Role Assignments                                               ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Key Vault Access    │  │ Container Registry Access           │   ││
+ * │  │ │ • Secrets User      │  │ • AcrPull role                      │   ││
+ * │  │ │ • Certificate User  │  │ • Image pull operations             │   ││
+ * │  │ │ • Cryptographic Ops │  │ • Workload authentication           │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                  │                                      │
+ * │  AKS Cluster Permissions                                                │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Service Integrations                                                ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Application Gateway │  │ Managed Identity Operator           │   ││
+ * │  │ │ • AGIC permissions  │  │ • Identity binding                  │   ││
+ * │  │ │ • Ingress control   │  │ • Workload identity                 │   ││
+ * │  │ │ • Backend management│  │ • Federation management             │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Comprehensive Access Control: RBAC for Key Vault, ACR, and Application Gateway
+ * • Workload Identity Support: Managed identity operator permissions for pod identity
+ * • AGIC Integration: Application Gateway Ingress Controller permissions
+ * • Least Privilege: Minimal required permissions for each service integration
+ * • Multi-UAMI Support: Flexible assignment to multiple managed identities
+ * • Service Separation: Distinct permissions for different workload types
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Principle of least privilege with service-specific role assignments
+ * • No credential storage - managed identity authentication only
+ * • Segregated permissions for different platform services
+ * • Audit trail for all RBAC assignments and access operations
+ * • Identity operator permissions for secure workload identity binding
+ * • Application Gateway security through controlled AGIC permissions
+ */
 @description('ID of the Azure Key Vault')
 @minLength(1)
 param keyVaultId string

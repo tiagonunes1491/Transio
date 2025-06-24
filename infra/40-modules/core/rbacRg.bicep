@@ -1,23 +1,26 @@
-// Module: core/roleAssignment.bicep
-// Description: Assigns an Azure RBAC role to a principal (User Assigned Managed Identity, Service Principal, AKS, etc.) at the module's deployment scope.
-// Creates role assignments with deterministic names to prevent conflicts and enable idempotent deployments.
-// Supports both built-in role GUIDs and full role definition resource IDs for maximum flexibility.
-//
-// Parameters:
-//   - principalId: Object ID of the principal to assign the role to (UAMI, Service Principal, etc.)
-//   - roleDefinitionId: Full roleDefinitionId path or GUID of the built-in role to assign
-//
-// Role Definition Handling:
-//   - If roleDefinitionId contains '/providers/', it's treated as a full resource ID
-//   - Otherwise, it's treated as a GUID and converted to a full subscription-scoped resource ID
-//   - Supports both built-in and custom role definitions
-//
-// Resources Created:
-//   - Microsoft.Authorization/roleAssignments: Creates the role assignment with a deterministic GUID name
-//
-// Naming Strategy:
-//   - Uses guid(principalId, roleDefinitionId, subscription().id) for deterministic naming
-//   - Ensures idempotent deployments and prevents duplicate role assignments
+/*
+ * =============================================================================
+ * Resource Group RBAC Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module assigns Azure RBAC roles to principals at resource group
+ * scope. It provides flexible role assignment capabilities with support for
+ * both built-in and custom roles, implementing deterministic naming patterns
+ * for conflict-free deployments and proper governance.
+ * 
+ * KEY FEATURES:
+ * • Resource Group Scope: Role assignments at the resource group level
+ * • Flexible Role Support: Both built-in role GUIDs and full resource IDs
+ * • Deterministic Naming: GUID-based naming prevents assignment conflicts
+ * • Idempotent Deployments: Safe re-deployment without duplication
+ * • Principal Flexibility: Support for UAMIs, Service Principals, and groups
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Least privilege principle through precise role assignment
+ * • Audit trail for all resource group access operations
+ * • Role definition validation and proper scope assignment
+ * • Governance support through consistent role management
+ */
 //
 // Outputs:
 //   - assignmentId: The resource ID of the created role assignment

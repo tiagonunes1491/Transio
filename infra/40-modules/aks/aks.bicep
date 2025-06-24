@@ -1,5 +1,52 @@
-// Azure Kubernetes Service (AKS) cluster configuration
-// Creates an AKS cluster with system and user node pools
+/*
+ * =============================================================================
+ * AKS Cluster Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures Azure Kubernetes Service (AKS)
+ * cluster for the Secure Secret Sharer application. It implements enterprise-grade
+ * Kubernetes infrastructure with system and user node pools, security hardening,
+ * and comprehensive monitoring capabilities.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                        AKS Cluster Architecture                         │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Control Plane (Azure Managed)                                         │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Kubernetes API Server                                               ││
+ * │  │ • etcd cluster • Scheduler • Controller Manager                     ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                  │                                      │
+ * │  Worker Nodes (Customer Managed)                                       │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ System Node Pool            │  User Node Pool                       ││
+ * │  │ ┌─────────────────────────┐ │ ┌─────────────────────────────────┐   ││
+ * │  │ │ System Workloads        │ │ │ Application Workloads           │   ││
+ * │  │ │ • CoreDNS               │ │ │ • Secure Secret Sharer          │   ││
+ * │  │ │ • Metrics Server        │ │ │ • Custom applications           │   ││
+ * │  │ │ • AGIC                  │ │ │ • Monitoring agents             │   ││
+ * │  │ └─────────────────────────┘ │ └─────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Managed Control Plane: Azure-managed Kubernetes API server and etcd
+ * • Multi-Node Pool Architecture: Separation of system and user workloads
+ * • Auto-scaling: Cluster and pod auto-scaling based on demand
+ * • Security Hardening: Azure Security Center integration and security policies
+ * • Workload Identity: Native integration with Azure AD for pod authentication
+ * • Network Integration: VNet integration with custom subnet placement
+ * • Monitoring: Azure Monitor for containers with comprehensive observability
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Private cluster option for API server isolation
+ * • Azure Active Directory integration for RBAC
+ * • Pod security standards and admission controllers
+ * • Network policies for micro-segmentation
+ * • Workload identity for secure Azure service access
+ * • Image vulnerability scanning through Azure Security Center
+ */
 @description('Location of the AKS cluster')
 param location string
 

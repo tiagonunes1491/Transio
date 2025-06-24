@@ -1,5 +1,69 @@
-// infra/40-modules/swa/static-web-app.bicep
-// Deploys Azure Static Web App - Unopinionated module
+/*
+ * =============================================================================
+ * Static Web App Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures Azure Static Web Apps for hosting
+ * the frontend of the Secure Secret Sharer application. It provides a modern
+ * hosting platform with global CDN, automatic scaling, and integrated CI/CD
+ * capabilities optimized for React and other modern web frameworks.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                Static Web App Architecture                              │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Global Edge Network                                                    │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Content Delivery Network (CDN)                                      ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Edge Locations      │  │ SSL/TLS Termination                 │   ││
+ * │  │ │ • Global caching    │  │ • Automatic certificates            │   ││
+ * │  │ │ • Edge routing      │  │ • Custom domain support             │   ││
+ * │  │ │ • Performance       │  │ • HTTPS enforcement                 │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ Application Platform                                                ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Static Content      │  │ API Integration                     │   ││
+ * │  │ │ • React frontend    │  │ • Backend routing                   │   ││
+ * │  │ │ • SPA routing       │  │ • CORS configuration                │   ││
+ * │  │ │ • Asset optimization│  │ • Authentication                    │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ CI/CD Integration                                                   ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ GitHub Integration  │  │ Automated Deployment                │   ││
+ * │  │ │ • Repository linking│  │ • Build automation                  │   ││
+ * │  │ │ • Branch triggers   │  │ • Preview environments              │   ││
+ * │  │ │ • Configuration     │  │ • Production deployment             │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Global CDN: Automatic global content distribution with edge caching
+ * • GitHub Integration: Native GitHub repository integration with automated deployments
+ * • Custom Domains: Support for custom domains with automatic SSL certificate management
+ * • API Integration: Seamless backend API routing and integration capabilities
+ * • Authentication: Built-in authentication providers and custom authentication support
+ * • Preview Environments: Automatic preview deployments for pull requests
+ * • Performance Optimization: Automatic asset optimization and compression
+ * • Scalable Infrastructure: Automatic scaling based on traffic demands
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Automatic SSL/TLS certificate provisioning and management
+ * • HTTPS enforcement for all traffic with HSTS headers
+ * • Authentication and authorization integration with Azure AD
+ * • CORS configuration for secure cross-origin requests
+ * • Content Security Policy support for XSS protection
+ * • Built-in DDoS protection through Azure infrastructure
+ * • Secure header injection for enhanced security posture
+ * 
+ * DEPLOYMENT SCOPE:
+ * This module operates at resource group scope to create Static Web App
+ * resources that can host modern web applications with global distribution
+ * and integrated development workflows.
+ */
 
 // ========== PARAMETERS ==========
 

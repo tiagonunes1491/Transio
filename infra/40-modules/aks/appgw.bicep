@@ -1,5 +1,60 @@
-// Application Gateway configuration for AKS ingress
-// Creates and configures an Application Gateway for ingress traffic
+/*
+ * =============================================================================
+ * Application Gateway Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures Azure Application Gateway for
+ * AKS ingress traffic management. It provides Layer 7 load balancing, SSL
+ * termination, and Web Application Firewall capabilities to secure and
+ * optimize traffic routing to the Secure Secret Sharer application.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                Application Gateway Architecture                         │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Internet Traffic                                                       │
+ * │               │                                                         │
+ * │               ▼                                                         │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Application Gateway                                                 ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Frontend            │  │ SSL Termination                     │   ││
+ * │  │ │ • Public IP         │  │ • Certificate management            │   ││
+ * │  │ │ • Custom domains    │  │ • TLS/SSL protocols                 │   ││
+ * │  │ │ • Port listeners    │  │ • Security headers                  │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Routing Rules       │  │ Backend Pools                       │   ││
+ * │  │ │ • Path-based        │  │ • AKS services                      │   ││
+ * │  │ │ • Host-based        │  │ • Health probes                     │   ││
+ * │  │ │ • URL rewrite       │  │ • Load balancing                    │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │               │                                                         │
+ * │               ▼                                                         │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ AKS Cluster (Backend Services)                                     ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Layer 7 Load Balancing: Advanced HTTP/HTTPS traffic routing capabilities
+ * • SSL Termination: Centralized certificate management and SSL/TLS handling
+ * • Web Application Firewall: Optional WAF protection against common attacks
+ * • Auto-scaling: Dynamic scaling based on traffic patterns
+ * • Health Monitoring: Backend health probes and automatic failover
+ * • Custom Domains: Support for custom domain names with SSL certificates
+ * • AGIC Integration: Kubernetes ingress controller for automatic configuration
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • SSL/TLS termination with strong cipher suites and protocols
+ * • Web Application Firewall for OWASP Top 10 protection
+ * • DDoS protection through Azure infrastructure
+ * • Security headers injection for enhanced protection
+ * • Backend authentication and authorization
+ * • Network isolation through dedicated subnet placement
+ */
 @description('Name of the Application Gateway')
 param appGwName string = 'appgw-securesharer-mvp'
 

@@ -1,3 +1,27 @@
+/*
+ * =============================================================================
+ * Key Vault RBAC Module for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep module assigns Key Vault RBAC roles to managed identities for
+ * secure secrets access. It implements the Key Vault Secrets User role
+ * assignment pattern, replacing legacy access policies with modern RBAC
+ * for enhanced security and governance.
+ * 
+ * KEY FEATURES:
+ * • Secrets User Role: Assigns Key Vault Secrets User role for secret retrieval
+ * • Managed Identity Support: Optimized for User-Assigned Managed Identity integration
+ * • Deterministic Naming: GUID-based naming prevents role assignment conflicts
+ * • Modern RBAC: Replaces legacy access policies with Azure RBAC
+ * • Audit Integration: Full audit trail for Key Vault access operations
+ * 
+ * SECURITY CONSIDERATIONS:
+ * • Least privilege access - secrets user role only, no management permissions
+ * • No stored credentials - managed identity authentication only
+ * • Comprehensive audit logging for compliance and security monitoring
+ * • Role-based access control for improved governance
+ */
+
 @description('ID of the Azure Key Vault (optional - set if Key Vault is in this RG)')
 param keyVaultId string = ''
 
