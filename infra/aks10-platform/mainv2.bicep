@@ -19,7 +19,7 @@ param resourceLocation string = 'spaincentral'
 param projectCode string = 'ss'
 
 @description('Service identifier for this SWA/ACA platform deployment')
-param serviceCode string = 'swa'
+param serviceCode string 
 
 @description('Target environment for deployment affecting resource configuration and naming')
 @allowed(['dev', 'prod'])
@@ -228,7 +228,7 @@ var subnets  = [
 
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
   scope: subscription()
-  name: 'standard-tags-swa-platform'
+  name: 'standard-tags-platform'
   params: {
     environment: environmentName
     project: projectCode
@@ -271,18 +271,6 @@ module akvNamingModule '../40-modules/core/naming.bicep' = {
     environment: environmentName
     serviceCode: serviceCode
     resourceType: 'kv'
-  }
-}
-
-module acaNsgNamingModule '../40-modules/core/naming.bicep' = {
-  scope: subscription()
-  name: 'aca-nsg-naming'
-  params: {    
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'nsg'
-    suffix: 'ca'
   }
 }
 
