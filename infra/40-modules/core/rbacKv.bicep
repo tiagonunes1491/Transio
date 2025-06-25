@@ -28,6 +28,7 @@ param keyVaultId string = ''
 @description('Principal ID of the managed identity to give access to Key Vault, ACR, and Cosmos DB')
 param id string
 
+@linterSuppression('secure-secrets-in-params', 'Role definition IDs are not secrets')
 @description('Role definition ID for Key Vault Secrets User role')
 param keyVaultSecretsUserRoleId string = '4633458b-17de-408a-b874-0445c86b69e6'
 

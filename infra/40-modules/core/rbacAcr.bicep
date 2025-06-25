@@ -45,9 +45,7 @@ resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(acr.id, principalId, roleDefinitionId)
   properties: {
     principalId: principalId
-    roleDefinitionId: contains(roleDefinitionId, '/providers/')
-      ? roleDefinitionId
-      : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    roleDefinitionId: contains(roleDefinitionId, '/providers/') ? roleDefinitionId : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
     principalType: 'ServicePrincipal'
   }
 }

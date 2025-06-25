@@ -100,9 +100,7 @@ param fedType string = 'branch'
 // Construct the OIDC subject claim based on federation type
 // Branch federation: Allows access from specific Git branches (e.g., main, develop)
 // Environment federation: Allows access from GitHub deployment environments (e.g., production, staging)
-var subjectFilter = fedType == 'environment'
-  ? 'environment:${environmentName}'
-  : 'ref:refs/heads/${branchName}'
+var subjectFilter = (fedType == 'environment') ? 'environment:${environmentName}' : 'ref:refs/heads/${branchName}'
 
 // Reference the existing User Assigned Managed Identity that will be federated
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {

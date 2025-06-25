@@ -126,14 +126,8 @@ param backupPolicy object = {
 /*
  * NETWORK SECURITY PARAMETERS
  * Settings that control network access and security boundaries
+ * // CKV_AZURE_101: public network access is hardcoded to 'Disabled' for compliance
  */
-@description('Public network access setting - controls internet accessibility and security posture')
-@allowed([
-  'Enabled'              // Account accessible from internet (with optional firewall rules)
-  'Disabled'             // Account only accessible through private endpoints
-  'SecuredByPerimeter'   // Account secured by network perimeter configuration
-])
-param publicNetworkAccess string = 'Enabled'
 
 /*
  * DATABASE AND CONTAINER CONFIGURATION
@@ -170,6 +164,14 @@ param publicNetworkAccess string = 'Enabled'
   ]
 })
 param databases array = []
+
+/*
+ * ALLOWED SUBNETS
+ * Array of allowed subnet resource IDs for Cosmos DB VNET integration
+ * Used for Checkov compliance, does not affect Private Endpoints
+ */
+@description('Array of allowed subnet resource IDs for Cosmos DB VNET integration (for Checkov compliance, not required for Private Endpoints)')
+param allowedSubnets array = []
 
 /*
  * =============================================================================
@@ -218,8 +220,17 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     enableAutomaticFailover: enableAutomaticFailover   // Disaster recovery automation
     enableMultipleWriteLocations: enableMultipleWriteLocations  // Global write capability
     enableFreeTier: enableFreeTier                     // Cost optimization option
-    publicNetworkAccess: publicNetworkAccess           // Network security setting
+    publicNetworkAccess: 'Disabled'                    // CKV_AZURE_101 & CKV_AZURE_99 compliant: disables public network access and restricts access
+    networkAclBypass: 'None'                           // CKV_AZURE_99 compliant: no network ACL bypass allowed
+    isVirtualNetworkFilterEnabled: true                // CKV_AZURE_99: for Checkov compliance, does not affect Private Endpoints
+    ipRules: []                                       // CKV_AZURE_99: for Checkov compliance, no public IPs allowed
+    virtualNetworkRules: [for subnetId in allowedSubnets: {
+      id: subnetId
+      ignoreMissingVNetServiceEndpoint: false
+    }]                                                // CKV_AZURE_99: for Checkov compliance, not required for Private Endpoints
     backupPolicy: backupPolicy                         // Data protection configuration
+    disableKeyBasedMetadataWriteAccess: true           // CKV_AZURE_132 compliant: restricts management plane changes to Entra ID only
+    disableLocalAuth: true                             // CKV_AZURE_140 compliant: disables local authentication, requires Entra ID
   }
 }
 

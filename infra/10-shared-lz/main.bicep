@@ -125,19 +125,23 @@ param gitHubRepositoryName string
  * • creator: Full contributor access for infrastructure provisioning
  * • push: Container registry push permissions for image publishing
  */
-@description('Workload identities for shared infrastructure operations with environment-specific roles and federation settings')
+
+@description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
 param workloadIdentities object = {
     creator: {
-        ENV: 'shared-protected'        // Protected environment for infrastructure changes
-        ROLE: 'contributor'            // Full resource management permissions
-        federationTypes: 'environment' // GitHub environment-based authentication
+        UAMI: 'uami-ssharer-shared-infra-creator'
+        ENV: 'shared-protected'
+        ROLE: 'contributor'
+        federationTypes: 'environment'
     }
     push: {
-        ENV: 'shared'                  // Standard environment for container operations
-        ROLE: 'AcrPush'               // Container registry push permissions only
-        federationTypes: 'environment' // GitHub environment-based authentication
+        UAMI: 'uami-ssharer-acr-push'
+        ENV: 'shared'
+        ROLE: 'AcrPush'
+        federationTypes: 'environment'
     }
 }
+
 
 /*
  * =============================================================================
@@ -300,17 +304,19 @@ resource mgmtSharedRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
  * Naming Pattern: {projectCode}-{environment}-{serviceCode}-id-gh-{workloadType}
  * Example: ss-s-plat-id-gh-creator, ss-s-plat-id-gh-push
  */
-module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(workloadIdentities): {
-  name: 'uami-naming-${item.key}'
-  scope: subscription()
-  params: {
-    projectCode: projectCode
-    environment: 'shared'
-    serviceCode: serviceCode
-    resourceType: 'id'
-    suffix: 'gh-${item.key}'
+module uamiNamingModules '../40-modules/core/naming.bicep' = [
+  for (item, i) in items(workloadIdentities): {
+    name: 'uami-naming-${item.key}'
+    scope: subscription()
+    params: {
+      projectCode: projectCode
+      environment: 'shared'
+      serviceCode: serviceCode
+      resourceType: 'id'
+      suffix: 'gh-${item.key}'
+    }
   }
-}]
+]
 
 /*
  * USER-ASSIGNED MANAGED IDENTITIES CREATION
@@ -326,7 +332,9 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [for item in items(
  * Each identity is created in the management resource group for centralized
  * governance and security management
  */
-module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(workloadIdentities): {
+
+// Dynamically create UAMIs for each workload identity in the management resource group
+module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: mgmtSharedRG
   params: {
@@ -352,6 +360,7 @@ module uamiModules '../40-modules/core/uami.bicep' = [for (item, i) in items(wor
  * 'environment' in their federationTypes configuration. This conditional
  * approach supports flexible authentication patterns while maintaining security.
  */
+ 
 module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
   scope: mgmtSharedRG
@@ -361,11 +370,10 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
     GitHubRepositoryName: gitHubRepositoryName
     environmentName: item.value.ENV
     fedType: 'environment'
-    federatedCredentialName: 'fc-env-${item.value.ENV}-${item.key}'
+    federatedCredentialName: 'gh-env-${item.value.ENV}-${item.key}'
   }
   dependsOn: [uamiModules[i]]
 }]
-
 
 /*
  * =============================================================================
@@ -393,6 +401,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * • Principle of least privilege strictly enforced
  * • Audit logging enabled through Azure Activity Log
  */
+
 module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: hubRG
@@ -418,15 +427,19 @@ module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in ite
  * These outputs enable dependent templates to reference shared identities securely.
  */
 @description('Array of all created User-Assigned Managed Identity names for workload authentication')
-output uamiNames array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name]
+output uamiNames array = [
+  for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name
+]
 
 @description('Array of all User-Assigned Managed Identity principal IDs for RBAC role assignments')
-output uamiPrincipalIds array = [for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].principalId]
+output uamiPrincipalIds array = [
+  for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].principalId
+]
 
-@description('Array of federated credential configurations for GitHub Actions integration')
-output federatedCredentialNames array = [for (item, i) in items(workloadIdentities): {
-  env: contains(split(item.value.federationTypes, ','), 'environment') ? envFederationModules[i].outputs.federatedCredentialName : null
-}]
+@description('Array of federated credential names for GitHub Actions integration')
+output federatedCredentialNames array = [
+  for (item, i) in items(workloadIdentities): contains(split(item.value.federationTypes, ','), 'environment') ? 'gh-env-${item.value.ENV}-${item.key}' : ''
+]
 
 /*
  * RESOURCE GROUP OUTPUTS
