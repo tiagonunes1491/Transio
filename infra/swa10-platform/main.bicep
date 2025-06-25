@@ -15,49 +15,48 @@
  * │  Virtual Network (10.0.0.0/16)                                         │
  * │  ┌─────────────────────────────────────────────────────────────────────┐│
  * │  │ Container Apps Subnet (10.0.10.0/23)                              ││
- * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐  ││
- * │  │ │ Container Apps      │  │ Static Web Apps                     │  ││
- * │  │ │ Environment         │  │ Frontend Applications               │  ││
- * │  │ │                     │  │                                     │  ││
- * │  │ └─────────────────────┘  └─────────────────────────────────────┘  ││
+ * │  │ ┌─────────────────────┐                                          ││
+ * │  │ │ Container Apps      │                                          ││
+ * │  │ │ Environment         │                                          ││
+ * │  │ │ • Backend Services  │                                          ││
+ * │  │ │ • API Endpoints     │                                          ││
+ * │  │ └─────────────────────┘                                          ││
  * │  │                                                                    ││
  * │  │ Private Endpoints Subnet (10.0.30.0/24)                          ││
  * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐  ││
  * │  │ │ Key Vault PE        │  │ Cosmos DB PE                        │  ││
- * │  │ │ Log Analytics PE    │  │ Container Registry PE               │  ││
+ * │  │ │ Container Registry  │  │ Log Analytics PE                    │  ││
+ * │  │ │ PE                  │  │                                     │  ││
  * │  │ └─────────────────────┘  └─────────────────────────────────────┘  ││
  * │  └─────────────────────────────────────────────────────────────────────┘│
  * │                                                                         │
- * │  Supporting Services:                                                   │
- * │  • User-Assigned Managed Identity with federated credentials           │
- * │  • Key Vault for secure secrets management                             │
- * │  • Log Analytics workspace for monitoring and observability            │
- * │  • Network Security Groups with appropriate access controls            │
+ * │  External Services (Connected via Internet):                           │
+ * │  • Static Web Apps (Global CDN) - Frontend hosting                     │
+ * │  • GitHub Actions - CI/CD with federated authentication               │
+ * │  • Azure services accessible via private endpoints                     │
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
  * KEY FEATURES:
- * • Comprehensive Platform: Complete SWA/ACA platform with networking and security
- * • Container Apps Environment: Managed serverless container platform
- * • Static Web Apps: Frontend hosting with global CDN and automatic scaling
+ * • Comprehensive Platform: Complete infrastructure with networking and security
+ * • Container Apps Environment: Managed serverless container platform for backend APIs
  * • Private Connectivity: Secure access to shared services via private endpoints
- * • Network Segmentation: Dedicated subnets for different workload types
- * • Identity Integration: Managed identities with GitHub federation support
+ * • Network Segmentation: Dedicated subnets for different service types
  * • Centralized Monitoring: Log Analytics integration for platform observability
  * • Security Best Practices: Network security groups and private endpoint protection
+ * • Shared Services: Container Registry, Cosmos DB, and Key Vault with private access
  * 
  * SECURITY CONSIDERATIONS:
  * • Network isolation through dedicated virtual network and subnets
- * • Private endpoint connectivity to shared services (ACR, Cosmos DB)
+ * • Private endpoint connectivity to shared services (ACR, Cosmos DB, Key Vault)
  * • Network Security Groups with restrictive rules for each subnet
- * • Managed identity-based authentication eliminating credential management
- * • GitHub federation for secure CI/CD workflows
- * • Key Vault integration for secure secret management
- * • Audit logging through Log Analytics workspace integration
+ * • Secure backend API hosting in Container Apps with network protection
+ * • Centralized secret management through Key Vault with private access
+ * • Comprehensive audit logging through Log Analytics workspace integration
  * 
  * DEPLOYMENT SCOPE:
  * This template operates at resource group scope to create platform
- * infrastructure that can host multiple SWA and Container Apps workloads
- * while maintaining secure connectivity to shared services.
+ * infrastructure that hosts Container Apps backend services while providing
+ * secure connectivity to shared services via private endpoints.
  */
 targetScope = 'resourceGroup'
 
@@ -99,31 +98,54 @@ param owner string = 'tiago-nunes'
 @description('Resource owner email for notifications and governance contacts')
 param ownerEmail string = 'tiago.nunes@example.com'
 
-// ========== SHARED INFRASTRUCTURE REFERENCES ==========
 
-@description('Name of existing shared platform resource group containing ACR and Cosmos DB')
-param sharedResourceGroupName string
+// ========== AZURE CONTAINER REGISTRY PARAMETERS ==========
 
-@description('Name of existing Azure Container Registry for container image storage')
-param acrName string
+@description('SKU tier for Azure Container Registry - Premium recommended for production workloads')
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param acrSku string = 'Premium'
 
-@description('Name of existing Cosmos DB account for database connectivity via private endpoints')
-param cosmosDbAccountName string
+@description('Enable admin user for Azure Container Registry - disabled by default for security')
+param acrEnableAdminUser bool = false
 
-// Reference existing ACR resource to get its ID and login server automatically
-resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
-  name: acrName
-  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
-}
+// ========== COSMOS DB PARAMETERS ==========
 
-// Reference existing Cosmos DB account for private endpoint creation
-resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
-  name: cosmosDbAccountName
-  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
-}
+@description('Cosmos DB database and container configuration for multi-environment support')
+param cosmosDbConfig array 
+
+@description('Enable Cosmos DB free tier - not supported on internal/enterprise subscriptions')
+param cosmosEnableFreeTier bool = false
+
+// ========== KEY VAULT PARAMETERS ==========
+
+@description('Key Vault SKU tier - standard or premium')
+@allowed([ 'standard', 'premium' ])
+param akvSku string = 'standard'
+
+@description('Enable RBAC on Key Vault for access control')
+param akvRbac bool = true
+
+@description('Enable purge protection on Key Vault for security')
+param akvPurgeProtection bool = true
+
+@description('Secrets to store in Key Vault')
+@secure()
+param akvSecrets object
 
 
-// ========== VNET & SUBNETS ==========
+
+/*
+ * =============================================================================
+ * VARIABLES
+ * =============================================================================
+ */
+
+// ========== NETWORK CONFIGURATION ==========
+
 var addressSpace = [ '10.0.0.0/16' ]
 var subnets = [
   {
@@ -138,6 +160,15 @@ var subnets = [
     nsgId:                           peNsg.outputs.nsgId
   }
 ]
+
+/*
+ * =============================================================================
+ * CORE INFRASTRUCTURE MODULES
+ * =============================================================================
+ */
+
+// ========== NETWORK DEPLOYMENT ==========
+
 module network '../40-modules/core/network.bicep' = {
   name:  'network'
   params: {
@@ -149,9 +180,14 @@ module network '../40-modules/core/network.bicep' = {
   }
 }
 
-// ========== NAMING AND TAGGING MODULES ==========
+/*
+ * =============================================================================
+ * RESOURCE NAMING MODULES
+ * =============================================================================
+ */
 
-// Generate standardized tags using the tagging module
+// ========== STANDARDIZED TAGGING ==========
+
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
   scope: subscription()
   name: 'standard-tags-swa-platform'
@@ -166,7 +202,8 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
   }
 }
 
-// Generate resource names using naming module
+// ========== RESOURCE NAMING ==========
+
 module vnetNamingModule '../40-modules/core/naming.bicep' = {
   scope: subscription()
   name: 'vnet-naming'
@@ -235,22 +272,37 @@ module peNsgNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
+module acrNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'acr-naming'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'acr'
+  }
+}
+
+module cosmosNamingModule '../40-modules/core/naming.bicep' = {
+  name: 'cosmos-naming'
+  scope: subscription()
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'cosmos'
+  }
+}
 
 
-// ========== KEY VAULT & PRIVATE ENDPOINT ==========
-@description('Key Vault SKU')
-@allowed([ 'standard', 'premium' ])
-param akvSku string = 'standard'
 
-@description('Enable RBAC on Key Vault')
-param akvRbac bool = true
+/*
+ * =============================================================================
+ * PLATFORM SERVICES DEPLOYMENT
+ * =============================================================================
+ */
 
-@description('Enable purge protection on Key Vault')
-param akvPurgeProtection bool = true
-
-@description('Secrets to store in Key Vault')
-@secure()
-param akvSecrets object
+// ========== KEY VAULT DEPLOYMENT ==========
 
 module akv '../40-modules/core/keyvault.bicep' = {
   name:  'keyvault'
@@ -265,6 +317,8 @@ module akv '../40-modules/core/keyvault.bicep' = {
     tags:                    standardTagsModule.outputs.tags
   }
 }
+
+// ========== KEY VAULT PRIVATE ENDPOINT ==========
 
 module kvDns '../40-modules/core/private-dns-zone.bicep' = {
   name:  'kvPrivateDns'
@@ -288,7 +342,21 @@ module kvPe '../40-modules/core/private-endpoint.bicep' = {
   }
 }
 
-// ========== ACR PRIVATE ENDPOINT (existing shared ACR) ==========
+// ========== AZURE CONTAINER REGISTRY DEPLOYMENT ==========
+
+module acr '../40-modules/core/acr.bicep' = {
+  name: 'acr'
+  params: {
+    tags: standardTagsModule.outputs.tags
+    acrName: acrNamingModule.outputs.resourceName
+    location: resourceLocation
+    sku: acrSku
+    enableAdminUser: acrEnableAdminUser
+  }
+}
+
+// ========== ACR PRIVATE ENDPOINT ==========
+
 module acrDns '../40-modules/core/private-dns-zone.bicep' = {
   name:  'acrPrivateDns'
   params: {
@@ -301,17 +369,31 @@ module acrDns '../40-modules/core/private-dns-zone.bicep' = {
 module acrPe '../40-modules/core/private-endpoint.bicep' = {
   name:  'acrPrivateEndpoint'
   params: {
-    privateEndpointName:       'pe-${acrName}'
+    privateEndpointName:       'pe-${acr.outputs.acrName}'
     privateEndpointLocation:   resourceLocation
     privateEndpointSubnetId:   network.outputs.subnetIds[1]
     privateEndpointGroupId:    'registry'
-    privateEndpointServiceId:  sssplatacr.id
+    privateEndpointServiceId:  acr.outputs.acrId
     privateEndpointTags:       standardTagsModule.outputs.tags
     privateDnsZoneIds:         [ acrDns.outputs.privateDnsZoneId ]
   }
 }
 
-// ========== COSMOS DB PRIVATE ENDPOINT (existing shared Cosmos DB) ==========
+// ========== COSMOS DB DEPLOYMENT ==========
+
+module cosmosDb '../40-modules/core/cosmos-db.bicep' = {
+  name: 'deploy-cosmos-db'
+  params: {
+    cosmosDbAccountName: cosmosNamingModule.outputs.resourceName
+    location: resourceLocation
+    databases: cosmosDbConfig
+    tags: standardTagsModule.outputs.tags
+    enableFreeTier: cosmosEnableFreeTier
+  }
+}
+
+// ========== COSMOS DB PRIVATE ENDPOINT ==========
+
 module cosmosDns '../40-modules/core/private-dns-zone.bicep' = {
   name:  'cosmosPrivateDns'
   params: {
@@ -324,17 +406,18 @@ module cosmosDns '../40-modules/core/private-dns-zone.bicep' = {
 module cosmosPe '../40-modules/core/private-endpoint.bicep' = {
   name:  'cosmosPrivateEndpoint'
   params: {
-    privateEndpointName:       'pe-${cosmosDbAccountName}'
+    privateEndpointName:       'pe-${cosmosDb.outputs.cosmosDbAccountName}'
     privateEndpointLocation:   resourceLocation
     privateEndpointSubnetId:   network.outputs.subnetIds[1]
     privateEndpointGroupId:    'Sql'
-    privateEndpointServiceId:  cosmosDbAccount.id
+    privateEndpointServiceId:  cosmosDb.outputs.cosmosDbAccountId
     privateEndpointTags:       standardTagsModule.outputs.tags
     privateDnsZoneIds:         [ cosmosDns.outputs.privateDnsZoneId ]
   }
 }
 
-// ========== LOG ANALYTICS WORKSPACE ==========
+// ========== LOG ANALYTICS WORKSPACE DEPLOYMENT ==========
+
 module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
   name:  'workspace'
   params: {
@@ -344,7 +427,8 @@ module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
   }
 }
 
-// ========== ACA ENVIRONMENT ==========
+// ========== CONTAINER APPS ENVIRONMENT DEPLOYMENT ==========
+
 module acaEnv '../40-modules/core/aca-environment.bicep' = {
   name:  'acaEnvironment'
   params: {
@@ -356,9 +440,14 @@ module acaEnv '../40-modules/core/aca-environment.bicep' = {
   }
 }
 
-// ========== NETWORK SECURITY GROUPS ==========
+/*
+ * =============================================================================
+ * NETWORK SECURITY GROUPS
+ * =============================================================================
+ */
 
-// NSG for Container Apps subnet (snet-aca)
+// ========== CONTAINER APPS SUBNET NSG ==========
+
 var acaAllowRules = [
   {
     name: 'AllowStaticWebAppsInbound'
@@ -400,7 +489,8 @@ module acaNsg '../40-modules/core/nsg.bicep' = {
   }
 }
 
-// NSG for Private Endpoints subnet (snet-pe)
+// ========== PRIVATE ENDPOINTS SUBNET NSG ==========
+
 var peAllowRules = [
   {
     name: 'AllowFromContainerApps'
@@ -429,12 +519,47 @@ module peNsg '../40-modules/core/nsg.bicep' = {
   }
 }
 
-// ========== OUTPUTS ==========
-output acrName               string = acrName
-output acrLoginServer        string = sssplatacr.properties.loginServer  // Get from existing resource
+/*
+ * =============================================================================
+ * OUTPUTS
+ * =============================================================================
+ */
+
+// ========== CORE PLATFORM OUTPUTS ==========
+
+@description('Container Apps environment resource ID')
 output caeEnvironmentId      string = acaEnv.outputs.acaEnvironmentId
+
+@description('Container Apps environment resource name')
 output caeEnvironmentName    string = last(split(acaEnv.outputs.acaEnvironmentId, '/'))
+
+@description('Container Apps default domain for the environment')
 output caeDefaultDomain      string = acaEnv.outputs.acaDefaultDomain
+
+@description('Key Vault URI for secret management')
 output keyVaultUri           string = akv.outputs.keyvaultUri
+
+@description('Network Security Group ID for Container Apps subnet')
 output acaNsgId              string = acaNsg.outputs.nsgId
+
+@description('Network Security Group ID for Private Endpoints subnet')
 output peNsgId               string = peNsg.outputs.nsgId
+
+// ========== CONTAINER REGISTRY OUTPUTS ==========
+
+@description('Azure Container Registry name for image storage and distribution')
+output acrName string = acr.outputs.acrName
+
+@description('Azure Container Registry login server URL for Docker operations')
+output acrLoginServer string = acr.outputs.acrLoginServer
+
+// ========== COSMOS DB OUTPUTS ==========
+
+@description('Cosmos DB account endpoint URL for database connectivity')
+output cosmosDbEndpoint string = cosmosDb.outputs.cosmosDbEndpoint
+
+@description('Cosmos DB account name for configuration and access control')
+output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
+
+@description('Array of created Cosmos DB databases with configuration details')
+output cosmosDbDatabases array = cosmosDb.outputs.databases

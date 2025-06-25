@@ -14,18 +14,13 @@ param createdBy = 'bicep-deployment'
 param owner = 'tiago-nunes'
 param ownerEmail = 'tiago.nunes@example.com'
 
-// Shared infrastructure references - these should match existing resources
-param acrName = 'sssplatacr'
-param sharedResourceGroupName = 'ss-s-plat-rg'
-param cosmosDbAccountName = 'ss-s-plat-cosmos'
-
 // Key Vault configuration
 param akvSku = 'standard'
 param akvRbac = true
 param akvPurgeProtection = false
 param akvSecrets = {
   'cosmos-endpoint': {
-    value: 'https://ss-s-plat-cosmos.documents.azure.com:443/'
+    value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
     contentType: 'uri'
     expires: 1782585600
   }
@@ -46,3 +41,22 @@ param akvSecrets = {
   }
 }
 
+// Azure Container Registry configuration
+param acrSku = 'Premium'
+param acrEnableAdminUser = false
+
+// Cosmos DB configuration
+param cosmosDbConfig = [
+  {
+    name: 'swa-dev'
+    containers: [
+      {
+        name: 'secrets'
+        partitionKey: { paths: ['/link_id'], kind: 'Hash' }
+        defaultTtl: 86400
+        autoscaleSettings: { maxThroughput: 1000 }
+      }
+    ]
+  }
+]
+param cosmosEnableFreeTier = false
