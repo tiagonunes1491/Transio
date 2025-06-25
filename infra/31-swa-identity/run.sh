@@ -1,1 +1,8 @@
-az deployment group create --name "swa-identity-$(date +%Y%m%d%H%M%S)" --resource-group "ss-i-mgmt-rg" --template-file "main.bicep" --parameters "main.dev.bicepparam"
+az stack group create \
+  --name swa-identity-stack \
+  --resource-group ss-i-mgmt-rg \
+  --template-file main.bicep \
+  --parameters main.dev.bicepparam \
+  --action-on-unmanage deleteResources \
+  --deny-settings-mode DenyWriteAndDelete \
+  --deny-settings-apply-to-child-scopes
