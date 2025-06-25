@@ -1,28 +1,38 @@
 /*
  * =============================================================================
- * PaaS Landing Zone Infrastructure for Secure Secret Sharer
+ * Static Web Apps Landing Zone Infrastructure for Secure Secret Sharer
  * =============================================================================
  * 
- * This Bicep template creates the Platform-as-a-Service (PaaS) landing zone
+ * This Bicep template creates the Static Web Apps (SWA) landing zone
  * infrastructure for the Secure Secret Sharer application. It establishes the
- * foundational components needed for deploying and managing PaaS workloads.
+ * foundational identity and access management components needed for deploying
+ * and managing Static Web Apps and Container Apps workloads.
  * 
  * ARCHITECTURE OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐
- * │                       PaaS Landing Zone                                 │
+ * │                    Static Web Apps Landing Zone                         │
  * ├─────────────────────────────────────────────────────────────────────────┤
- * │  Management RG              │  PaaS Spoke RG                            │
- * │  ┌─────────────────────┐   │  ┌─────────────────────────────────────┐  │
- * │  │ User-Assigned       │   │  │ Container Apps                      │  │
- * │  │ Managed Identities  │───┼──│ Static Web Apps                     │  │
- * │  │                     │   │  │ App Services                        │  │
- * │  │ GitHub Federation   │   │  │ Function Apps                       │  │
- * │  │ Credentials         │   │  │                                     │  │
- * │  └─────────────────────┘   │  └─────────────────────────────────────┘  │
+ * │  SWA Resource Group                                                     │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │                                                                     ││
+ * │  │  ┌─────────────────────┐  ┌─────────────────────────────────────┐  ││
+ * │  │  │ User-Assigned       │  │ GitHub Federated                    │  ││
+ * │  │  │ Managed Identities  │──│ Credentials                         │  ││
+ * │  │  │                     │  │                                     │  ││
+ * │  │  │ • Creator Identity  │  │ • Environment-based                 │  ││
+ * │  │  │ • ACR Push Identity │  │ • Passwordless Authentication       │  ││
+ * │  │  └─────────────────────┘  └─────────────────────────────────────┘  ││
+ * │  │                                                                     ││
+ * │  │  ┌─────────────────────────────────────────────────────────────────┐││
+ * │  │  │ RBAC Role Assignments                                          │││
+ * │  │  │ • Contributor permissions for infrastructure creation          │││
+ * │  │  │ • AcrPush permissions for container registry operations        │││
+ * │  │  └─────────────────────────────────────────────────────────────────┘││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
  * KEY FEATURES:
- * • Resource Groups: Organized separation of management and workload resources
+ * • Single Resource Group: Centralized organization for SWA workload resources
  * • Managed Identities: Secure, keyless authentication for Azure services
  * • GitHub Federation: Passwordless CI/CD authentication from GitHub Actions
  * • RBAC: Principle of least privilege access control
@@ -36,91 +46,60 @@
  * • Follows Azure Well-Architected security pillar guidelines
  * 
  * DEPLOYMENT SCOPE:
- * This template operates at subscription scope to create resource groups
+ * This template operates at subscription scope to create a single resource group
  * and manage subscription-level resources like managed identities.
  */
 targetScope = 'subscription'
 
 /*
  * =============================================================================
- * PARAMETER DEFINITIONS
+ * PARAMETERS
  * =============================================================================
- * 
- * These parameters configure the deployment environment, naming conventions,
- * and security settings for the PaaS landing zone.
  */
 
-// Environment configuration
-@description('Environment for the deployment (e.g., dev, prod)')
+// ========== CORE DEPLOYMENT PARAMETERS ==========
+
+@description('Target environment for deployment affecting resource configuration and naming')
 @allowed(['dev', 'prod'])
 param environmentName string = 'dev'
 
-@description('Azure region where resources will be deployed')
+@description('Azure region for all resource deployments')
 param location string = 'spaincentral'
 
-/*
- * NAMING CONVENTION PARAMETERS
- * These parameters follow the organization's naming standards:
- * Format: {projectCode}-{environment}-{serviceCode}-{resourceType}
- */
-@description('Project code - identifies the project/application (e.g., ss for Secure Secret)')
+@description('Short project identifier used in resource naming conventions')
 param projectCode string = 'ss'
 
-@description('Service code for SWA/ACA platform - identifies the specific service component')
+@description('Service identifier for this SWA/ACA platform deployment')
 param serviceCode string = 'swa'
 
-/*
- * GOVERNANCE AND TAGGING PARAMETERS
- * These parameters support resource governance, cost management, and compliance tracking
- */
-@description('Cost center for billing and chargeback purposes')
+// ========== GOVERNANCE AND TAGGING PARAMETERS ==========
+
+@description('Cost center identifier for billing allocation and financial tracking')
 param costCenter string = '1000'
 
-@description('Created by information - tracks who initiated the deployment')
+@description('Deployment method identifier for tracking automation sources')
 param createdBy string = 'bicep-deployment'
 
-@description('Owner - primary contact for the resources')
+@description('Resource owner identifier for accountability and governance')
 param owner string = 'tiago-nunes'
 
-@description('Owner email - contact email for resource ownership')
+@description('Resource owner email for notifications and governance contacts')
 param ownerEmail string = 'tiago.nunes@example.com'
 
-@description('Creation date for tagging - automatically set to current UTC date')
+@description('Creation date for resource tagging - automatically set to current UTC date')
 param createdDate string = utcNow('yyyy-MM-dd')
 
-/*
- * GITHUB INTEGRATION PARAMETERS
- * These parameters configure federated authentication for CI/CD pipelines
- * Enables passwordless authentication from GitHub Actions to Azure
- */
-@description('GitHub organization name for federated credential setup')
+// ========== GITHUB INTEGRATION PARAMETERS ==========
+
+@description('GitHub organization name for federated credential configuration')
 param gitHubOrganizationName string
 
-@description('GitHub repository name for federated credential setup')
+@description('GitHub repository name for federated credential configuration')
 param gitHubRepositoryName string
 
-/*
- * WORKLOAD IDENTITY CONFIGURATION
- * Defines the managed identities required for different shared infrastructure operations
- * Each identity is configured with specific roles and federation capabilities
- * 
- * Structure Explanation:
- * - Key: Logical identifier for the workload type (e.g., 'creator', 'push')
- * - ENV: GitHub environment name for federation scope
- * - ROLE: Azure RBAC role to assign (maps to built-in role definitions)
- * - federationTypes: Authentication methods supported (comma-separated)
- * 
- * Security Design:
- * • Follows zero-trust principles with environment-based federation
- * • Each identity has minimal required permissions (least privilege)
- * • Protected environments enforce additional approval workflows
- * 
- * Default Configuration:
- * • creator: Full contributor access for infrastructure provisioning
- * • push: Container registry push permissions for image publishing
- */
+// ========== WORKLOAD IDENTITY CONFIGURATION ==========
 
-@description('GitHub workload identities for the shared resources infrastructure. Each entry defines a UAMI, its environment, RBAC role, and federation types.')
+@description('GitHub workload identities for shared resource infrastructure - each entry defines UAMI, environment, RBAC role, and federation types')
 param workloadIdentities object = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
@@ -139,68 +118,42 @@ param workloadIdentities object = {
 
 /*
  * =============================================================================
- * NAMING CONVENTION AND TAGGING CONFIGURATION
+ * VARIABLES
  * =============================================================================
- * 
- * This section establishes consistent naming patterns and tagging strategies
- * across all resources in the PaaS landing zone.
  */
 
-/*
- * ENVIRONMENT MAPPING
- * Maps full environment names to abbreviated codes for consistent naming
- * This ensures resource names remain within Azure naming limits while maintaining clarity
- */
+// ========== ENVIRONMENT MAPPING ==========
+
 var envMapping = {
   dev: 'd'      // Development environment
   prod: 'p'     // Production environment  
   shared: 's'   // Shared/common resources
 }
 
-/*
- * RESOURCE GROUP NAMING
- * Generates consistent resource group names following organizational standards
- * Pattern: {projectCode}-{envCode}-{purpose}-rg
- * 
- * Examples:
- * - ss-s-hub-rg (Shared hub resources)
- * - ss-d-swa-rg (Development SWA resources)
- * - ss-i-mgmt-rg (Infrastructure management resources)
- */
-var swaRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')  // PaaS workload resource group
+// ========== RESOURCE GROUP NAMING ==========
 
-/*
- * STANDARDIZED TAGGING STRATEGY
- * Comprehensive tagging for governance, cost management, and operational clarity
- * These tags are applied to all resources for consistent metadata tracking
- */
+var swaRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')
+
+// ========== STANDARDIZED TAGGING ==========
+
 var standardTags = {
-  environment: environmentName        // Environment classification (dev/prod)
-  project: projectCode               // Project identifier for resource grouping
-  service: serviceCode               // Service component identifier
-  costCenter: costCenter             // Cost allocation and chargeback
-  createdBy: createdBy              // Deployment method/tool identification
-  owner: owner                      // Primary resource owner
-  ownerEmail: ownerEmail            // Contact information for the owner
-  createdDate: createdDate          // Resource creation timestamp
-  managedBy: 'bicep'                // Infrastructure as Code tool used
-  deployment: deployment().name      // Specific deployment instance identifier
+  environment: environmentName
+  project: projectCode
+  service: serviceCode
+  costCenter: costCenter
+  createdBy: createdBy
+  owner: owner
+  ownerEmail: ownerEmail
+  createdDate: createdDate
+  managedBy: 'bicep'
+  deployment: deployment().name
 }
 
-/*
- * =============================================================================
- * SECURITY AND RBAC CONFIGURATION
- * =============================================================================
- */
+// ========== RBAC ROLE MAPPING ==========
 
-/*
- * ROLE MAPPING FOR WORKLOAD IDENTITIES
- * Maps logical role names to Azure built-in role definition IDs
- * This abstraction allows for easy role management and consistent assignments
- */
 var roleIdMap = {
-  contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Built-in Contributor role - excludes User Access Administrator permissions
-  AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'     // Built-in AcrPush role - container registry push only (no pull/delete)
+  contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c'
+  AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'
 }
 
 
@@ -208,20 +161,10 @@ var roleIdMap = {
  * =============================================================================
  * RESOURCE GROUP CREATION
  * =============================================================================
- * 
- * Creates the primary resource groups for organizing PaaS workloads and
- * management components following Azure landing zone principles.
  */
 
-/*
- * PAAS SPOKE RESOURCE GROUP
- * Primary resource group for hosting PaaS workloads including:
- * - Azure Container Apps
- * - Azure Static Web Apps  
- * - Azure App Services
- * - Azure Function Apps
- * - Supporting services (Application Insights, etc.)
- */
+// ========== SWA WORKLOAD RESOURCE GROUP ==========
+
 resource swaRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   name: swaRgName
   location: location
@@ -233,20 +176,10 @@ resource swaRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
  * =============================================================================
  * MANAGED IDENTITIES AND FEDERATED CREDENTIALS
  * =============================================================================
- * 
- * This section creates secure, keyless authentication infrastructure for PaaS workloads.
- * It establishes managed identities and configures federated authentication with GitHub
- * for secure CI/CD operations without storing secrets.
  */
 
-/*
- * NAMING MODULE FOR USER-ASSIGNED MANAGED IDENTITIES
- * Generates consistent names for UAMIs using the centralized naming module
- * This ensures all identity resources follow organizational naming standards
- * 
- * Pattern: {projectCode}-{env}-{serviceCode}-id-gh-{workloadType}
- * Example: ss-d-swa-id-gh-contributor
- */
+// ========== MANAGED IDENTITY NAMING ==========
+
 module uamiNamingModules '../40-modules/core/naming.bicep' = [
   for (item, i) in items(workloadIdentities): {
     name: 'uami-naming-${item.key}'
@@ -261,19 +194,8 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [
   }
 ]
 
-/*
- * USER-ASSIGNED MANAGED IDENTITIES CREATION
- * Creates secure managed identities for each defined workload type
- * 
- * Benefits of UAMIs:
- * - No credential management required
- * - Automatic credential rotation by Azure
- * - Integration with Azure RBAC
- * - Support for federated identity scenarios
- * 
- * Each UAMI is created in the management resource group for centralized identity governance
- */
-// Dynamically create UAMIs for each workload identity in the management resource group
+// ========== USER-ASSIGNED MANAGED IDENTITIES ==========
+
 module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: swaRG
@@ -284,20 +206,7 @@ module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(wo
   }
 }]
 
-
-/*
- * GITHUB FEDERATED IDENTITY CREDENTIALS
- * Establishes trust relationship between GitHub Actions and Azure AD
- * Enables passwordless authentication from CI/CD pipelines to Azure resources
- * 
- * Federated identity benefits:
- * - No secrets stored in GitHub repositories
- * - Automatic token lifecycle management
- * - Enhanced security through OIDC standard
- * - Fine-grained access control per environment
- * 
- * Only creates federation for workloads that specify 'environment' federation type
- */
+// ========== GITHUB FEDERATED CREDENTIALS ==========
 
 module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
@@ -317,23 +226,10 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * =============================================================================
  * RBAC ROLE ASSIGNMENTS
  * =============================================================================
- * 
- * Configures role-based access control (RBAC) permissions for managed identities
- * following the principle of least privilege. Each identity receives only the
- * minimum permissions required for its specific workload.
  */
 
-/*
- * PAAS RESOURCE GROUP ROLE ASSIGNMENTS
- * Assigns the configured roles to UAMIs within the PaaS spoke resource group
- * This grants the identities permission to manage resources in their target environment
- * 
- * Security considerations:
- * - Uses principle of least privilege
- * - Role assignments scoped to specific resource group
- * - Built-in roles preferred over custom roles
- * - Regular access reviews recommended
- */
+// ========== RESOURCE GROUP ROLE ASSIGNMENTS ==========
+
 module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: swaRG
@@ -346,17 +242,12 @@ module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in ite
 
 /*
  * =============================================================================
- * TEMPLATE OUTPUTS
+ * OUTPUTS
  * =============================================================================
- * 
- * Provides essential information for downstream deployments and integrations.
- * These outputs are consumed by application deployment templates and CI/CD pipelines.
  */
 
-/*
- * MANAGED IDENTITY OUTPUTS
- * Essential identity information for workload authentication and authorization
- */
+// ========== MANAGED IDENTITY OUTPUTS ==========
+
 @description('Array of all created User-Assigned Managed Identity names for workload authentication')
 output uamiNames array = [
   for (item, i) in items(workloadIdentities): uamiModules[i].outputs.uamis[0].name
@@ -372,17 +263,13 @@ output federatedCredentialNames array = [
   for (item, i) in items(workloadIdentities): contains(split(item.value.federationTypes, ','), 'environment') ? 'gh-env-${item.value.ENV}-${item.key}' : ''
 ]
 
-/*
- * RESOURCE GROUP OUTPUTS
- * Resource group information for resource organization and deployment targeting
- */
-@description('PaaS resource group name for workload deployments')
+// ========== RESOURCE GROUP OUTPUTS ==========
+
+@description('SWA resource group name for workload deployments')
 output paasResourceGroupName string = swaRG.name
 
-/*
- * AZURE ENVIRONMENT OUTPUTS
- * Subscription and tenant information for multi-tenant and cross-subscription scenarios
- */
+// ========== AZURE ENVIRONMENT OUTPUTS ==========
+
 @description('Azure AD tenant ID for identity federation configuration')
 output tenantId string = subscription().tenantId
 
