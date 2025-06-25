@@ -31,8 +31,13 @@ param gitHubRepositoryName = 'SecureSharer'
 param workloadIdentities = {
   // Main PaaS workload identity with Contributor access to PaaS spoke RG
   contributor: {
-    ENV: 'dev'
+    ENV: 'dev-protected'
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
+  acrPush: {
+        ENV: 'dev'
+        ROLE: 'AcrPush'
+        federationTypes: 'environment'
+    }
 }

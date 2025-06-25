@@ -167,9 +167,7 @@ var envMapping = {
  * - ss-d-swa-rg (Development SWA resources)
  * - ss-i-mgmt-rg (Infrastructure management resources)
  */
-var hubRgName = toLower('${projectCode}-${envMapping.shared}-hub-rg')      // Shared hub resource group
-var paasRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')  // PaaS workload resource group
-var mgmtRgName = toLower('${projectCode}-i-mgmt-rg')                       // Management resource group for identities
+var swaRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')  // PaaS workload resource group
 
 /*
  * STANDARDIZED TAGGING STRATEGY
@@ -196,38 +194,15 @@ var standardTags = {
  */
 
 /*
- * AZURE BUILT-IN ROLE DEFINITIONS
- * References to Azure built-in RBAC roles for consistent permission management
- * Using built-in roles ensures security best practices and reduces maintenance overhead
- */
-var ContributorRoleDefinitionId = '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c'
-
-/*
  * ROLE MAPPING FOR WORKLOAD IDENTITIES
  * Maps logical role names to Azure built-in role definition IDs
  * This abstraction allows for easy role management and consistent assignments
  */
 var roleIdMap = {
-  contributor: ContributorRoleDefinitionId  // Grants full access to manage resources (except access control)
+  contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c' // Built-in Contributor role - excludes User Access Administrator permissions
+  AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'     // Built-in AcrPush role - container registry push only (no pull/delete)
 }
 
-/*
- * =============================================================================
- * EXISTING RESOURCE REFERENCES
- * =============================================================================
- * 
- * References to resources created by other landing zone components.
- * These resources must exist before this template can be deployed successfully.
- */
-
-/*
- * SHARED HUB RESOURCE GROUP REFERENCE
- * References the hub resource group created by the shared landing zone (10-shared-lz)
- * This establishes dependency ordering and ensures proper resource organization
- */
-resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
-  name: hubRgName
-}
 
 /*
  * =============================================================================
@@ -247,25 +222,12 @@ resource hubRG 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
  * - Azure Function Apps
  * - Supporting services (Application Insights, etc.)
  */
-resource paasRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: paasRgName
+resource swaRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+  name: swaRgName
   location: location
   tags: standardTags
 }
 
-/*
- * MANAGEMENT RESOURCE GROUP
- * Dedicated resource group for identity and access management resources:
- * - User-Assigned Managed Identities (UAMIs)
- * - Federated identity credentials for GitHub
- * - Security-related configurations
- * 
- * Separating management resources provides better security boundaries
- * and follows the principle of separation of concerns.
- */
-resource managementRg 'Microsoft.Resources/resourceGroups@2021-04-01' existing = {
-  name: mgmtRgName
-}
 
 /*
  * =============================================================================
@@ -314,7 +276,7 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [
 // Dynamically create UAMIs for each workload identity in the management resource group
 module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
-  scope: managementRg
+  scope: swaRG
   params: {
     uamiLocation: location
     uamiNames: [uamiNamingModules[i].outputs.resourceName]
@@ -339,7 +301,7 @@ module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(wo
 
 module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
-  scope: managementRg
+  scope: swaRG
   params: {
     UamiName: uamiModules[i].outputs.uamis[0].name
     GitHubOrganizationName: gitHubOrganizationName
@@ -374,7 +336,7 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  */
 module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
-  scope: paasRG
+  scope: swaRG
   params: {
     principalId: uamiModules[i].outputs.uamis[0].principalId
     roleDefinitionId: roleIdMap[item.value.ROLE]
@@ -414,14 +376,8 @@ output federatedCredentialNames array = [
  * RESOURCE GROUP OUTPUTS
  * Resource group information for resource organization and deployment targeting
  */
-@description('Management resource group name containing identities and credentials')
-output managementResourceGroupName string = managementRg.name
-
-@description('Hub resource group name for shared infrastructure components')
-output hubResourceGroupName string = hubRG.name
-
 @description('PaaS resource group name for workload deployments')
-output paasResourceGroupName string = paasRG.name
+output paasResourceGroupName string = swaRG.name
 
 /*
  * AZURE ENVIRONMENT OUTPUTS
