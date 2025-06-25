@@ -20,7 +20,7 @@ param akvRbac = true
 param akvPurgeProtection = false
 param akvSecrets = {
   'cosmos-endpoint': {
-    value: 'https://ss-s-plat-cosmos.documents.azure.com:443/'
+    value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
     contentType: 'uri'
     expires: 1782585600
   }

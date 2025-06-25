@@ -12,14 +12,20 @@ param createdBy = 'bicep-deployment-dev'
 param owner = 'tiago-nunes'
 param ownerEmail = 'tiago.nunes@microsoft.com'
 
+
 // Existing infrastructure references
+param acrName = 'ssdswaacr'
+param cosmosDbAccountName = 'ss-d-swa-cosmos'
+param keyVaultName = 'ssdswakv'
+
+// Database configuration
+param cosmosDatabaseName = 'swa-dev'
+
+
 param acaEnvironmentResourceGroupName = 'ss-d-swa-rg'
 param acaEnvironmentName = 'ss-d-swa-cae'
-param uamiResourceGroupName = 'ss-i-mgmt-rg'
-param uamiName = 'ss-d-swa-id-ca-backend'
-
 // Application configuration
-param containerImage = 'sssplatacr.azurecr.io/secure-secret-sharer:dev'
+param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
 
 // Key Vault secrets configuration
 param keyVaultSecrets = [  {

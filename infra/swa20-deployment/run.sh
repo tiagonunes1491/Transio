@@ -1,4 +1,4 @@
-az deployment group create --name "swa-application-$(date +%Y%m%d%H%M%S)" --resource-group "ss-d-swa-rg" --template-file "main.bicep" --parameters "main.dev.bicepparam"
+az stack group create --name swa-deployment-stack --resource-group ss-d-swa-rg  --template-file main.bicep --parameters main.dev.bicepparam  --deny-settings-mode None --action-on-unmanage detachAll
 read -rsn1 -p "Press any key to continue..."
 
 # Change to the project root directory for proper path resolution
@@ -11,3 +11,5 @@ swa deploy \
   --output-location . \
   --env default \
   --verbose
+
+  az stack group create --name swa-platform-stack --resource-group ss-d-swa-rg  --template-file main.bicep --parameters main.dev.bicepparam  --deny-settings-mode None --action-on-unmanage detachAll

@@ -99,6 +99,12 @@ param owner string = 'tiago-nunes'
 @description('Resource owner email for notifications and governance contacts')
 param ownerEmail string = 'tiago.nunes@example.com'
 
+/*
+ * =============================================================================
+ * EXISTING INFRASTRUCTURE REFERENCES
+ * =============================================================================
+ */
+
 // ========== EXISTING INFRASTRUCTURE REFERENCES ==========
 
 @description('Name of resource group containing the Container Apps Environment')
@@ -106,16 +112,6 @@ param acaEnvironmentResourceGroupName string
 
 @description('Name of existing Container Apps Environment for backend deployment')
 param acaEnvironmentName string
-
-@description('Name of resource group containing the User-Assigned Managed Identity')
-param uamiResourceGroupName string
-
-@description('Name of existing User-Assigned Managed Identity for secure authentication')
-param uamiName string
-
-
-@description('Name of resource group containing Key Vault for secrets access')
-param keyVaultResourceGroupName string
 
 @description('Name of existing Azure Container Registry for pull permissions')
 param acrName string
@@ -129,25 +125,33 @@ param keyVaultName string
 @description('Cosmos DB database name for scoped RBAC assignment')
 param cosmosDatabaseName string = 'swa-dev'
 
+// ========== EXISTING RESOURCE REFERENCES ==========
+
 // Reference existing shared resources
 resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: acrName
-  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
 }
 
 resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: cosmosDbAccountName
-  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
 }
 
 // Reference existing Key Vault resource
 resource akv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
-  scope: resourceGroup(subscription().subscriptionId, keyVaultResourceGroupName)
 }
 
+// Reference existing infrastructure
+resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
+  name: acaEnvironmentName
+  scope: resourceGroup(subscription().subscriptionId, acaEnvironmentResourceGroupName)
+}
 
-// ========== APPLICATION CONFIGURATION PARAMETERS ==========
+/*
+ * =============================================================================
+ * APPLICATION CONFIGURATION PARAMETERS
+ * =============================================================================
+ */
 
 @description('Full container image reference including registry and tag for backend deployment')
 param containerImage string
@@ -161,16 +165,14 @@ param environmentVariables array = []
 @description('Secret environment variables for the Container App')
 param secretEnvironmentVariables array = []
 
-// Reference existing infrastructure
-resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
-  name: acaEnvironmentName
-  scope: resourceGroup(subscription().subscriptionId, acaEnvironmentResourceGroupName)
-}
+/*
+ * =============================================================================
+ * RESOURCE NAMING MODULES
+ * =============================================================================
+ */
 
+// ========== STANDARDIZED TAGGING ==========
 
-// ========== NAMING AND TAGGING MODULES ==========
-
-// Generate standardized tags using the tagging module
 module standardTagsModule '../40-modules/core/tagging.bicep' = {
   scope: subscription()
   name: 'standard-tags-swa-app'
@@ -184,6 +186,8 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
     ownerEmail: ownerEmail
   }
 }
+
+// ========== RESOURCE NAMING ==========
 
 module containerAppNamingModule '../40-modules/core/naming.bicep' = {
   scope: subscription()
@@ -220,10 +224,17 @@ module uamiNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
+/*
+ * =============================================================================
+ * APPLICATION DEPLOYMENT MODULES
+ * =============================================================================
+ */
+
 
 
 
 // ========== USER ASSIGNED MANAGED IDENTITY ==========
+
 module uami '../40-modules/core/uami.bicep' = {
   name: 'uami'
   params: {
@@ -255,7 +266,6 @@ module keyVaultRbac '../40-modules/core/rbacKv.bicep' = {
   }
 }
 
-
 // Deploy Cosmos DB RBAC in the shared resource group
 module cosmosRbac '../40-modules/core/rbacCosmos.bicep' = {
   name: 'cosmosRbac'
@@ -269,7 +279,8 @@ module cosmosRbac '../40-modules/core/rbacCosmos.bicep' = {
 
 
 
-// ========== CONTAINER APP (using UAMI) ==========
+// ========== CONTAINER APP DEPLOYMENT ==========
+
 // Dynamically add AZURE_CLIENT_ID to environment variables
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
@@ -289,17 +300,18 @@ module containerApp '../40-modules/core/container-app.bicep' = {
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: {
-        '${uami.outputs.uamis[0].clientId}': {}
+        '${uami.outputs.uamis[0].id}': {}
       }
     }
-    secrets: [for secret in keyVaultSecrets: {      name: secret.name
+    secrets: [for secret in keyVaultSecrets: {
+      name: secret.name
       keyVaultUrl: secret.keyVaultUrl
-      identity: uami.outputs.uamis[0].clientId
+      identity: uami.outputs.uamis[0].id
     }]
     registries: [
       {
         server: split(containerImage, '/')[0] // Extract ACR server from image
-        identity: uami.outputs.uamis[0].clientId
+        identity: uami.outputs.uamis[0].id
       }
     ]
     environmentVariables: containerAppEnvironmentVariables
@@ -311,7 +323,8 @@ module containerApp '../40-modules/core/container-app.bicep' = {
   }
 }
 
-// ========== STATIC WEB APP ==========
+// ========== STATIC WEB APP DEPLOYMENT ==========
+
 module staticWebApp '../40-modules/core/static-web-app.bicep' = {
   name: 'staticWebApp'
   params: {
@@ -328,9 +341,25 @@ module staticWebApp '../40-modules/core/static-web-app.bicep' = {
   }
 }
 
-// ========== OUTPUTS ==========
+/*
+ * =============================================================================
+ * OUTPUTS
+ * =============================================================================
+ */
+
+// ========== APPLICATION DEPLOYMENT OUTPUTS ==========
+
+@description('Container App resource ID for linking and reference')
 output containerAppId string = containerApp.outputs.containerAppId
+
+@description('Container App resource name for configuration and management')
 output containerAppName string = containerAppNamingModule.outputs.resourceName
+
+@description('Static Web App resource ID for linking and reference')
 output staticWebAppId string = staticWebApp.outputs.staticWebAppId
+
+@description('Static Web App resource name for configuration and management')
 output staticWebAppName string = swaNamingModule.outputs.resourceName
+
+@description('Static Web App default hostname for DNS configuration and access')
 output staticWebAppHostname string = staticWebApp.outputs.staticWebAppHostname

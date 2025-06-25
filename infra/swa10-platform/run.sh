@@ -1,5 +1,1 @@
-az stack group create \
-  --name swa-platform-stack \
-  --resource-group ss-d-swa-rg \
-  --template-file main.bicep \
-  --parameters main.dev.bicepparam \
+az stack group create --name swa-platforms-stack --resource-group ss-d-swa-rg  --template-file main.bicep --parameters main.dev.bicepparam  --deny-settings-mode None --action-on-unmanage detachAll
