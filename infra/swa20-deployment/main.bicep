@@ -113,6 +113,40 @@ param uamiResourceGroupName string
 @description('Name of existing User-Assigned Managed Identity for secure authentication')
 param uamiName string
 
+
+@description('Name of resource group containing Key Vault for secrets access')
+param keyVaultResourceGroupName string
+
+@description('Name of existing Azure Container Registry for pull permissions')
+param acrName string
+
+@description('Name of existing Cosmos DB account for data access permissions')
+param cosmosDbAccountName string
+
+@description('Name of existing Key Vault for secrets management')
+param keyVaultName string
+
+@description('Cosmos DB database name for scoped RBAC assignment')
+param cosmosDatabaseName string = 'swa-dev'
+
+// Reference existing shared resources
+resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: acrName
+  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
+}
+
+resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+  name: cosmosDbAccountName
+  scope: resourceGroup(subscription().subscriptionId, sharedResourceGroupName)
+}
+
+// Reference existing Key Vault resource
+resource akv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+  name: keyVaultName
+  scope: resourceGroup(subscription().subscriptionId, keyVaultResourceGroupName)
+}
+
+
 // ========== APPLICATION CONFIGURATION PARAMETERS ==========
 
 @description('Full container image reference including registry and tag for backend deployment')
@@ -133,10 +167,6 @@ resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
   scope: resourceGroup(subscription().subscriptionId, acaEnvironmentResourceGroupName)
 }
 
-resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: uamiName
-  scope: resourceGroup(subscription().subscriptionId, uamiResourceGroupName)
-}
 
 // ========== NAMING AND TAGGING MODULES ==========
 
@@ -177,15 +207,77 @@ module swaNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
+// Generate resource names using naming module
+module uamiNamingModule '../40-modules/core/naming.bicep' = {
+  scope: subscription()
+  name: 'uami-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'id'
+    suffix: 'ca-backend'
+  }
+}
+
+
+
+
+// ========== USER ASSIGNED MANAGED IDENTITY ==========
+module uami '../40-modules/core/uami.bicep' = {
+  name: 'uami'
+  params: {
+    uamiLocation: resourceLocation
+    uamiNames: [uamiNamingModule.outputs.resourceName]
+    tags: standardTagsModule.outputs.tags
+  }
+}
+
+// ========== RBAC ASSIGNMENTS ==========
+
+// Deploy ACR RBAC at the ACR scope
+module acrRbac '../40-modules/core/rbacAcr.bicep' = {
+  name: 'acrRbac'
+  params: {
+    registryId: sssplatacr.id
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull role
+  }
+}
+
+// Deploy Key Vault RBAC at the Key Vault scope
+module keyVaultRbac '../40-modules/core/rbacKv.bicep' = {
+  name: 'keyVaultRbac'
+  params: {
+    keyVaultId: akv.id
+    id: uami.outputs.uamis[0].principalId
+    roleId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
+  }
+}
+
+
+// Deploy Cosmos DB RBAC in the shared resource group
+module cosmosRbac '../40-modules/core/rbacCosmos.bicep' = {
+  name: 'cosmosRbac'
+  params: {
+    accountName: sssplatcosmos.name
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor role
+    databaseName: cosmosDatabaseName
+  }
+}
+
+
+
+// ========== CONTAINER APP (using UAMI) ==========
 // Dynamically add AZURE_CLIENT_ID to environment variables
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'AZURE_CLIENT_ID'
-    value: uami.properties.clientId
+    value: uami.outputs.uamis[0].clientId
   }
 ])
 
-// ========== CONTAINER APP (using UAMI) ==========
 module containerApp '../40-modules/core/container-app.bicep' = {
   name: 'containerApp'
   params: {
@@ -197,17 +289,17 @@ module containerApp '../40-modules/core/container-app.bicep' = {
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: {
-        '${uami.id}': {}
+        '${uami.outputs.uamis[0].clientId}': {}
       }
     }
     secrets: [for secret in keyVaultSecrets: {      name: secret.name
       keyVaultUrl: secret.keyVaultUrl
-      identity: uami.id
+      identity: uami.outputs.uamis[0].clientId
     }]
     registries: [
       {
         server: split(containerImage, '/')[0] // Extract ACR server from image
-        identity: uami.id
+        identity: uami.outputs.uamis[0].clientId
       }
     ]
     environmentVariables: containerAppEnvironmentVariables
