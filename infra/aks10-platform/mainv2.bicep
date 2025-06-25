@@ -389,7 +389,7 @@ var peAllowRules = [
       direction: 'Inbound'
       access: 'Allow'
       protocol: 'Tcp'
-      sourceAddressPrefix: '10.0.1.0/23'
+      sourceAddressPrefix: '10.0.1.0/24'
       sourcePortRange: '*'
       destinationAddressPrefix: '10.0.3.0/24'
       destinationPortRange: '443'
@@ -461,7 +461,7 @@ module kvPe '../40-modules/core/private-endpoint.bicep' = {
   params: {
     privateEndpointName:         'pe-${akv.outputs.keyvaultName}'
     privateEndpointLocation:     resourceLocation
-    privateEndpointSubnetId:     network.outputs.subnetIds[1]
+    privateEndpointSubnetId:     network.outputs.subnetIds[2]
     privateEndpointGroupId:      'vault'
     privateEndpointServiceId:    akv.outputs.keyvaultId
     privateEndpointTags:         standardTagsModule.outputs.tags
@@ -498,7 +498,7 @@ module acrPe '../40-modules/core/private-endpoint.bicep' = {
   params: {
     privateEndpointName:       'pe-${acr.outputs.acrName}'
     privateEndpointLocation:   resourceLocation
-    privateEndpointSubnetId:   network.outputs.subnetIds[1]
+    privateEndpointSubnetId:   network.outputs.subnetIds[2]
     privateEndpointGroupId:    'registry'
     privateEndpointServiceId:  acr.outputs.acrId
     privateEndpointTags:       standardTagsModule.outputs.tags
@@ -535,7 +535,7 @@ module cosmosPe '../40-modules/core/private-endpoint.bicep' = {
   params: {
     privateEndpointName:       'pe-${cosmosDb.outputs.cosmosDbAccountName}'
     privateEndpointLocation:   resourceLocation
-    privateEndpointSubnetId:   network.outputs.subnetIds[1]
+    privateEndpointSubnetId:   network.outputs.subnetIds[2]
     privateEndpointGroupId:    'Sql'
     privateEndpointServiceId:  cosmosDb.outputs.cosmosDbAccountId
     privateEndpointTags:       standardTagsModule.outputs.tags

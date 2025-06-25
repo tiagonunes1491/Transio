@@ -5,7 +5,7 @@ using 'mainv2.bicep'
 // Basic configuration
 param resourceLocation = 'spaincentral'
 param projectCode = 'ss'
-param serviceCode = 'swa'
+param serviceCode = 'aks'
 param environmentName = 'dev'
 
 // Tagging configuration
@@ -20,7 +20,7 @@ param akvRbac = true
 param akvPurgeProtection = false
 param akvSecrets = {
   'cosmos-endpoint': {
-    value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
+    value: 'https://ss-d-aks-cosmos.documents.azure.com:443/'
     contentType: 'uri'
     expires: 1782585600
   }
@@ -30,7 +30,7 @@ param akvSecrets = {
     expires: 1782585600
   }
   'cosmos-database-name': {
-    value: 'swa-dev'
+    value: 'aks-dev'
     contentType: 'string'
     expires: 1782585600
   }
@@ -48,7 +48,7 @@ param acrEnableAdminUser = false
 // Cosmos DB configuration
 param cosmosDbConfig = [
   {
-    name: 'swa-dev'
+    name: 'aks-dev'
     containers: [
       {
         name: 'secrets'
