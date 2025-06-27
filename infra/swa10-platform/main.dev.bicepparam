@@ -48,7 +48,7 @@ param acrEnableAdminUser = false
 // Cosmos DB configuration
 param cosmosDbConfig = [
   {
-    name: 'swa-dev'
+    name: 'ssdb'
     containers: [
       {
         name: 'secrets'

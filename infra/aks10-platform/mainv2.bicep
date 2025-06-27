@@ -602,19 +602,18 @@ module federation '../40-modules/aks/federation.bicep' = [for config in federati
 
 // This needs to be totally refactored to use /core/rbacs modules
 
-// module rbac '../40-modules/aks/rbac.bicep' = {
-//   name: 'rbac'
-//   scope: rg
-//   params: {
-//     keyVaultId: akv.outputs.keyvaultId
-//     acrId: acr.id
-//     uamiIds: uami.outputs.uamiPrincipalIds 
-//     aksId: aks.outputs.aksId
-//     appGwId: appGw.outputs.appGwId
-//     vnetId: network.outputs.vnetId
-//     cosmosDbAccountId: cosmosDbAccountId
-//   }
-// }
+module rbac '../40-modules/aks/rbac.bicep' = {
+  name: 'rbac'
+  params: {
+    keyVaultId: akv.outputs.keyvaultId
+    acrId: acr.outputs.acrId
+    uamiIds: [uami.outputs.uamis[0].principalId ]
+    aksId: aks.outputs.aksId
+    appGwId: appGw.outputs.appGwId
+    vnetId: network.outputs.vnetId
+    cosmosDbAccountId: cosmosDb.outputs.cosmosDbAccountId
+  }
+}
 
 /*
  * =============================================================================
@@ -628,11 +627,9 @@ output acrLoginServer string = acr.outputs.acrLoginServer
 output acrName string = acr.name
 output aksName string = aks.outputs.aksName
 output backendK8sServiceAccountName string = federationConfigs[0].k8sServiceAccountName
-output databaseInitK8sServiceAccountName string = federationConfigs[1].k8sServiceAccountName
 output keyvaultName string = akv.outputs.keyvaultName
 output appGwPublicIp string = appGw.outputs.publicIpAddress
 output backendUamiClientId string = uami.outputs.uamis[0].clientId  // Backend UAMI
-output dbInitUamiClientId string = uami.outputs.uamis[1].clientId  // DB Init UAMI
 output tenantId string = tenantId
 output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
 output cosmosDatabaseName string = cosmosDb.outputs.databases[0].name

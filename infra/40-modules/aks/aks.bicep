@@ -98,6 +98,10 @@ param tags object = {}
 @description('Application Gateeway ID for AGIC integration')
 param applicationGatewayIdForAgic string = ''
 
+@description('Enable workload identity for the AKS cluster')
+param enableWorkloadIdentity bool = true
+
+
 resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
   tags: tags
   name: aksName
@@ -118,6 +122,11 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
     }
     servicePrincipalProfile: {
       clientId: 'msi'
+    }
+    securityProfile: {
+      workloadIdentity: {
+        enabled: enableWorkloadIdentity
+      }
     }
     agentPoolProfiles: [
       {

@@ -2,7 +2,11 @@
 set -euo pipefail
 
 # build_k8s.sh - Streamlined deployment for Secure Secret Sharer on AKS
-# This script leverages the modular landing zone deployment for K8S infrastructure
+# This script leverages the modular landing zone deployment architecture:
+# 1. Deploys landing zone infrastructure (0-lz) with aks-dev.bicepparam
+# 2. Deploys AKS platform infrastructure (aks10-platform) 
+# 3. Builds and pushes container images to ACR
+# 4. Deploys Helm chart to AKS cluster
 # Run inside any Ubuntu distro (e.g., WSL)
 # Usage: ./build_k8s.sh [--skip-landing-zone] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
 
@@ -39,10 +43,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Configuration
-K8S_DEPLOYMENT_NAME="secure-secret-sharer-k8s-deploy"
+LANDING_ZONE_STACK_NAME="aks-lz-stack"
+AKS_PLATFORM_STACK_NAME="aks-platforms-stack"
 LOCATION="spaincentral"
-K8S_BICEP_FILE="../infra/k8s-main.bicep"
-K8S_PARAMS_FILE="../infra/k8s-main.bicep.dev.bicepparam"
+LZ_BICEP_FILE="../infra/0-lz/main.bicep"
+LZ_PARAMS_FILE="../infra/0-lz/aks-dev.bicepparam"
+AKS_BICEP_FILE="../infra/aks10-platform/mainv2.bicep"
+AKS_PARAMS_FILE="../infra/aks10-platform/mainv2.bicepparam"
 SERVICES=("backend" "frontend")
 
 # 1) Prerequisites
@@ -55,7 +62,7 @@ log "INFO" "Prerequisites OK"
 
 # Teardown-only mode: delete resources and exit
 if [[ "$TEARDOWN_ONLY" == true ]]; then
-  log "INFO" "Teardown-only mode: deleting K8S resources and landing zone..."
+  log "INFO" "Teardown-only mode: deleting AKS resources and landing zone..."
   
   # Delete Helm deployment first (if exists)
   log "INFO" "Checking for existing Helm deployment..."
@@ -67,9 +74,25 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
     log "INFO" "No Helm deployment found or helm not available, skipping..."
   fi
   
-  # Use the landing zone teardown functionality
-  log "INFO" "Tearing down K8S landing zone and resources..."
-  ./deploy-landing-zone.sh teardown
+  # Teardown AKS platform stack first
+  log "INFO" "Tearing down AKS platform stack..."
+  # Note: Need to get resource group name from landing zone deployment outputs
+  LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv 2>/dev/null || echo "ss-d-aks-rg")
+  if az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" >/dev/null 2>&1; then
+    az stack group delete --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --yes
+    log "INFO" "AKS platform stack deleted"
+  else
+    log "INFO" "AKS platform stack not found, skipping..."
+  fi
+  
+  # Teardown landing zone stack
+  log "INFO" "Tearing down landing zone stack..."
+  if az stack sub show --name "$LANDING_ZONE_STACK_NAME" >/dev/null 2>&1; then
+    az stack sub delete --name "$LANDING_ZONE_STACK_NAME" --yes
+    log "INFO" "Landing zone stack deleted"
+  else
+    log "INFO" "Landing zone stack not found, skipping..."
+  fi
   
   # Clean up local kubectl context (optional)
   log "INFO" "Cleaning up local kubectl context..."
@@ -88,52 +111,92 @@ fi
 
 # Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
-  log "INFO" "Full rebuild requested: tearing down K8S landing zone and resources..."
+  log "INFO" "Full rebuild requested: tearing down AKS platform and landing zone..."
   
-  # Use the landing zone teardown functionality
-  ./deploy-landing-zone.sh teardown
+  # Teardown AKS platform stack first
+  log "INFO" "Tearing down AKS platform stack..."
+  # Note: Need to get resource group name from landing zone deployment outputs
+  LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv 2>/dev/null || echo "ss-d-aks-rg")
+  if az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" >/dev/null 2>&1; then
+    az stack group delete --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --yes
+    log "INFO" "AKS platform stack deleted"
+  else
+    log "INFO" "AKS platform stack not found, skipping..."
+  fi
+  
+  # Teardown landing zone stack
+  log "INFO" "Tearing down landing zone stack..."
+  if az stack sub show --name "$LANDING_ZONE_STACK_NAME" >/dev/null 2>&1; then
+    az stack sub delete --name "$LANDING_ZONE_STACK_NAME" --yes
+    log "INFO" "Landing zone stack deleted"
+  else
+    log "INFO" "Landing zone stack not found, skipping..."
+  fi
+  
   log "INFO" "Teardown completed"
 fi
 
-# 1) Deploy K8S landing zone infrastructure
+# 1) Deploy landing zone infrastructure
 if [[ "$SKIP_LANDING_ZONE" == false ]]; then
-  log "INFO" "Deploying K8S landing zone (shared + K8S spoke)..."
-  log "INFO" "This includes user-assigned managed identities and GitHub federation..."
-  ./deploy-landing-zone.sh k8s
-  log "INFO" "K8S landing zone deployment completed"
+  log "INFO" "Deploying AKS landing zone infrastructure..."
+  log "INFO" "This includes resource groups, user-assigned managed identities and GitHub federation..."
+  log "INFO" "EXECUTING: az stack sub create"
+  az stack sub create --name "$LANDING_ZONE_STACK_NAME" --location "$LOCATION" \
+    --template-file "$LZ_BICEP_FILE" --parameters "$LZ_PARAMS_FILE" \
+    --deny-settings-mode DenyWriteAndDelete \
+    --deny-settings-excluded-actions "Microsoft.App/containerApps/write Microsoft.Authorization/roleAssignments/write" \
+    --action-on-unmanage detachAll
+  log "INFO" "Landing zone deployment completed"
 else
-  log "INFO" "Skipping K8S landing zone deployment"
+  log "INFO" "Skipping landing zone deployment"
 fi
 
-# 2) Deploy K8S infrastructure (AKS, networking, etc.)
+# 2) Deploy AKS platform infrastructure
 if [[ "$SKIP_INFRA" == false ]]; then
-  log "INFO" "Deploying K8S infrastructure (AKS, networking, etc.)..."
+  log "INFO" "Deploying AKS platform infrastructure (AKS cluster, Application Gateway, networking, etc.)..."
   log "INFO" "This may take 10-15 minutes..."
   log "INFO" "You will see detailed deployment progress below..."
-  az deployment sub create --template-file "$K8S_BICEP_FILE" --parameters "$K8S_PARAMS_FILE" --location "$LOCATION" \
-    --name "$K8S_DEPLOYMENT_NAME" --verbose
-  log "INFO" "K8S infrastructure deployment completed"
+  
+  # Get resource group name from landing zone deployment
+  log "INFO" "EXECUTING: Get resource group name from landing zone"
+  LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv)
+  log "INFO" "Using resource group: $LZ_RG_NAME"
+  
+  log "INFO" "EXECUTING: az stack group create"
+  az stack group create --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" \
+    --template-file "$AKS_BICEP_FILE" --parameters "$AKS_PARAMS_FILE" \
+    --deny-settings-mode None --action-on-unmanage detachAll
+  log "INFO" "AKS platform infrastructure deployment completed"
 else
-  log "INFO" "Skipping K8S infrastructure deployment"
+  log "INFO" "Skipping AKS platform infrastructure deployment"
 fi
 
-# 3) Retrieve outputs from Bicep deployment
+# 3) Retrieve outputs from deployments
 log "INFO" "Retrieving deployment outputs from Azure..."
 log "INFO" "This may take a moment while querying the deployment state..."
 
-# Core infrastructure outputs
-AKS_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.aksName.value -o tsv)
-RESOURCE_GROUP=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.resourceGroupName.value -o tsv)
-ACR_LOGIN_SERVER=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.acrLoginServer.value -o tsv)
-APP_GW_IP=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.appGwPublicIp.value -o tsv)
+# Get resource group name from landing zone deployment
+LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv)
 
-# Azure configuration outputs for Helm
-TENANT_ID=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.tenantId.value -o tsv)
-KEY_VAULT_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.keyvaultName.value -o tsv)
-BACKEND_UAMI_CLIENT_ID=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.backendUamiClientId.value -o tsv)
-DATABASE_UAMI_CLIENT_ID=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.dbInitUamiClientId.value -o tsv)
-BACKEND_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.backendK8sServiceAccountName.value -o tsv)
-DATABASE_SERVICE_ACCOUNT_NAME=$(az deployment sub show --name "$K8S_DEPLOYMENT_NAME" --query properties.outputs.databaseInitK8sServiceAccountName.value -o tsv)
+# Core infrastructure outputs from AKS platform stack
+AKS_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.aksName.value -o tsv)
+RESOURCE_GROUP="$LZ_RG_NAME"
+ACR_LOGIN_SERVER=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.acrLoginServer.value -o tsv)
+APP_GW_IP=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.appGwPublicIp.value -o tsv)
+
+# Azure configuration outputs for Helm from AKS platform stack
+TENANT_ID=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.tenantId.value -o tsv)
+KEY_VAULT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.keyvaultName.value -o tsv)
+BACKEND_UAMI_CLIENT_ID=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.backendUamiClientId.value -o tsv)
+DATABASE_UAMI_CLIENT_ID=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.dbInitUamiClientId.value -o tsv)
+BACKEND_SERVICE_ACCOUNT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.backendK8sServiceAccountName.value -o tsv)
+DATABASE_SERVICE_ACCOUNT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.databaseInitK8sServiceAccountName.value -o tsv)
+
+# Cosmos DB configuration outputs
+COSMOS_DATABASE_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.cosmosDatabaseName.value -o tsv)
+COSMOS_CONTAINER_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.cosmosContainerName.value -o tsv)
+COSMOS_DB_ACCOUNT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.cosmosDbAccountName.value -o tsv)
+COSMOS_DB_ENDPOINT="https://${COSMOS_DB_ACCOUNT_NAME}.documents.azure.com:443/"
 
 log "INFO" "Successfully retrieved deployment outputs:"
 log "INFO" "AKS_NAME=$AKS_NAME"
@@ -146,11 +209,16 @@ log "INFO" "BACKEND_UAMI_CLIENT_ID=$BACKEND_UAMI_CLIENT_ID"
 log "INFO" "DATABASE_UAMI_CLIENT_ID=$DATABASE_UAMI_CLIENT_ID"
 log "INFO" "BACKEND_SERVICE_ACCOUNT_NAME=$BACKEND_SERVICE_ACCOUNT_NAME"
 log "INFO" "DATABASE_SERVICE_ACCOUNT_NAME=$DATABASE_SERVICE_ACCOUNT_NAME"
+log "INFO" "COSMOS_DATABASE_NAME=$COSMOS_DATABASE_NAME"
+log "INFO" "COSMOS_CONTAINER_NAME=$COSMOS_CONTAINER_NAME"
+log "INFO" "COSMOS_DB_ACCOUNT_NAME=$COSMOS_DB_ACCOUNT_NAME"
+log "INFO" "COSMOS_DB_ENDPOINT=$COSMOS_DB_ENDPOINT"
 
 # 4) Build & push container images
 if [[ "$SKIP_CONTAINERS" == false ]]; then
   log "INFO" "Logging into Azure Container Registry..."
   ACR_NAME="${ACR_LOGIN_SERVER%%.*}"
+  log "INFO" "EXECUTING: az acr login"
   az acr login --name "$ACR_NAME" --verbose
   log "INFO" "Building and pushing container images..."
   IMAGES=()
@@ -159,8 +227,10 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
     TAG_VALUE="${!TAG_VAR:-latest}"
     IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
+    log "INFO" "EXECUTING: docker build"
     docker build -t "$IMAGE" "../$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
+    log "INFO" "EXECUTING: docker push"
     docker push "$IMAGE"
     IMAGES+=("$svc:$IMAGE")
     log "INFO" "Completed $svc image: $IMAGE"
@@ -179,10 +249,13 @@ fi
 
 # 5) Connect to AKS
 log "INFO" "Connecting to AKS: $AKS_NAME (this may take a moment)..." 
+log "INFO" "EXECUTING: az aks get-credentials"
 az aks get-credentials --resource-group "$RESOURCE_GROUP" --name "$AKS_NAME" --overwrite-existing --verbose
 log "INFO" "Setting kubectl context..."
+log "INFO" "EXECUTING: kubectl config use-context"
 kubectl config use-context "$AKS_NAME"
 log "INFO" "Verifying cluster connection..."
+log "INFO" "EXECUTING: kubectl get nodes"
 kubectl get nodes
 
 log "INFO" "Successfully connected to AKS cluster"
@@ -213,6 +286,40 @@ done
 
 
 log "INFO" "Starting Helm deployment..."
+log "INFO" "EXECUTING: helm upgrade --install"
+log "INFO" "=============================================="
+log "INFO" "ENVIRONMENT VARIABLES BEING PASSED TO BACKEND:"
+log "INFO" "- AZURE_CLIENT_ID: $BACKEND_UAMI_CLIENT_ID"
+log "INFO" "- AZURE_TENANT_ID: $TENANT_ID"
+log "INFO" "- COSMOS_ENDPOINT: $COSMOS_DB_ENDPOINT"
+log "INFO" "- COSMOS_DATABASE_NAME: $COSMOS_DATABASE_NAME"
+log "INFO" "- COSMOS_CONTAINER_NAME: $COSMOS_CONTAINER_NAME"
+log "INFO" "- USE_MANAGED_IDENTITY: true"
+log "INFO" "- FLASK_APP: app/main.py"
+log "INFO" "- FLASK_ENV: production"
+log "INFO" "- AZURE_LOG_LEVEL: INFO"
+log "INFO" "- PYTHONUNBUFFERED: 1"
+log "INFO" "=============================================="
+log "INFO" "COPY-PASTE COMMAND (with actual values):"
+echo "helm upgrade --install secret-sharer ../k8s/secret-sharer-app \\"
+echo "  --namespace default --create-namespace \\"
+echo "  --set backend.keyVault.name=\"$KEY_VAULT_NAME\" \\"
+echo "  --set backend.keyVault.tenantId=\"$TENANT_ID\" \\"
+echo "  --set backend.keyVault.userAssignedIdentityClientID=\"$BACKEND_UAMI_CLIENT_ID\" \\"
+echo "  --set backend.serviceAccount.name=\"$BACKEND_SERVICE_ACCOUNT_NAME\" \\"
+echo "  --set database.serviceAccount.azureClientId=\"$DATABASE_UAMI_CLIENT_ID\" \\"
+echo "  --set database.serviceAccount.name=\"$DATABASE_SERVICE_ACCOUNT_NAME\" \\"
+echo "  --set backend.image.tag=\"$BACKEND_TAG\" \\"
+echo "  --set frontend.image.tag=\"$FRONTEND_TAG\" \\"
+echo "  --set acrLoginServer=\"$ACR_LOGIN_SERVER\" \\"
+echo "  --set cosmosdb.endpoint=\"$COSMOS_DB_ENDPOINT\" \\"
+echo "  --set cosmosdb.databaseName=\"$COSMOS_DATABASE_NAME\" \\"
+echo "  --set cosmosdb.containerName=\"$COSMOS_CONTAINER_NAME\" \\"
+echo "  --set backend.env.AZURE_CLIENT_ID=\"$BACKEND_UAMI_CLIENT_ID\" \\"
+echo "  --timeout=15m \\"
+echo "  --wait \\"
+echo "  --debug"
+log "INFO" "=============================================="
 helm upgrade --install secret-sharer ../k8s/secret-sharer-app \
   --namespace default --create-namespace \
   --set backend.keyVault.name="$KEY_VAULT_NAME" \
@@ -224,8 +331,29 @@ helm upgrade --install secret-sharer ../k8s/secret-sharer-app \
   --set backend.image.tag="$BACKEND_TAG" \
   --set frontend.image.tag="$FRONTEND_TAG" \
   --set acrLoginServer="$ACR_LOGIN_SERVER" \
+  --set cosmosdb.endpoint="$COSMOS_DB_ENDPOINT" \
+  --set cosmosdb.databaseName="$COSMOS_DATABASE_NAME" \
+  --set cosmosdb.containerName="$COSMOS_CONTAINER_NAME" \
+  --set backend.env.AZURE_CLIENT_ID="$BACKEND_UAMI_CLIENT_ID" \
   --timeout=15m \
-  --wait
+  --wait \
+  --debug || {
+    log "ERROR" "Helm deployment failed! Running diagnostics..."
+    log "INFO" "EXECUTING: kubectl get pods"
+    kubectl get pods -o wide
+    log "INFO" "EXECUTING: kubectl get events"
+    kubectl get events --sort-by=.metadata.creationTimestamp --field-selector type!=Normal
+    log "INFO" "EXECUTING: kubectl describe pods (backend)"
+    kubectl describe pods -l app.kubernetes.io/name=backend || true
+    log "INFO" "EXECUTING: kubectl logs (backend)"
+    kubectl logs -l app.kubernetes.io/name=backend --all-containers=true --previous=false || true
+    log "INFO" "EXECUTING: kubectl get services"
+    kubectl get services
+    log "INFO" "EXECUTING: kubectl get ingress"
+    kubectl get ingress
+    log "ERROR" "Helm deployment failed - see diagnostics above"
+    exit 1
+  }
 
 # Display hosts file entry for manual addition
 HOSTNAME="secretsharer.local"

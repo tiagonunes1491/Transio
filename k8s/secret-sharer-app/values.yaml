@@ -18,7 +18,7 @@ backend:
   serviceAccount:
     create: true # Set to false if you are managing the SA outside this chart
     # This name 'secret-sharer-backend-sa' is used by templates/serviceaccount.yaml
-    name: "placeholder-backend-sa"
+    name: "secret-sharer-backend-sa"
     annotations: {} # Default annotations from template will use backend.keyVault.userAssignedIdentityClientID
   rbac:
     create: true
@@ -31,7 +31,7 @@ backend:
     secrets:
       # These are the names of the secrets *in Azure Key Vault* that the backend needs.
       cosmosDbKey: "cosmos-db-primary-key"         # AKV secret name for Cosmos DB primary key
-      appMasterKey: "app-master-encryption-key"    # AKV secret name for the application's master encryption key
+      appMasterKey: "encryption-key"    # AKV secret name for the application's master encryption key
   probes:
     liveness:
       initialDelaySeconds: 15
@@ -52,16 +52,19 @@ backend:
     requests:
       cpu: "100m"
       memory: "128Mi"
+  # Environment variables for the backend
+  env:
+    # AZURE_CLIENT_ID will be set by Helm --set command during deployment
+    # Example: AZURE_CLIENT_ID: "12345678-1234-1234-1234-123456789012"
 # --- Cosmos DB Configuration ---
 cosmosdb:
   # Cosmos DB will be provisioned externally via Azure infrastructure
   # These values are used to configure the connection from the backend
   endpoint: "PLACEHOLDER_COSMOS_DB_ENDPOINT"
-  databaseName: "SecureSharer"
+  databaseName: "ssdb"
   containerName: "secrets"
   # Use managed identity for authentication (set to true for AKS with Workload Identity)
-  useManagedIdentity: false
-  # The primary key will be retrieved from Azure Key Vault via SecretProviderClass if useManagedIdentity is false
+  useManagedIdentity: true
 
 # --- Frontend Configuration ---
 frontend:

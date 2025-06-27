@@ -48,7 +48,7 @@ param acrEnableAdminUser = false
 // Cosmos DB configuration
 param cosmosDbConfig = [
   {
-    name: 'aks-dev'
+    name: 'ssdb'
     containers: [
       {
         name: 'secrets'
@@ -76,11 +76,6 @@ param federationConfigs = [
   {
     uamiTargetName: 'uami-securesharer-backend-dev' 
     k8sServiceAccountName: 'secret-sharer-backend-sa'
-    k8sNamespace: 'default' 
-  }
-  {
-    uamiTargetName: 'uami-securesharer-db-dev' 
-    k8sServiceAccountName: 'secret-sharer-db-init-sa'
     k8sNamespace: 'default' 
   }
 ]
