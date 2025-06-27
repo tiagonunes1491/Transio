@@ -1,6 +1,6 @@
 // main.bicepparam
 
-using 'mainv2.bicep'
+using 'main.bicep'
 
 // Basic configuration
 param resourceLocation = 'spaincentral'

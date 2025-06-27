@@ -1,52 +1,15 @@
 /*
  * =============================================================================
- * AKS Cluster Module for Secure Secret Sharer
+ * AKS Cluster Module
  * =============================================================================
- * 
- * This Bicep module creates and configures Azure Kubernetes Service (AKS)
- * cluster for the Secure Secret Sharer application. It implements enterprise-grade
- * Kubernetes infrastructure with system and user node pools, security hardening,
- * and comprehensive monitoring capabilities.
- * 
- * ARCHITECTURE OVERVIEW:
- * ┌─────────────────────────────────────────────────────────────────────────┐
- * │                        AKS Cluster Architecture                         │
- * ├─────────────────────────────────────────────────────────────────────────┤
- * │  Control Plane (Azure Managed)                                         │
- * │  ┌─────────────────────────────────────────────────────────────────────┐│
- * │  │ Kubernetes API Server                                               ││
- * │  │ • etcd cluster • Scheduler • Controller Manager                     ││
- * │  └─────────────────────────────────────────────────────────────────────┘│
- * │                                  │                                      │
- * │  Worker Nodes (Customer Managed)                                       │
- * │  ┌─────────────────────────────────────────────────────────────────────┐│
- * │  │ System Node Pool            │  User Node Pool                       ││
- * │  │ ┌─────────────────────────┐ │ ┌─────────────────────────────────┐   ││
- * │  │ │ System Workloads        │ │ │ Application Workloads           │   ││
- * │  │ │ • CoreDNS               │ │ │ • Secure Secret Sharer          │   ││
- * │  │ │ • Metrics Server        │ │ │ • Custom applications           │   ││
- * │  │ │ • AGIC                  │ │ │ • Monitoring agents             │   ││
- * │  │ └─────────────────────────┘ │ └─────────────────────────────────┘   ││
- * │  └─────────────────────────────────────────────────────────────────────┘│
- * └─────────────────────────────────────────────────────────────────────────┘
- * 
- * KEY FEATURES:
- * • Managed Control Plane: Azure-managed Kubernetes API server and etcd
- * • Multi-Node Pool Architecture: Separation of system and user workloads
- * • Auto-scaling: Cluster and pod auto-scaling based on demand
- * • Security Hardening: Azure Security Center integration and security policies
- * • Workload Identity: Native integration with Azure AD for pod authentication
- * • Network Integration: VNet integration with custom subnet placement
- * • Monitoring: Azure Monitor for containers with comprehensive observability
- * 
- * SECURITY CONSIDERATIONS:
- * • Private cluster option for API server isolation
- * • Azure Active Directory integration for RBAC
- * • Pod security standards and admission controllers
- * • Network policies for micro-segmentation
- * • Workload identity for secure Azure service access
- * • Image vulnerability scanning through Azure Security Center
+ *
+ * This Bicep module creates and configures an Azure Kubernetes Service (AKS) cluster.
+ * It is designed to be modular and reusable, supporting enterprise-grade Kubernetes infrastructure
+ * with system and user node pools, security hardening, and comprehensive monitoring capabilities.
+ *
+ * Suitable for a wide range of workloads and environments.
  */
+
 @description('Location of the AKS cluster')
 param location string
 
@@ -56,7 +19,7 @@ param aksName string
 @description('DNS prefix for the AKS cluster')
 param dnsPrefix string = uniqueString(resourceGroup().id, aksName)
 
-@description('Kubernetes version for the AKS cluster')
+@description('Kubernetes version for the AKS cluster. Best practice: allow override, but default to a stable, tested version. If a future version introduces breaking changes, freeze this value or create a new module revision.')
 param kubernetesVersion string = '1.31.7'
 
 @description('System node pool name for the AKS cluster')
@@ -101,25 +64,160 @@ param applicationGatewayIdForAgic string = ''
 @description('Enable workload identity for the AKS cluster')
 param enableWorkloadIdentity bool = true
 
+@description('The type of managed identity to use for the AKS cluster')
+@allowed([
+  'SystemAssigned'
+  'UserAssigned'
+])
+param identityType string = 'SystemAssigned'
+
+@description('User assigned identity resource IDs (required when using UserAssigned identity type)')
+param userAssignedIdentities array = []
+
+@description('Enable Azure Active Directory integration for the AKS cluster')
+param enableAadIntegration bool = true
+
+@description('Enable Azure RBAC for the Kubernetes API (requires AAD integration)')
+param enableAzureRbac bool = false
+
+@description('Enable Kubernetes RBAC')
+param enableKubeRbac bool = true
+
+@description('Disable local accounts for the AKS API server')
+param disableLocalAccounts bool = true
+
+@description('Enable OIDC issuer profile for the AKS cluster')
+param enableOidcIssuerProfile bool = true
+
+@description('Network plugin for AKS cluster')
+@allowed([
+  'azure'
+  'kubenet'
+])
+param networkPlugin string = 'azure'
+
+@description('Network plugin mode for AKS cluster')
+@allowed([
+  'overlay'
+  'transparent'
+])
+param networkPluginMode string = 'overlay'
+
+@description('Network policy for AKS cluster')
+@allowed([
+  'azure'
+  'calico'
+  'none'
+])
+param networkPolicy string = 'azure'
+
+@description('Load Balancer SKU for the AKS cluster')
+@allowed([
+  'Standard'
+  'Basic'
+])
+param loadBalancerSku string = 'Standard'
+
+@description('Service CIDR for the AKS cluster')
+param serviceCidr string = '10.1.0.0/16'
+
+@description('DNS service IP for the AKS cluster')
+param dnsServiceIP string = '10.1.0.10'
+
+@description('Whether to deploy a user node pool')
+param createUserNodePool bool = true
+
+@description('Enable Azure Key Vault Secrets Provider addon')
+param enableKeyVaultSecretsProvider bool = true
+
+@description('Enable secret rotation for the Key Vault Secrets Provider addon')
+param enableKeyVaultSecretRotation bool = false
+
+@description('Watch namespace for the Ingress Application Gateway addon')
+param agicWatchNamespace string = 'default'
+
+@description('Enable private cluster (restrict API server to private network)')
+param enablePrivateCluster bool = false
+
+@description('Log Analytics Workspace resource ID for Azure Monitor integration')
+param logAnalyticsWorkspaceResourceId string = ''
+
+// Consolidated diagnostic settings object: specify logs and metrics with full configuration
+@description('Diagnostic settings configuration for Azure Monitor integration')
+param diagnosticSettings object = {
+  logs: [
+    {
+      category: 'kube-apiserver'
+      enabled: true
+      retentionPolicy: {
+        enabled: false
+        days: 0
+      }
+    }
+    {
+      category: 'kube-controller-manager'
+      enabled: true
+      retentionPolicy: {
+        enabled: false
+        days: 0
+      }
+    }
+    {
+      category: 'kube-scheduler'
+      enabled: true
+      retentionPolicy: {
+        enabled: false
+        days: 0
+      }
+    }
+    {
+      category: 'kube-audit'
+      enabled: true
+      retentionPolicy: {
+        enabled: false
+        days: 0
+      }
+    }
+  ]
+  metrics: [
+    {
+      category: 'AllMetrics'
+      enabled: true
+      retentionPolicy: {
+        enabled: false
+        days: 0
+      }
+    }
+  ]
+}
+
+var userAssignedIdentitiesObject = toObject(userAssignedIdentities, id => id, id => {})
 
 resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
   tags: tags
   name: aksName
   location: location
   identity: {
-    type: 'SystemAssigned'
+    type: identityType
+    ...(identityType == 'UserAssigned' ? {
+      userAssignedIdentities: userAssignedIdentitiesObject
+    } : {})
   }
   properties: {
-    disableLocalAccounts: true
-    enableRBAC: true
-    aadProfile: {
-      managed: true
-      enableAzureRBAC: false
-      adminGroupObjectIDs: aksAdminGroupObjectIds
-    }
-    oidcIssuerProfile: {
-      enabled: true
-    }
+    disableLocalAccounts: disableLocalAccounts
+    enableRBAC: enableKubeRbac
+    ...(enableAadIntegration ? {
+      aadProfile: {
+        managed: true
+        enableAzureRBAC: enableAzureRbac
+        adminGroupObjectIDs: aksAdminGroupObjectIds
+      }
+    } : {})
+    ...(enableOidcIssuerProfile ? {
+      oidcIssuerProfile: {
+        enabled: true
+      }
+    } : {})
     servicePrincipalProfile: {
       clientId: 'msi'
     }
@@ -140,43 +238,63 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
         vnetSubnetID: aksSubnetId
         type: 'VirtualMachineScaleSets'
       }
-      {
-        name: userNodePoolName
-        mode: 'User'
-        vmSize: userNodePoolVmSize
-        enableAutoScaling: true
-        minCount: userNodePoolMinCount
-        maxCount: userNodePoolMaxCount
-        osType: userNodePoolOsType
-        vnetSubnetID: aksSubnetId
-        type: 'VirtualMachineScaleSets'
-      }
+      ...(createUserNodePool ? [
+        {
+          name: userNodePoolName
+          mode: 'User'
+          vmSize: userNodePoolVmSize
+          enableAutoScaling: true
+          minCount: userNodePoolMinCount
+          maxCount: userNodePoolMaxCount
+          osType: userNodePoolOsType
+          vnetSubnetID: aksSubnetId
+          type: 'VirtualMachineScaleSets'
+        }
+      ] : [])
     ]
     dnsPrefix: dnsPrefix
     kubernetesVersion: kubernetesVersion
     networkProfile: {
-      networkPlugin: 'azure'
-      networkPluginMode: 'overlay'
-      networkPolicy: 'azure'     
-      loadBalancerSku: 'Standard'
-      serviceCidr: '10.1.0.0/16'
-      dnsServiceIP: '10.1.0.10'
+      networkPlugin: networkPlugin
+      networkPluginMode: networkPluginMode
+      networkPolicy: networkPolicy
+      loadBalancerSku: loadBalancerSku
+      serviceCidr: serviceCidr
+      dnsServiceIP: dnsServiceIP
     }
     addonProfiles: {
-      azureKeyvaultSecretsProvider: {
-        enabled: true
-        config: {
-          enableSecretRotation: 'false'
+      ...(enableKeyVaultSecretsProvider ? {
+        azureKeyvaultSecretsProvider: {
+          enabled: true
+          config: {
+            enableSecretRotation: string(enableKeyVaultSecretRotation)
+          }
         }
-      }
-      ingressApplicationGateway: {
-        enabled: !empty(applicationGatewayIdForAgic)
-        config: !empty(applicationGatewayIdForAgic) ? {
-          applicationGatewayId: applicationGatewayIdForAgic
-          watchNamespace: 'default'
-        } : {}
-      }
+      } : {})
+      ...( !empty(applicationGatewayIdForAgic) ? {
+        ingressApplicationGateway: {
+          enabled: true
+          config: {
+            applicationGatewayId: applicationGatewayIdForAgic
+            watchNamespace: agicWatchNamespace
+          }
+        }
+      } : {})
     }
+    apiServerAccessProfile: {
+      enablePrivateCluster: enablePrivateCluster
+    }
+  }
+}
+
+// Add Diagnostic Settings resource for Azure Monitor integration
+resource aksDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceResourceId)) {
+  name: '${aksName}-diagnostic-settings'
+  scope: aks
+  properties: {
+    workspaceId: logAnalyticsWorkspaceResourceId
+    logs: diagnosticSettings.logs
+    metrics: diagnosticSettings.metrics
   }
 }
 

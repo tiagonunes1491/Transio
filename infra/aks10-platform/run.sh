@@ -1,1 +1,1 @@
-az stack group create --name aks-platforms-stack --resource-group ss-d-aks-rg  --template-file mainv2.bicep --parameters mainv2.bicepparam  --deny-settings-mode None --action-on-unmanage detachAll
+az stack group create --name aks-platforms-stack --resource-group ss-d-aks-rg  --template-file main.bicep --parameters main.bicepparam  --deny-settings-mode None --action-on-unmanage detachAll
