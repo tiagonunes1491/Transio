@@ -244,9 +244,7 @@ APP_GW_IP=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-gro
 TENANT_ID=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.tenantId.value -o tsv)
 KEY_VAULT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.keyvaultName.value -o tsv)
 BACKEND_UAMI_CLIENT_ID=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.backendUamiClientId.value -o tsv)
-DATABASE_UAMI_CLIENT_ID=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.dbInitUamiClientId.value -o tsv)
 BACKEND_SERVICE_ACCOUNT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.backendK8sServiceAccountName.value -o tsv)
-DATABASE_SERVICE_ACCOUNT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.databaseInitK8sServiceAccountName.value -o tsv)
 
 # Cosmos DB configuration outputs
 COSMOS_DATABASE_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.cosmosDatabaseName.value -o tsv)
@@ -262,9 +260,7 @@ log "INFO" "APP_GW_IP=$APP_GW_IP"
 log "INFO" "TENANT_ID=$TENANT_ID"
 log "INFO" "KEY_VAULT_NAME=$KEY_VAULT_NAME"
 log "INFO" "BACKEND_UAMI_CLIENT_ID=$BACKEND_UAMI_CLIENT_ID"
-log "INFO" "DATABASE_UAMI_CLIENT_ID=$DATABASE_UAMI_CLIENT_ID"
 log "INFO" "BACKEND_SERVICE_ACCOUNT_NAME=$BACKEND_SERVICE_ACCOUNT_NAME"
-log "INFO" "DATABASE_SERVICE_ACCOUNT_NAME=$DATABASE_SERVICE_ACCOUNT_NAME"
 log "INFO" "COSMOS_DATABASE_NAME=$COSMOS_DATABASE_NAME"
 log "INFO" "COSMOS_CONTAINER_NAME=$COSMOS_CONTAINER_NAME"
 log "INFO" "COSMOS_DB_ACCOUNT_NAME=$COSMOS_DB_ACCOUNT_NAME"
@@ -363,8 +359,6 @@ echo "  --set backend.keyVault.name=\"$KEY_VAULT_NAME\" \\"
 echo "  --set backend.keyVault.tenantId=\"$TENANT_ID\" \\"
 echo "  --set backend.keyVault.userAssignedIdentityClientID=\"$BACKEND_UAMI_CLIENT_ID\" \\"
 echo "  --set backend.serviceAccount.name=\"$BACKEND_SERVICE_ACCOUNT_NAME\" \\"
-echo "  --set database.serviceAccount.azureClientId=\"$DATABASE_UAMI_CLIENT_ID\" \\"
-echo "  --set database.serviceAccount.name=\"$DATABASE_SERVICE_ACCOUNT_NAME\" \\"
 echo "  --set backend.image.tag=\"$BACKEND_TAG\" \\"
 echo "  --set frontend.image.tag=\"$FRONTEND_TAG\" \\"
 echo "  --set acrLoginServer=\"$ACR_LOGIN_SERVER\" \\"
@@ -382,8 +376,6 @@ helm upgrade --install secret-sharer ../k8s/secret-sharer-app \
   --set backend.keyVault.tenantId="$TENANT_ID" \
   --set backend.keyVault.userAssignedIdentityClientID="$BACKEND_UAMI_CLIENT_ID" \
   --set backend.serviceAccount.name="$BACKEND_SERVICE_ACCOUNT_NAME" \
-  --set database.serviceAccount.azureClientId="$DATABASE_UAMI_CLIENT_ID" \
-  --set database.serviceAccount.name="$DATABASE_SERVICE_ACCOUNT_NAME" \
   --set backend.image.tag="$BACKEND_TAG" \
   --set frontend.image.tag="$FRONTEND_TAG" \
   --set acrLoginServer="$ACR_LOGIN_SERVER" \
@@ -440,5 +432,4 @@ echo "Key Vault: $KEY_VAULT_NAME"
 echo "Container Registry: $ACR_LOGIN_SERVER"
 echo "Tenant ID: $TENANT_ID"
 echo "Backend Identity: $BACKEND_UAMI_CLIENT_ID"
-echo "Database Identity: $DATABASE_UAMI_CLIENT_ID"
 echo "=============================================="

@@ -120,6 +120,8 @@ resource cosmosDbAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' exis
 }
 
 // Assigns Key Vault Secrets User role to UAMIs for accessing secrets in Key Vault
+
+// On main.bicep
 resource kvRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
   for id in uamiIds: {
     scope: keyVault
@@ -134,6 +136,8 @@ resource kvRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 ] 
 
 // Assigns AcrPull role to AKS managed identity for pulling container images
+// On main.bicep
+
 resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     scope: acr
     name: guid(acr.id, aks.id, 'AcrPull')
@@ -148,6 +152,7 @@ resource acrRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
 // Note: AGIC uses the ingressApplicationGateway addon identity
 
 // Reader role at resource group level for AGIC to read resource metadata
+// on main.bicep
 resource agicToRgReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(resourceGroup().id, aks.id, readerRoleId, 'agic-reader')
   properties: {
@@ -158,6 +163,9 @@ resource agicToRgReader 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 }
 
 // Contributor role on Application Gateway for AGIC to manage gateway configuration
+
+//on main.bicep
+
 resource agicToAppGwContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: AppGw
   name: guid(AppGw.id, aks.id, contributorRoleId, 'agic-appgw')
@@ -169,6 +177,8 @@ resource agicToAppGwContributor 'Microsoft.Authorization/roleAssignments@2022-04
 }
 
 // Network Contributor role on VNet for AGIC to manage network resources
+
+// on main.bicep
 resource agicToVnetNetworkContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: vnet
   name: guid(vnet.id, aks.id, networkContributorRoleId, 'agic-vnet')
@@ -181,6 +191,7 @@ resource agicToVnetNetworkContributor 'Microsoft.Authorization/roleAssignments@2
 
 // Additional Contributor role for AKS cluster system-assigned identity on Application Gateway
 // This addresses scenarios where AGIC uses the cluster's system identity for some operations
+
 resource aksClusterToAppGwContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   scope: AppGw
   name: guid(AppGw.id, aks.id, contributorRoleId, 'aks-cluster-appgw')
@@ -192,6 +203,8 @@ resource aksClusterToAppGwContributor 'Microsoft.Authorization/roleAssignments@2
 }
 
 // Cosmos DB Data Contributor role assignments for UAMIs
+
+// On main.bicep
 resource cosmosDbRoleAssignments 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = [for (id, i) in uamiIds: if (!empty(cosmosDbAccountId)) {
   name: guid(cosmosDbAccount.id, id, cosmosDbDataContributorRoleId, string(i))
   parent: cosmosDbAccount

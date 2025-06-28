@@ -29,14 +29,15 @@ param gitHubRepositoryName = 'SecureSharer'
 // PaaS workload identities configuration
 // These UAMIs will be used for PaaS workloads (Container Apps, Static Web Apps, etc.)
 param workloadIdentities = {
-  // Main PaaS workload identity with Contributor access to PaaS spoke RG
-  contributor: {
-    ENV: 'aks-dev-protected'
-    ROLE: 'contributor'
-    federationTypes: 'environment'
-  }
-  acrPush: {
-        ENV: 'aks-dev'
+    creator: {
+        UAMI: 'uami-ssharer-shared-infra-creator'
+        ENV: 'shared-protected'
+        ROLE: 'contributor'
+        federationTypes: 'environment'
+    }
+    push: {
+        UAMI: 'uami-ssharer-acr-push'
+        ENV: 'shared'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }

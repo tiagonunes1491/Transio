@@ -26,10 +26,10 @@
 param keyVaultId string = ''
 
 @description('Principal ID of the managed identity to give access to Key Vault, ACR, and Cosmos DB')
-param id string
+param principalId string
 
 @description('Role definition ID for Key Vault role to assign, e.g., Key Vault Secrets User - 4633458b-17de-408a-b874-0445c86b69e6')
-param roleId string 
+param roleDefinitionId string 
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   scope: resourceGroup()
@@ -38,10 +38,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
 
 resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
     scope: keyVault
-    name: guid(keyVaultId, id, 'KeyVaultSecretsUser')
+    name: guid(keyVaultId, principalId, 'KeyVaultSecretsUser')
     properties: {
-      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleId)
-      principalId: id
+      roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+      principalId: principalId
       principalType: 'ServicePrincipal'
   }
 }

@@ -199,8 +199,14 @@ param managedIdentities array = [
     }
   }
   {
-    uamiName: 'AGIC'
-    // no "federation" property means federation is optional
+    uamiName: 'agic'
+  }
+  {
+    uamiName: 'kubelet'
+    
+  }
+  {
+    uamiName: 'aks-cluster'  // Add AKS cluster identity
   }
 ]
 
@@ -371,7 +377,6 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [
     }
   }
 ]
-
 
 
 /*
@@ -602,7 +607,7 @@ module uami '../40-modules/core/uami.bicep' = {
   }
 }
 
-module federationConfigs '../40-modules/aks/k8s-federation.bicep' = [
+module federationConfigs '../40-modules/core/k8s-federation.bicep' = [
   for (mi,i) in managedIdentities: if (contains(mi, 'federation')) {
     name: 'fed-${take(uniqueString(mi.uamiName, mi.federation.k8sServiceAccountName), 13)}'
     params: {
@@ -619,22 +624,104 @@ module federationConfigs '../40-modules/aks/k8s-federation.bicep' = [
 
 // This needs to be totally refactored to use /core/rbacs modules
 
-module rbac '../40-modules/aks/rbac.bicep' = {
-  name: 'rbac'
+// module rbac '../40-modules/aks/rbac.bicep' = {
+//   name: 'rbac'
+//   params: {
+//     keyVaultId: akv.outputs.keyvaultId
+//     acrId: acr.outputs.acrId
+//     uamiIds: [uami.outputs.uamis[0].principalId ]
+//     aksId: aks.outputs.aksId
+//     appGwId: appGw.outputs.appGwId
+//     vnetId: network.outputs.vnetId
+//     cosmosDbAccountId: cosmosDb.outputs.cosmosDbAccountId
+//   }
+// }
+
+// Key Vault RBAC assignment
+module rbacKv '../40-modules/core/rbacKv.bicep' = {
+  name: 'rbac-kv'
   params: {
     keyVaultId: akv.outputs.keyvaultId
-    acrId: acr.outputs.acrId
-    uamiIds: [uami.outputs.uamis[0].principalId ]
-    aksId: aks.outputs.aksId
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
+  }
+}
+
+// ACR RBAC assignment
+module rbacAcr '../40-modules/core/rbacAcr.bicep' = {
+  name: 'rbac-acr'
+  params: {
+    registryId: acr.outputs.acrId
+    principalId: uami.outputs.uamis[2].principalId
+    roleDefinitionId: '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
+  }
+}
+
+// Resource Group Reader RBAC assignment for AGIC
+// NOTE: Using hardcoded AGIC identity because AKS module doesn't output agicIdentityPrincipalId yet
+// TODO: Update AKS module to output AGIC identity and replace hardcoded value
+module rbacRg '../40-modules/core/rbacRg.bicep' = {
+  name: 'rbac-rg-reader'
+  scope: resourceGroup()
+  params: {
+    principalId: '4e4dc027-5c91-47a8-b5a0-0cabdedb731d' // Auto-created AGIC identity (get from deployment)
+    roleDefinitionId: 'acdd72a7-3385-48ef-bd42-f606fba81ae7' // Reader
+  }
+}
+
+// Cosmos DB RBAC assignment
+module rbacCosmos '../40-modules/core/rbacCosmos.bicep' = {
+  name: 'rbac-cosmos'
+  params: {
+    accountName: cosmosDb.outputs.cosmosDbAccountName
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor
+  }
+}
+
+module rbacAppGwAgic '../40-modules/core/rbacAppGw.bicep' = {
+  name: 'rbac-appgw-agic'
+  params: {
     appGwId: appGw.outputs.appGwId
+    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity (Azure ARM bug)
+    // App Gateway RBAC assignment for AGIC identity
+    roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor
+  }
+}
+
+module rbacAksKubeletOperator '../40-modules/core/rbacUami.bicep' = {
+  name: 'rbac-aks-kubelet-operator'
+  params: {
+    uamiName: uami.outputs.uamis[2].name  // Kubelet UAMI resource name
+    principalId: uami.outputs.uamis[3].principalId  // AKS control plane identity
+    roleDefinitionId: 'f1a07417-d97a-45cb-824c-7a7467783830'  // Managed Identity Operator
+  }
+}
+
+
+// // App Gateway RBAC assignment for AKS cluster identity
+// module rbacAppGwCluster '../40-modules/core/rbacAppGw.bicep' = {
+//   name: 'rbac-appgw-cluster'
+//   params: {
+//     appGwId: appGw.outputs.appGwId
+//     principalId: aks.outputs.aksId
+//     roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor
+//   }
+// }
+
+// VNet RBAC assignment for AGIC
+module rbacVnet '../40-modules/core/rbacVnet.bicep' = {
+  name: 'rbac-vnet'
+  params: {
     vnetId: network.outputs.vnetId
-    cosmosDbAccountId: cosmosDb.outputs.cosmosDbAccountId
+    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity (Azure ARM bug)
+    roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7' // Network Contributor
   }
 }
 
 // =========== AKS DEPLOYMENT ==========
 
-module aks '../40-modules/aks.bicep' = {
+module aks '../40-modules/core/aks.bicep' = {
   name: 'aks'
   params: {    
     location: resourceLocation
@@ -654,7 +741,12 @@ module aks '../40-modules/aks.bicep' = {
     userNodePoolMaxCount: userNodePoolMaxCount
     aksSubnetId: network.outputs.subnetIds[0]
     applicationGatewayIdForAgic: appGw.outputs.appGwId 
-    agicUserAssignedIdentityId: uami.outputs.uamis[1].id // AGIC UAMI
+    // NOTE: Azure AKS ignores agicUserAssignedIdentityId parameter due to platform bug
+    // AGIC addon auto-creates its own identity regardless of this setting
+    agicUserAssignedIdentityId: uami.outputs.uamis[1].id // AGIC UAMI (ignored by Azure)
+    kubeletUserAssignedIdentityId: uami.outputs.uamis[2].id // Kubelet UAMI
+    identityType: 'UserAssigned'  // Change from SystemAssigned to UserAssigned
+    userAssignedIdentities: [uami.outputs.uamis[3].id]  // AKS cluster identity
   }
 }
 
@@ -673,6 +765,7 @@ output aksName string = aks.outputs.aksName
 output keyvaultName string = akv.outputs.keyvaultName
 output appGwPublicIp string = appGw.outputs.publicIpAddress
 output backendUamiClientId string = uami.outputs.uamis[0].clientId  // Backend UAMI
+output backendK8sServiceAccountName string = managedIdentities[0].federation.k8sServiceAccountName
 output tenantId string = tenantId
 output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
 output cosmosDatabaseName string = cosmosDb.outputs.databases[0].name

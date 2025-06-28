@@ -193,6 +193,9 @@ param diagnosticSettings object = {
 @description('User-assigned managed identity resource ID for AGIC (optional)')
 param agicUserAssignedIdentityId string = ''
 
+@description('User-assigned managed identity resource ID for kubelet identity (optional)')
+param kubeletUserAssignedIdentityId string = ''
+
 var userAssignedIdentitiesObject = toObject(userAssignedIdentities, id => id, id => {})
 
 resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
@@ -223,6 +226,13 @@ resource aks 'Microsoft.ContainerService/managedClusters@2025-02-01' = {
     servicePrincipalProfile: {
       clientId: 'msi'
     }
+    ...((!empty(kubeletUserAssignedIdentityId)) ? {
+      identityProfile: {
+        kubeletidentity: {
+          resourceId: kubeletUserAssignedIdentityId
+        }
+      }
+    } : {})
     securityProfile: {
       workloadIdentity: {
         enabled: enableWorkloadIdentity
@@ -305,5 +315,11 @@ resource aksDiagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01
 
 output aksId string = aks.id
 output aksName string = aks.name
-output controlPlaneIdentityId string = aks.identity.principalId
+output controlPlaneIdentityId string = identityType == 'SystemAssigned' 
+  ? aks.identity.principalId 
+  : (length(userAssignedIdentities) > 0 
+    ? reference(userAssignedIdentities[0], '2023-01-31').principalId 
+    : '')
+output kubeletIdentityObjectId string = aks.properties.identityProfile.kubeletidentity.objectId
 output oidcIssuerUrl string = aks.properties.oidcIssuerProfile.issuerURL
+output agicIdentityPrincipalId string = aks.properties.addonProfiles.ingressApplicationGateway.identity.clientId

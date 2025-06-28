@@ -72,11 +72,5 @@ param aksAdminGroupObjectIds = [
 // Federated identity configuration
 // This order is important, as the array will be used to pass configurations across the module.
 // First object is for backend and second for database.
-param federationConfigs = [
-  {
-    uamiTargetName: 'uami-securesharer-backend-dev' 
-    k8sServiceAccountName: 'secret-sharer-backend-sa'
-    k8sNamespace: 'default' 
-  }
-]
+
 param appGwSku = 'WAF_v2'
