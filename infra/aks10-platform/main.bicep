@@ -174,17 +174,33 @@ param aksAdminGroupObjectIds array = []
 // Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
-@description('Array of configurations for federated identity credentials. Each object links a UAMI to a specific Kubernetes Service Account and Namespace.')
-param federationConfigs array = [
+// @description('Array of configurations for federated identity credentials. Each object links a UAMI to a specific Kubernetes Service Account and Namespace.')
+// param federationConfigs array = [
+//   {
+//     uamiTargetName: 'backend' 
+//     k8sServiceAccountName: 'secret-sharer-backend-sa'
+//     k8sNamespace: 'default' 
+//   }
+// ]
+
+// @description('List of User Assigned Managed Identities (UAMIs) to be created for the AKS deployment')
+// param userAssignedIdentities array = [
+//   'backend'
+//   'AGIC'  
+// ]
+
+@description('List of User-Assigned Managed Identities to create. Each item can optionally include federation details.')
+param managedIdentities array = [
   {
-    uamiTargetName: 'uami-securesharer-backend' 
-    k8sServiceAccountName: 'secret-sharer-backend-sa'
-    k8sNamespace: 'default' 
+    uamiName: 'backend'
+    federation: {
+      k8sServiceAccountName: 'secret-sharer-backend-sa'
+      k8sNamespace: 'default'
+    }
   }
   {
-    uamiTargetName: 'uami-securesharer-db' 
-    k8sServiceAccountName: 'secret-sharer-db-init-sa'
-    k8sNamespace: 'default' 
+    uamiName: 'AGIC'
+    // no "federation" property means federation is optional
   }
 ]
 
@@ -341,6 +357,22 @@ module appGwPipNamingModule '../40-modules/core/naming.bicep' = {
     resourceType: 'pip'
   }
 }
+
+module uamiNamingModules '../40-modules/core/naming.bicep' = [
+  for (item, i) in managedIdentities: {
+    name: 'uami-naming-${item.uamiName}'
+    scope: subscription()
+    params: {
+      projectCode: projectCode
+      environment: environmentName
+      serviceCode: serviceCode
+      resourceType: 'id'
+      suffix: 'k8s-${item.uamiName}'
+    }
+  }
+]
+
+
 
 /*
  * =============================================================================
@@ -545,10 +577,64 @@ module appGw '../40-modules/aks/appgw.bicep' = {
   }
 }
 
+// ========== UAMI DEPLOYMENTS ==========
+
+// Creation of the UAMI and Federated Identity Credentials
+// These modules creates the UAMIs and the Federated Identity Credentials
+
+// Retrieves the names of the UAMIs from the federationConfigs parameter
+// var uamiNames = [for config in federationConfigs: config.uamiTargetName]
+
+// module uami '../40-modules/core/uami.bicep' = {
+//   name: 'uami'
+//   params: {
+//     uamiLocation: resourceLocation
+//     uamiNames: uamiNames
+//     tags: standardTagsModule.outputs.tags
+//   }
+// }
+module uami '../40-modules/core/uami.bicep' = {
+  name: 'uami-aks'
+  params: {
+    uamiLocation: resourceLocation  
+    uamiNames: [for i in range(0, length(managedIdentities)): uamiNamingModules[i].outputs.resourceName]
+    tags: standardTagsModule.outputs.tags
+  }
+}
+
+module federationConfigs '../40-modules/aks/k8s-federation.bicep' = [
+  for (mi,i) in managedIdentities: if (contains(mi, 'federation')) {
+    name: 'fed-${take(uniqueString(mi.uamiName, mi.federation.k8sServiceAccountName), 13)}'
+    params: {
+      parentUserAssignedIdentityName: uami.outputs.uamis[i].name
+      serviceAccountName: mi.federation.k8sServiceAccountName
+      serviceAccountNamespace: mi.federation.k8sNamespace
+      oidcIssuerUrl: aks.outputs.oidcIssuerUrl
+    }
+  }
+]
+
+
+// Role Assignmeents for RBAC 
+
+// This needs to be totally refactored to use /core/rbacs modules
+
+module rbac '../40-modules/aks/rbac.bicep' = {
+  name: 'rbac'
+  params: {
+    keyVaultId: akv.outputs.keyvaultId
+    acrId: acr.outputs.acrId
+    uamiIds: [uami.outputs.uamis[0].principalId ]
+    aksId: aks.outputs.aksId
+    appGwId: appGw.outputs.appGwId
+    vnetId: network.outputs.vnetId
+    cosmosDbAccountId: cosmosDb.outputs.cosmosDbAccountId
+  }
+}
 
 // =========== AKS DEPLOYMENT ==========
 
-module aks '../40-modules/aks/aks.bicep' = {
+module aks '../40-modules/aks.bicep' = {
   name: 'aks'
   params: {    
     location: resourceLocation
@@ -571,49 +657,6 @@ module aks '../40-modules/aks/aks.bicep' = {
   }
 }
 
-// ========== UAMI DEPLOYMENTS ==========
-
-// Creation of the UAMI and Federated Identity Credentials
-// These modules creates the UAMIs and the Federated Identity Credentials
-
-// Retrieves the names of the UAMIs from the federationConfigs parameter
-var uamiNames = [for config in federationConfigs: config.uamiTargetName]
-
-module uami '../40-modules/core/uami.bicep' = {
-  name: 'uami'
-  params: {
-    uamiLocation: resourceLocation
-    uamiNames: uamiNames
-    tags: standardTagsModule.outputs.tags
-  }
-}
-
-module federation '../40-modules/aks/federation.bicep' = [for config in federationConfigs: {
-  name: 'fed-${take(uniqueString(config.uamiTargetName, config.k8sServiceAccountName), 13)}'
-  params: {
-    parentUserAssignedIdentityName: config.uamiTargetName
-    serviceAccountName: config.k8sServiceAccountName
-    serviceAccountNamespace: config.k8sNamespace
-    oidcIssuerUrl: aks.outputs.oidcIssuerUrl
-  }
-}]
-
-// Role Assignmeents for RBAC 
-
-// This needs to be totally refactored to use /core/rbacs modules
-
-module rbac '../40-modules/aks/rbac.bicep' = {
-  name: 'rbac'
-  params: {
-    keyVaultId: akv.outputs.keyvaultId
-    acrId: acr.outputs.acrId
-    uamiIds: [uami.outputs.uamis[0].principalId ]
-    aksId: aks.outputs.aksId
-    appGwId: appGw.outputs.appGwId
-    vnetId: network.outputs.vnetId
-    cosmosDbAccountId: cosmosDb.outputs.cosmosDbAccountId
-  }
-}
 
 /*
  * =============================================================================
