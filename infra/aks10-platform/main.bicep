@@ -654,6 +654,7 @@ module aks '../40-modules/aks.bicep' = {
     userNodePoolMaxCount: userNodePoolMaxCount
     aksSubnetId: network.outputs.subnetIds[0]
     applicationGatewayIdForAgic: appGw.outputs.appGwId 
+    agicUserAssignedIdentityId: uami.outputs.uamis[1].id // AGIC UAMI
   }
 }
 
@@ -669,7 +670,6 @@ module aks '../40-modules/aks.bicep' = {
 output acrLoginServer string = acr.outputs.acrLoginServer
 output acrName string = acr.name
 output aksName string = aks.outputs.aksName
-output backendK8sServiceAccountName string = federationConfigs[0].k8sServiceAccountName
 output keyvaultName string = akv.outputs.keyvaultName
 output appGwPublicIp string = appGw.outputs.publicIpAddress
 output backendUamiClientId string = uami.outputs.uamis[0].clientId  // Backend UAMI
