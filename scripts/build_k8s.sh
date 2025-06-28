@@ -8,7 +8,23 @@ set -euo pipefail
 # 3. Builds and pushes container images to ACR
 # 4. Deploys Helm chart to AKS cluster
 # Run inside any Ubuntu distro (e.g., WSL)
-# Usage: ./build_k8s.sh [--skip-landing-zone] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
+# Usage: ./build_k8s.sh [OPTIONS]
+# 
+# OPTIONS:
+#   --skip-landing-zone    Skip landing zone deployment (use existing)
+#   --skip-infra          Skip AKS platform infrastructure deployment (use existing)
+#   --skip-containers     Skip container build and push (use existing images)
+#   --full-rebuild        Perform complete teardown (stacks, RG, KV purge) then deploy fresh
+#   --teardown-only       Perform complete teardown and exit (no deployment)
+#   -h, --help           Show this help message
+#
+# TEARDOWN PROCESS:
+#   1. Uninstall Helm deployments
+#   2. Delete AKS platform stack
+#   3. Delete landing zone stack  
+#   4. Delete resource group completely
+#   5. Purge Key Vault (permanent deletion)
+#   6. Clean up local kubectl contexts
 
 # Function to print timestamped messages
 log() {
@@ -36,7 +52,23 @@ while [[ $# -gt 0 ]]; do
     --full-rebuild) FULL_REBUILD=true; shift ;;
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
     -h|--help) 
-      echo "Usage: $0 [--skip-landing-zone] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]"; exit 0 ;;  
+      echo "Usage: $0 [OPTIONS]"
+      echo "OPTIONS:"
+      echo "  --skip-landing-zone    Skip landing zone deployment (use existing)"
+      echo "  --skip-infra          Skip AKS platform infrastructure deployment (use existing)"
+      echo "  --skip-containers     Skip container build and push (use existing images)"
+      echo "  --full-rebuild        Perform complete teardown (stacks, RG, KV purge) then deploy fresh"
+      echo "  --teardown-only       Perform complete teardown and exit (no deployment)"
+      echo "  -h, --help           Show this help message"
+      echo ""
+      echo "TEARDOWN PROCESS (--full-rebuild and --teardown-only):"
+      echo "  1. Uninstall Helm deployments"
+      echo "  2. Delete AKS platform stack"
+      echo "  3. Delete landing zone stack"
+      echo "  4. Delete resource group completely"
+      echo "  5. Purge Key Vault (permanent deletion)"
+      echo "  6. Clean up local kubectl contexts"
+      exit 0 ;;  
     *) 
       echo "Unknown option: $1"; exit 1 ;;
   esac
@@ -48,8 +80,8 @@ AKS_PLATFORM_STACK_NAME="aks-platforms-stack"
 LOCATION="spaincentral"
 LZ_BICEP_FILE="../infra/0-lz/main.bicep"
 LZ_PARAMS_FILE="../infra/0-lz/aks-dev.bicepparam"
-AKS_BICEP_FILE="../infra/aks10-platform/mainv2.bicep"
-AKS_PARAMS_FILE="../infra/aks10-platform/mainv2.bicepparam"
+AKS_BICEP_FILE="../infra/aks10-platform/main.bicep"
+AKS_PARAMS_FILE="../infra/aks10-platform/main.bicepparam"
 SERVICES=("backend" "frontend")
 
 # 1) Prerequisites
@@ -60,11 +92,11 @@ command -v kubectl >/dev/null || { log "ERROR" "kubectl not found"; exit 1; }
 command -v helm >/dev/null || { log "ERROR" "helm not found"; exit 1; }
 log "INFO" "Prerequisites OK"
 
-# Teardown-only mode: delete resources and exit
-if [[ "$TEARDOWN_ONLY" == true ]]; then
-  log "INFO" "Teardown-only mode: deleting AKS resources and landing zone..."
+# Function to perform full teardown
+perform_full_teardown() {
+  log "INFO" "Starting full teardown process..."
   
-  # Delete Helm deployment first (if exists)
+  # Step 1: Delete Helm deployment first (if exists)
   log "INFO" "Checking for existing Helm deployment..."
   if command -v helm >/dev/null && helm list --namespace default 2>/dev/null | grep -q "secret-sharer"; then
     log "INFO" "Uninstalling Helm chart 'secret-sharer'..."
@@ -74,27 +106,18 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
     log "INFO" "No Helm deployment found or helm not available, skipping..."
   fi
   
-  # Teardown AKS platform stack first
-  log "INFO" "Tearing down AKS platform stack..."
-  # Note: Need to get resource group name from landing zone deployment outputs
-  LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv 2>/dev/null || echo "ss-d-aks-rg")
-  if az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" >/dev/null 2>&1; then
-    az stack group delete --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --yes
-    log "INFO" "AKS platform stack deleted"
-  else
-    log "INFO" "AKS platform stack not found, skipping..."
+  # Step 2: Get resource group name and Key Vault info before deleting stacks
+  log "INFO" "Retrieving resource information before teardown..."
+  LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv 2>/dev/null || echo "")
+  
+  # Get Key Vault name from AKS platform stack if it exists
+  KEY_VAULT_NAME=""
+  if [[ -n "$LZ_RG_NAME" ]] && az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" >/dev/null 2>&1; then
+    KEY_VAULT_NAME=$(az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --query outputs.keyvaultName.value -o tsv 2>/dev/null || echo "")
+    log "INFO" "Found Key Vault: $KEY_VAULT_NAME"
   fi
   
-  # Teardown landing zone stack
-  log "INFO" "Tearing down landing zone stack..."
-  if az stack sub show --name "$LANDING_ZONE_STACK_NAME" >/dev/null 2>&1; then
-    az stack sub delete --name "$LANDING_ZONE_STACK_NAME" --yes
-    log "INFO" "Landing zone stack deleted"
-  else
-    log "INFO" "Landing zone stack not found, skipping..."
-  fi
-  
-  # Clean up local kubectl context (optional)
+  # Step 3: Clean up local kubectl context
   log "INFO" "Cleaning up local kubectl context..."
   AKS_NAME="aks-secure-secret-sharer-dev"
   if command -v kubectl >/dev/null && kubectl config get-contexts 2>/dev/null | grep -q "$AKS_NAME"; then
@@ -104,36 +127,69 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
     log "INFO" "No kubectl context found for '$AKS_NAME' or kubectl not available, skipping..."
   fi
   
-  log "INFO" "Teardown completed successfully"
+  # Step 4: Teardown AKS platform stack first
+  log "INFO" "Tearing down AKS platform stack..."
+  if [[ -n "$LZ_RG_NAME" ]] && az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" >/dev/null 2>&1; then
+    log "INFO" "Deleting AKS platform stack '$AKS_PLATFORM_STACK_NAME' in resource group '$LZ_RG_NAME'..."
+    az stack group delete --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --action-on-unmanage detachAll --yes
+    log "INFO" "AKS platform stack deleted"
+  else
+    log "INFO" "AKS platform stack not found, skipping..."
+  fi
+  
+  # Step 5: Teardown landing zone stack
+  log "INFO" "Tearing down landing zone stack..."
+  if az stack sub show --name "$LANDING_ZONE_STACK_NAME" >/dev/null 2>&1; then
+    log "INFO" "Deleting landing zone stack '$LANDING_ZONE_STACK_NAME'..."
+    az stack sub delete --name "$LANDING_ZONE_STACK_NAME" --action-on-unmanage detachAll --yes
+    log "INFO" "Landing zone stack deleted"
+  else
+    log "INFO" "Landing zone stack not found, skipping..."
+  fi
+  
+  # Step 6: Delete resource group completely
+  if [[ -n "$LZ_RG_NAME" ]]; then
+    log "INFO" "Deleting resource group '$LZ_RG_NAME' completely..."
+    if az group show --name "$LZ_RG_NAME" >/dev/null 2>&1; then
+      az group delete --name "$LZ_RG_NAME" --yes
+      log "INFO" "Resource group '$LZ_RG_NAME' successfully deleted"
+    else
+      log "INFO" "Resource group '$LZ_RG_NAME' not found, skipping..."
+    fi
+  else
+    log "INFO" "No resource group name found, skipping resource group deletion..."
+  fi
+  
+  # Step 7: Purge Key Vault if it exists
+  if [[ -n "$KEY_VAULT_NAME" ]]; then
+    log "INFO" "Purging Key Vault '$KEY_VAULT_NAME'..."
+    # Key Vault purge requires the location, use the same location as deployment
+    if az keyvault show-deleted --name "$KEY_VAULT_NAME" --location "$LOCATION" >/dev/null 2>&1; then
+      az keyvault purge --name "$KEY_VAULT_NAME" --location "$LOCATION"
+      log "INFO" "Key Vault '$KEY_VAULT_NAME' purged successfully"
+    else
+      log "INFO" "Key Vault '$KEY_VAULT_NAME' not found in deleted state or already purged, skipping..."
+    fi
+  else
+    log "INFO" "No Key Vault name found, skipping Key Vault purge..."
+  fi
+  
+  log "INFO" "Full teardown completed successfully"
+}
+
+# Teardown-only mode: delete resources and exit
+if [[ "$TEARDOWN_ONLY" == true ]]; then
+  log "INFO" "Teardown-only mode: performing full teardown..."
+  perform_full_teardown
   log "INFO" "Exiting - no deployment performed"
   exit 0
 fi
 
 # Full rebuild teardown
 if [[ "$FULL_REBUILD" == true ]]; then
-  log "INFO" "Full rebuild requested: tearing down AKS platform and landing zone..."
-  
-  # Teardown AKS platform stack first
-  log "INFO" "Tearing down AKS platform stack..."
-  # Note: Need to get resource group name from landing zone deployment outputs
-  LZ_RG_NAME=$(az stack sub show --name "$LANDING_ZONE_STACK_NAME" --query outputs.resourceGroupName.value -o tsv 2>/dev/null || echo "ss-d-aks-rg")
-  if az stack group show --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" >/dev/null 2>&1; then
-    az stack group delete --name "$AKS_PLATFORM_STACK_NAME" --resource-group "$LZ_RG_NAME" --yes
-    log "INFO" "AKS platform stack deleted"
-  else
-    log "INFO" "AKS platform stack not found, skipping..."
-  fi
-  
-  # Teardown landing zone stack
-  log "INFO" "Tearing down landing zone stack..."
-  if az stack sub show --name "$LANDING_ZONE_STACK_NAME" >/dev/null 2>&1; then
-    az stack sub delete --name "$LANDING_ZONE_STACK_NAME" --yes
-    log "INFO" "Landing zone stack deleted"
-  else
-    log "INFO" "Landing zone stack not found, skipping..."
-  fi
-  
-  log "INFO" "Teardown completed"
+  log "INFO" "Full rebuild requested: performing complete teardown first..."
+  perform_full_teardown
+  log "INFO" "Teardown completed, proceeding with fresh deployment..."
 fi
 
 # 1) Deploy landing zone infrastructure
