@@ -322,4 +322,4 @@ output controlPlaneIdentityId string = identityType == 'SystemAssigned'
     : '')
 output kubeletIdentityObjectId string = aks.properties.identityProfile.kubeletidentity.objectId
 output oidcIssuerUrl string = aks.properties.oidcIssuerProfile.issuerURL
-output agicIdentityPrincipalId string = aks.properties.addonProfiles.ingressApplicationGateway.identity.clientId
+output agicIdentityPrincipalId string = aks.properties.addonProfiles.ingressApplicationGateway.identity.objectId
