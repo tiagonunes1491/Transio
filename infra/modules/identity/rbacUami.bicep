@@ -1,3 +1,41 @@
+/*
+ * =============================================================================
+ * UAMI RBAC Assignment Module
+ * =============================================================================
+ * 
+ * This Bicep module creates role-based access control (RBAC) assignments for
+ * User-Assigned Managed Identities (UAMIs). It provides a simplified way to
+ * assign roles to UAMIs with proper scope control and idempotent deployment
+ * guarantees through deterministic GUID generation.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                         UAMI RBAC Assignment                            │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Authorization                                                          │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Role Assignment                                                     ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Principal ID        │  │ Role Definition                     │   ││
+ * │  │ │ • UAMI identity     │──│ • Built-in or custom role           │   ││
+ * │  │ │ • Service Principal │  │ • Subscription scoped               │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  │                                                                     ││
+ * │  │ ┌─────────────────────────────────────────────────────────────────┐ ││
+ * │  │ │ Assignment Scope                                                │ ││
+ * │  │ │ • UAMI resource level                                           │ ││
+ * │  │ │ • Deterministic naming for idempotency                          │ ││
+ * │  │ └─────────────────────────────────────────────────────────────────┘ ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * FEATURES:
+ * • Idempotent deployments with deterministic GUID generation
+ * • Support for both built-in role GUIDs and full role definition IDs
+ * • Proper principal type handling for service principals
+ * • Scoped assignments at the UAMI resource level
+ */
+
 @description('Name of the User-Assigned Managed Identity to scope the assignment to')
 param uamiName string
 

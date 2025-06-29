@@ -1,3 +1,54 @@
+/*
+ * =============================================================================
+ * Application Gateway Module
+ * =============================================================================
+ * 
+ * This Bicep module creates and configures Azure Application Gateway for secure
+ * web application traffic management. It provides Layer 7 load balancing, SSL
+ * termination, Web Application Firewall (WAF) protection, and advanced routing
+ * capabilities for modern web applications and microservices architectures.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                    Application Gateway Architecture                     │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Frontend Configuration                                                 │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Public IP & Listeners                                               ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Public IP Address   │  │ HTTP/HTTPS Listeners                │   ││
+ * │  │ │ • Static allocation │──│ • Port 80/443                       │   ││
+ * │  │ │ • DNS integration   │  │ • SSL certificates                  │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                                                         │
+ * │  Traffic Processing                                                     │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Routing Rules       │  │ Backend Configuration               │   ││
+ * │  │ │ • Path-based        │──│ • Health probes                     │   ││
+ * │  │ │ • Host-based        │  │ • HTTP settings                     │   ││
+ * │  │ │ • Multi-site        │  │ • Backend pools                     │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                                                         │
+ * │  Security Features                                                      │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ • Web Application Firewall (WAF)                                   ││
+ * │  │ • SSL termination and encryption                                    ││
+ * │  │ • DDoS protection integration                                       ││
+ * │  │ • Network security group support                                    ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * KEY FEATURES:
+ * • Layer 7 load balancing with advanced routing
+ * • SSL/TLS termination and end-to-end encryption
+ * • Web Application Firewall for OWASP protection
+ * • Auto-scaling with manual and automatic options
+ * • Integration with Azure services (AKS, App Service, etc.)
+ */
+
 @description('Name of the Application Gateway')
 param appGwName string
 

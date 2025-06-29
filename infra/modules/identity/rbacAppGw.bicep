@@ -1,3 +1,45 @@
+/*
+ * =============================================================================
+ * Application Gateway RBAC Assignment Module
+ * =============================================================================
+ * 
+ * This Bicep module creates role-based access control (RBAC) assignments for
+ * Azure Application Gateway resources. It provides standardized permission
+ * management for managed identities and service principals that need to
+ * interact with Application Gateway resources for ingress control and
+ * traffic management scenarios.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                Application Gateway RBAC Assignment                      │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Azure Authorization                                                    │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Role Assignment                                                     ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Principal Identity  │  │ Role Definition                     │   ││
+ * │  │ │ • Managed Identity  │──│ • Application Gateway Contributor   │   ││
+ * │  │ │ • Service Principal │  │ • Network Contributor               │   ││
+ * │  │ │ • AKS cluster       │  │ • Custom ingress roles             │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                                                         │
+ * │  Application Gateway Scope                                              │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ • Traffic routing configuration                                     ││
+ * │  │ • SSL certificate management                                        ││
+ * │  │ • Backend pool management                                           ││
+ * │  │ • Health probe configuration                                        ││
+ * │  │ • WAF policy management                                             ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * COMMON USE CASES:
+ * • AKS ingress controller access to Application Gateway
+ * • Automation tooling for traffic management
+ * • DevOps pipelines for deployment automation
+ */
+
 @description('Full resource ID of the Application Gateway')
 param appGwId string
 

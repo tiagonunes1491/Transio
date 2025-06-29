@@ -1,3 +1,52 @@
+/*
+ * =============================================================================
+ * AKS Platform Infrastructure for Secure Secret Sharer
+ * =============================================================================
+ * 
+ * This Bicep template establishes the Azure Kubernetes Service (AKS) platform
+ * infrastructure for the Secure Secret Sharer application. It creates a
+ * comprehensive Kubernetes platform environment with secure networking,
+ * container registry, identity management, and monitoring capabilities.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                      AKS Platform Infrastructure                        │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Virtual Network (10.0.0.0/16)                                         │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ AKS Subnet (10.0.0.0/20)                                          ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐  ││
+ * │  │ │ AKS Cluster         │  │ Application Gateway Subnet          │  ││
+ * │  │ │ • System node pool  │  │ (10.0.20.0/24)                     │  ││
+ * │  │ │ • User node pools   │  │ • SSL termination                   │  ││
+ * │  │ │ • CNI networking    │  │ • WAF protection                    │  ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘  ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                                                         │
+ * │  Azure Container Registry                                               │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ • Premium SKU for geo-replication                                   ││
+ * │  │ • Private endpoint connectivity                                     ││
+ * │  │ • RBAC integration with AKS                                         ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * DEPLOYMENT REQUIREMENTS:
+ * • Resource Group: Created externally
+ * • Permissions: Contributor access to target resource group
+ * • Dependencies: None (foundational platform layer)
+ * 
+ * SECURITY FEATURES:
+ * • Managed Identity authentication for AKS to ACR
+ * • Private networking with network security groups
+ * • Key Vault integration for secrets management
+ * • Application Gateway with WAF for secure ingress
+ * 
+ * RESOURCE NAMING:
+ * All resources follow the naming convention: {projectCode}-{env}-{serviceCode}-{resourceType}
+ * Example: ss-dev-aks-cluster, ss-prod-aks-acr
+ */
+
 targetScope = 'resourceGroup'
 
 /*
