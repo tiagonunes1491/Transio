@@ -185,11 +185,7 @@ param managedIdentities array = [
     }
   }
   {
-    uamiName: 'agic'
-  }
-  {
     uamiName: 'kubelet'
-    
   }
   {
     uamiName: 'aks-cluster'  // Add AKS cluster identity
@@ -556,15 +552,53 @@ module cosmosPe '../40-modules/core/private-endpoint.bicep' = {
 
 // ========== APP GW  DEPLOYMENT ==========
 // Creates AppGW. Assumes subnet for appGW is in place [1] on array.
-module appGw '../40-modules/aks/appgw.bicep' = {
+// module appGw '../40-modules/aks/appgw.bicep' = {
+//   name: 'appgw'
+//   params: {
+//     appGwName: appGwNamingModule.outputs.resourceName
+//     location: resourceLocation
+//     tags: standardTagsModule.outputs.tags
+//     sku: appGwSku
+//     publicIpName: appGwPipNamingModule.outputs.resourceName
+//     appGwSubnetId: network.outputs.subnetIds[1]
+//   }
+// }
+
+module appGw '../40-modules/core/appgwv2.bicep' = {
   name: 'appgw'
   params: {
     appGwName: appGwNamingModule.outputs.resourceName
     location: resourceLocation
     tags: standardTagsModule.outputs.tags
     sku: appGwSku
-    publicIpName: appGwPipNamingModule.outputs.resourceName
     appGwSubnetId: network.outputs.subnetIds[1]
+    
+    // Public IP configuration
+    publicIpConfig: {
+      name: appGwPipNamingModule.outputs.resourceName
+      allocationMethod: 'Static'
+      sku: 'Standard'
+      tier: 'Regional'
+      zones: []
+    }
+    
+    // Optional: explicitly set other parameters to match old behavior
+    capacity: 1
+    enableHttp2: true
+    
+    
+    // WAF configuration (will be applied if sku is WAF_v2)
+    wafConfig: {
+      enabled: true
+      firewallMode: 'Prevention'
+      ruleSetType: 'OWASP'
+      ruleSetVersion: '3.2'
+      disabledRuleGroups: []
+      requestBodyCheck: true
+      maxRequestBodySizeInKb: 128
+      fileUploadLimitInMb: 100
+      exclusions: []
+    }
   }
 }
 
@@ -612,18 +646,8 @@ module rbacAcr '../40-modules/core/rbacAcr.bicep' = {
   name: 'rbac-acr'
   params: {
     registryId: acr.outputs.acrId
-    principalId: uami.outputs.uamis[2].principalId
+    principalId: uami.outputs.uamis[1].principalId  // Updated index: Kubelet UAMI
     roleDefinitionId: '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull
-  }
-}
-
-// Resource Group Reader RBAC assignment for AGIC
-module rbacRg '../40-modules/core/rbacRg.bicep' = {
-  name: 'rbac-rg-reader'
-  scope: resourceGroup()
-  params: {
-    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity (Azure ARM bug)
-    roleDefinitionId: 'acdd72a7-3385-48ef-bd42-f606fba81ae7' // Reader
   }
 }
 
@@ -637,34 +661,12 @@ module rbacCosmos '../40-modules/core/rbacCosmos.bicep' = {
   }
 }
 
-module rbacAppGwAgic '../40-modules/core/rbacAppGw.bicep' = {
-  name: 'rbac-appgw-agic'
-  params: {
-    appGwId: appGw.outputs.appGwId
-    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity (Azure ARM bug)
-    // App Gateway RBAC assignment for AGIC identity
-    roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor
-  }
-}
-
 module rbacAksKubeletOperator '../40-modules/core/rbacUami.bicep' = {
   name: 'rbac-aks-kubelet-operator'
   params: {
-    uamiName: uami.outputs.uamis[2].name  // Kubelet UAMI resource name
-    principalId: uami.outputs.uamis[3].principalId  // AKS control plane identity
+    uamiName: uami.outputs.uamis[1].name  // Updated index: Kubelet UAMI resource name
+    principalId: uami.outputs.uamis[2].principalId  // Updated index: AKS control plane identity
     roleDefinitionId: 'f1a07417-d97a-45cb-824c-7a7467783830'  // Managed Identity Operator
-  }
-}
-
-
-
-// VNet RBAC assignment for AGIC
-module rbacVnet '../40-modules/core/rbacVnet.bicep' = {
-  name: 'rbac-vnet'
-  params: {
-    vnetId: network.outputs.vnetId
-    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity (Azure ARM bug)
-    roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7' // Network Contributor
   }
 }
 
@@ -692,10 +694,43 @@ module aks '../40-modules/core/aks.bicep' = {
     applicationGatewayIdForAgic: appGw.outputs.appGwId 
     // NOTE: Azure AKS ignores agicUserAssignedIdentityId parameter due to platform bug
     // AGIC addon auto-creates its own identity regardless of this setting
-    agicUserAssignedIdentityId: uami.outputs.uamis[1].id // AGIC UAMI (ignored by Azure)
-    kubeletUserAssignedIdentityId: uami.outputs.uamis[2].id // Kubelet UAMI
+    agicUserAssignedIdentityId: null // Not used - AKS creates its own AGIC identity
+    kubeletUserAssignedIdentityId: uami.outputs.uamis[1].id // Updated index: Kubelet UAMI
     identityType: 'UserAssigned'  // Change from SystemAssigned to UserAssigned
-    userAssignedIdentities: [uami.outputs.uamis[3].id]  // AKS cluster identity
+    userAssignedIdentities: [uami.outputs.uamis[2].id]  // Updated index: AKS cluster identity
+  }
+}
+
+// =========== POST-AKS RBAC ASSIGNMENTS FOR AUTO-CREATED AGIC IDENTITY ==========
+// These must run AFTER AKS deployment since the AGIC identity is created during AKS deployment
+
+// Resource Group Reader RBAC assignment for AGIC
+module rbacRgAgic '../40-modules/core/rbacRg.bicep' = {
+  name: 'rbac-rg-reader-agic'
+  scope: resourceGroup()
+  params: {
+    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity
+    roleDefinitionId: 'acdd72a7-3385-48ef-bd42-f606fba81ae7' // Reader
+  }
+}
+
+// App Gateway RBAC assignment for AGIC
+module rbacAppGwAgic '../40-modules/core/rbacAppGw.bicep' = {
+  name: 'rbac-appgw-agic'
+  params: {
+    appGwId: appGw.outputs.appGwId
+    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity
+    roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor
+  }
+}
+
+// VNet RBAC assignment for AGIC
+module rbacVnetAgic '../40-modules/core/rbacVnet.bicep' = {
+  name: 'rbac-vnet-agic'
+  params: {
+    vnetId: network.outputs.vnetId
+    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity
+    roleDefinitionId: '4d97b98b-1d4f-4787-a291-c67834d212e7' // Network Contributor
   }
 }
 
