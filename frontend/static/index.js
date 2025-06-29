@@ -1,7 +1,135 @@
 /* index.js - JavaScript specific to index.html */
 /* global formatDate, truncateLink, copyToClipboard */
 
-document.addEventListener('DOMContentLoaded', () => {
+// EFF Large Wordlist for secure passphrase generation
+let PASSPHRASE_WORDS = [];
+let wordlistReady = null; // Promise to track wordlist loading
+
+// Load the EFF wordlist on page load
+async function loadWordlist() {
+  if (wordlistReady) {
+    return wordlistReady; // Return cached promise if already loading/loaded
+  }
+
+  wordlistReady = (async () => {
+    try {
+      console.log('Loading EFF wordlist...');
+      const response = await fetch('eff_large_wordlist.txt');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch wordlist: ${response.status} ${response.statusText}`);
+      }
+      
+      const text = await response.text();
+      // Parse the wordlist (format: "11111\tabacus")
+      PASSPHRASE_WORDS = text.trim().split('\n').map(line => {
+        const parts = line.split('\t');
+        return parts[1]; // Return just the word, not the dice number
+      });
+      
+      console.log(`✓ Loaded ${PASSPHRASE_WORDS.length} words for passphrase generation`);
+      return PASSPHRASE_WORDS;
+    } catch (error) {
+      console.error('✗ Failed to load EFF wordlist:', error);
+      console.error('Make sure eff_large_wordlist.txt exists in the same directory');
+      throw error;
+    }
+  })();
+
+  return wordlistReady;
+}
+
+// Generate secure random index for word selection (unbiased, using Uint16)
+function getSecureRandomIndex(maxIndex) {
+  // Use rejection sampling to avoid bias with Uint16Array
+  const maxValid = Math.floor(0xFFFF / maxIndex) * maxIndex;
+  let randomValue;
+  do {
+    const array = new Uint16Array(1);
+    crypto.getRandomValues(array);
+    randomValue = array[0];
+  } while (randomValue >= maxValid);
+  
+  return randomValue % maxIndex;
+}
+
+// Generate a secure passphrase with specified number of words
+async function generatePassphrase(wordCount = 6) {
+  // Ensure wordlist is loaded before generating passphrase
+  await loadWordlist();
+  
+  if (PASSPHRASE_WORDS.length === 0) {
+    throw new Error('Wordlist not available for passphrase generation');
+  }
+  
+  const selectedWords = [];
+  for (let i = 0; i < wordCount; i++) {
+    const randomIndex = getSecureRandomIndex(PASSPHRASE_WORDS.length);
+    selectedWords.push(PASSPHRASE_WORDS[randomIndex]);
+  }
+  return selectedWords.join('-');
+}
+
+// Passphrase strength calculation
+function calculatePassphraseStrength(passphrase) {
+  const words = passphrase.trim()
+    .split(/[^A-Za-z]+/)               // split by hyphen / spaces
+    .filter(Boolean);                  // remove empties
+
+  if (words.length === 0) {
+    return { strength: 'weak', label: '-', entropy: 0 };
+  }
+
+  const BITS_PER_WORD = Math.log2(7776);      // ≈ 12.93 (EFF wordlist size)
+  const entropy = words.length * BITS_PER_WORD;
+  
+  let strength, label;
+  if (entropy < 60) {        // < 5 Diceware words
+    strength = 'weak';
+    label = 'weak';
+  } else if (entropy < 77) { // 5-6 Diceware words
+    strength = 'ok';
+    label = 'ok';
+  } else {                   // ≥ 6 Diceware words
+    strength = 'strong';
+    label = 'strong';
+  }
+
+  return { strength, label, entropy: Math.round(entropy) };
+}
+
+// Update strength meter display
+function updateStrengthMeter(passphrase) {
+  const strengthLabel = document.getElementById('strengthLabel');
+  if (!strengthLabel) return;
+
+  const { strength, label, entropy } = calculatePassphraseStrength(passphrase);
+  
+  // Set color based on strength
+  let color;
+  switch (strength) {
+    case 'weak':
+      color = '#dc2626';  // red
+      break;
+    case 'ok':
+      color = '#f59e0b';  // amber
+      break;
+    case 'strong':
+      color = '#10b981';  // green
+      break;
+    default:
+      color = 'var(--text-color-subtle)';
+  }
+  
+  strengthLabel.textContent = label;
+  strengthLabel.style.color = color;
+  strengthLabel.style.fontWeight = 'bold';
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Load the EFF wordlist first
+  await loadWordlist();
+  
   const secretInput = document.getElementById('secretMessageInput');
   const mainCreateLinkButton = document.getElementById('mainCreateLinkButton');
   const resultArea = document.getElementById('resultArea');
@@ -13,6 +141,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const floatingButton = document.getElementById('floatingCreateButton');
   const createSectionToObserve = document.getElementById('createSection');
   const noSecretsCreateButton = document.getElementById('noSecretsCreateButton');
+  
+  // E2EE elements
+  const e2eeCheckbox = document.getElementById('e2eeCheckbox');
+  const passphraseContainer = document.getElementById('passphraseContainer');
+  const passphraseInput = document.getElementById('passphraseInput');
+  const regeneratePassphraseBtn = document.getElementById('regeneratePassphraseBtn');
+  const copyPassphraseButton = document.getElementById('copyPassphraseButton');
+  const strengthMeter = document.getElementById('strengthMeter');
 
   let generatedLinks = [];
   try {
@@ -31,6 +167,75 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.protocol === 'file:';
   const shareApiEndpoint = isDevelopment ? 'http://127.0.0.1:5000/api/share' : '/api/share';
   const revealLinkBasePath = `${window.location.origin}/view.html#`;
+
+  // E2EE checkbox toggle functionality
+  if (e2eeCheckbox && passphraseContainer) {
+    e2eeCheckbox.addEventListener('change', async function() {
+      if (this.checked) {
+        passphraseContainer.classList.remove('hidden');
+        // Generate initial passphrase if input is empty
+        if (passphraseInput && !passphraseInput.value.trim()) {
+          try {
+            passphraseInput.value = 'Generating passphrase...';
+            updateStrengthMeter('');
+            passphraseInput.value = await generatePassphrase();
+            updateStrengthMeter(passphraseInput.value);
+          } catch (error) {
+            console.error('Failed to generate passphrase:', error);
+            passphraseInput.value = 'Error loading wordlist';
+            updateStrengthMeter('');
+          }
+        }
+        // Focus on passphrase input when checkbox is checked
+        setTimeout(() => {
+          if (passphraseInput) {
+            passphraseInput.focus();
+            passphraseInput.select(); // Select the generated passphrase
+          }
+        }, 100);
+      } else {
+        passphraseContainer.classList.add('hidden');
+        // Clear passphrase when unchecked
+        if (passphraseInput) {
+          passphraseInput.value = '';
+          updateStrengthMeter('');
+        }
+      }
+    });
+  }
+
+  // Regenerate passphrase button functionality
+  if (regeneratePassphraseBtn && passphraseInput) {
+    regeneratePassphraseBtn.addEventListener('click', async function() {
+      try {
+        const originalText = passphraseInput.value;
+        passphraseInput.value = 'Generating...';
+        updateStrengthMeter('');
+        passphraseInput.value = await generatePassphrase();
+        updateStrengthMeter(passphraseInput.value);
+        passphraseInput.focus();
+        passphraseInput.select(); // Select the new passphrase
+      } catch (error) {
+        console.error('Failed to regenerate passphrase:', error);
+        passphraseInput.value = 'Error generating passphrase';
+        updateStrengthMeter('');
+      }
+    });
+  }
+
+  // Passphrase input change listener for strength meter
+  if (passphraseInput) {
+    passphraseInput.addEventListener('input', function() {
+      updateStrengthMeter(this.value);
+    });
+  }
+
+  // Copy passphrase button functionality
+  if (copyPassphraseButton && passphraseInput) {
+    copyPassphraseButton.addEventListener('click', () => {
+      copyToClipboard(passphraseInput.value, copyPassphraseButton);
+    });
+  }
 
   async function createSecret(buttonTrigger) {
     const secretText = secretInput.value;
