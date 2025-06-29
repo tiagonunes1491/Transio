@@ -51,8 +51,8 @@
  * 
  * DEPLOYMENT SCOPE:
  * This module operates at resource group scope to create a Log Analytics
- * workspace that serves as the central monitoring hub for all Secure Secret
- * Sharer infrastructure and application components.
+ * workspace that serves as the central monitoring hub for all
+ * infrastructure and application components.
  */
 @description('Name of the workspace')
 param workspaceName string

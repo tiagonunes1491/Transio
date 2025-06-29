@@ -48,7 +48,7 @@
  * DEPLOYMENT SCOPE:
  * This module operates at subscription scope to provide consistent
  * tagging across all resource groups and resources within the
- * Secure Secret Sharer project deployment.
+ * deployment.
  */
 
 targetScope = 'subscription'
