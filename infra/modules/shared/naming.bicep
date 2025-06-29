@@ -176,8 +176,8 @@ var mappedEnv = envMapping[environment]
  * • Uses hyphens as separators for readability and Azure compatibility
  * 
  * Examples:
- * • Without suffix: ss-d-swa-rg
- * • With suffix: ss-d-swa-id-gh-creator
+ * • Without suffix: proj-d-web-rg
+ * • With suffix: proj-d-web-id-creator
  */
 var baseName = empty(suffix) ? '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}' : '${projectCode}-${mappedEnv}-${serviceCode}-${resourceType}-${suffix}'
 
