@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * Container Apps Environment Module for Secure Secret Sharer
+ * Container Apps Environment Module
  * =============================================================================
  * 
  * This Bicep module creates and configures Azure Container Apps Environment
- * for the Secure Secret Sharer application. It provides a managed serverless
+ * providing a managed serverless environment for running containerized applications.
  * platform for containerized applications with integrated networking, monitoring,
  * and security features optimized for microservices architectures.
  * 

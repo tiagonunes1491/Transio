@@ -1,12 +1,12 @@
 /*
  * =============================================================================
- * Static Web App Module for Secure Secret Sharer
+ * Static Web App Module
  * =============================================================================
  * 
  * This Bicep module creates and configures Azure Static Web Apps for hosting
- * the frontend of the Secure Secret Sharer application. It provides a modern
- * hosting platform with global CDN, automatic scaling, and integrated CI/CD
- * capabilities optimized for React and other modern web frameworks.
+ * frontend applications. It provides a modern hosting platform with global CDN, 
+ * automatic scaling, and integrated CI/CD capabilities optimized for modern web 
+ * frameworks.
  * 
  * ARCHITECTURE OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐

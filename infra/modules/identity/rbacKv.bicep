@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Key Vault RBAC Module for Secure Secret Sharer
+ * Key Vault RBAC Module
  * =============================================================================
  * 
  * This Bicep module assigns Key Vault RBAC roles to managed identities for

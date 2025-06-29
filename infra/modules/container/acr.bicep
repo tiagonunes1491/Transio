@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Azure Container Registry Module for Secure Secret Sharer
+ * Azure Container Registry Module
  * =============================================================================
  * 
  * This Bicep module creates and configures an Azure Container Registry (ACR)

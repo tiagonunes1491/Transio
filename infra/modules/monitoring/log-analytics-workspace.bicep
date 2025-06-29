@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * Log Analytics Workspace Module for Secure Secret Sharer
+ * Log Analytics Workspace Module
  * =============================================================================
  * 
  * This Bicep module creates and configures Azure Log Analytics Workspace
- * for centralized monitoring, logging, and observability in the Secure Secret
+ * for centralized monitoring, logging, and observability.
  * Sharer application. It provides the foundation for security monitoring,
  * performance analysis, and operational insights across all platform components.
  * 

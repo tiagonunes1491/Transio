@@ -1,12 +1,12 @@
 /*
  * =============================================================================
- * Standardized Tagging Module for Secure Secret Sharer
+ * Standardized Tagging Module
  * =============================================================================
  * 
  * This Bicep module implements Cloud Adoption Framework tagging standards
- * for the Secure Secret Sharer project. It provides centralized, consistent
- * tagging across all Azure resources to enable governance, cost management,
- * and operational excellence through comprehensive resource metadata.
+ * for Azure resources. It provides centralized, consistent tagging across 
+ * all Azure resources to enable governance, cost management, and operational 
+ * excellence through comprehensive resource metadata.
  * 
  * TAGGING STRATEGY OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐

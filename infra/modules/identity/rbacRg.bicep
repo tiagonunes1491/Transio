@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Resource Group RBAC Module for Secure Secret Sharer
+ * Resource Group RBAC Module
  * =============================================================================
  * 
  * This Bicep module assigns Azure RBAC roles to principals at resource group

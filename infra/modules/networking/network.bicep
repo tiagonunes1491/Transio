@@ -1,12 +1,12 @@
 /*
  * =============================================================================
- * Virtual Network Module for Secure Secret Sharer
+ * Virtual Network Module
  * =============================================================================
  * 
  * This Bicep module creates and configures Azure Virtual Network infrastructure
- * for the Secure Secret Sharer application. It provides network isolation,
- * segmentation, and secure connectivity patterns for containerized workloads
- * and platform services with comprehensive subnet management capabilities.
+ * providing network isolation, segmentation, and secure connectivity patterns 
+ * for containerized workloads and platform services with comprehensive subnet 
+ * management capabilities.
  * 
  * ARCHITECTURE OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐

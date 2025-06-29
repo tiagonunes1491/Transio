@@ -1,11 +1,11 @@
 /*
  * =============================================================================
- * Standardized Naming Convention Module for Secure Secret Sharer
+ * Standardized Naming Convention Module
  * =============================================================================
  * 
  * This Bicep module provides centralized, standardized naming conventions for
- * all Azure resources in the Secure Secret Sharer project. It ensures consistent,
- * predictable, and compliant resource names across all environments and services.
+ * Azure resources. It ensures consistent, predictable, and compliant resource 
+ * names across all environments and services.
  * 
  * NAMING STRATEGY OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐
@@ -14,10 +14,10 @@
  * │  {projectCode}-{env}-{serviceCode}-{resourceType}[-{suffix}]            │
  * │                                                                         │
  * │  Examples:                                                              │
- * │  • ss-d-swa-rg              (Development SWA Resource Group)            │
- * │  • ss-p-plat-kv             (Production Platform Key Vault)             │
- * │  • ssdswaacr                (Development SWA Container Registry)        │
- * │  • ss-s-plat-id-gh-creator  (Shared Platform Identity with suffix)     │
+ * │  • proj-d-web-rg            (Development Web Resource Group)            │
+ * │  • proj-p-plat-kv           (Production Platform Key Vault)             │
+ * │  • projdwebacr              (Development Web Container Registry)        │
+ * │  • proj-s-plat-id-creator   (Shared Platform Identity with suffix)     │
  * └─────────────────────────────────────────────────────────────────────────┘
  * 
  * KEY FEATURES:
@@ -61,10 +61,10 @@ targetScope = 'subscription'
  * Core identifier that groups all resources belonging to the same project
  * Must be 2-3 characters to balance brevity with clarity
  */
-@description('Project code identifier (2-3 lowercase letters) - identifies the Secure Secret Sharer project')
+@description('Project code identifier (2-3 lowercase letters) - identifies the project')
 @minLength(2)
 @maxLength(3)
-param projectCode string = 'ss'
+param projectCode string
 
 /*
  * ENVIRONMENT CLASSIFICATION PARAMETER

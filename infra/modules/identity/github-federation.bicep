@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * GitHub Federation Module for Secure Secret Sharer
+ * GitHub Federation Module
  * =============================================================================
  * 
  * This Bicep module creates federated identity credentials for GitHub Actions

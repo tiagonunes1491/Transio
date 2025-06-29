@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Container App Module for Secure Secret Sharer
+ * Container App Module
  * =============================================================================
  * 
  * This Bicep module creates and configures individual Azure Container Apps

@@ -1,12 +1,12 @@
 /*
  * =============================================================================
- * Key Vault Module for Secure Secret Sharer
+ * Key Vault Module
  * =============================================================================
  * 
  * This Bicep module creates and configures Azure Key Vault for secure secrets
- * management in the Secure Secret Sharer application. It implements enterprise-grade
- * security features including RBAC, purge protection, and private endpoint support
- * to ensure secure storage and access to application secrets and certificates.
+ * management. It implements enterprise-grade security features including RBAC, 
+ * purge protection, and private endpoint support to ensure secure storage and 
+ * access to application secrets and certificates.
  * 
  * ARCHITECTURE OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐

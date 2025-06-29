@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * Network Security Group Module for Secure Secret Sharer
+ * Network Security Group Module
  * =============================================================================
  * 
  * This Bicep module creates and configures Azure Network Security Groups (NSGs)
- * for the Secure Secret Sharer application. It implements comprehensive network
+ * providing comprehensive network security controls for applications.
  * security policies with configurable allow/deny rules and default security
  * postures to protect containerized workloads and platform services.
  * 
