@@ -178,9 +178,9 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
  * =============================================================================
  */
 
-// ========== MANAGED IDENTITY NAMING ==========
+// ========== MANAGED IDENTITY NAMING ===========
 
-module uamiNamingModules '../40-modules/core/naming.bicep' = [
+module uamiNamingModules '../modules/shared/naming.bicep' = [
   for (item, i) in items(workloadIdentities): {
     name: 'uami-naming-${item.key}'
     scope: subscription()
@@ -194,9 +194,9 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [
   }
 ]
 
-// ========== USER-ASSIGNED MANAGED IDENTITIES ==========
+// ========== USER-ASSIGNED MANAGED IDENTITIES ===========
 
-module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
+module uamiModules '../modules/identity/uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
   scope: rg
   params: {
@@ -206,9 +206,9 @@ module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(wo
   }
 }]
 
-// ========== GITHUB FEDERATED CREDENTIALS ==========
+// ========== GITHUB FEDERATED CREDENTIALS ===========
 
-module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
+module envFederationModules '../modules/identity/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
   scope: rg
   params: {
@@ -228,9 +228,9 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * =============================================================================
  */
 
-// ========== RESOURCE GROUP ROLE ASSIGNMENTS ==========
+// ========== RESOURCE GROUP ROLE ASSIGNMENTS ===========
 
-module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../modules/identity/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
   scope: rg
   params: {

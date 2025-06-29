@@ -169,7 +169,7 @@ var subnets = [
 
 // ========== NETWORK DEPLOYMENT ==========
 
-module network '../40-modules/core/network.bicep' = {
+module network '../modules/networking/network.bicep' = {
   name:  'network'
   params: {
     vnetName:      vnetNamingModule.outputs.resourceName
@@ -188,7 +188,7 @@ module network '../40-modules/core/network.bicep' = {
 
 // ========== STANDARDIZED TAGGING ==========
 
-module standardTagsModule '../40-modules/core/tagging.bicep' = {
+module standardTagsModule '../modules/shared/tagging.bicep' = {
   scope: subscription()
   name: 'standard-tags-swa-platform'
   params: {
@@ -204,7 +204,7 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
 
 // ========== RESOURCE NAMING ==========
 
-module vnetNamingModule '../40-modules/core/naming.bicep' = {
+module vnetNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'vnet-naming'
   params: {
@@ -215,7 +215,7 @@ module vnetNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module akvNamingModule '../40-modules/core/naming.bicep' = {
+module akvNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'akv-naming'
   params: {
@@ -226,7 +226,7 @@ module akvNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module lawNamingModule '../40-modules/core/naming.bicep' = {
+module lawNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'law-naming'
   params: {
@@ -237,7 +237,7 @@ module lawNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
+module acaEnvNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'aca-env-naming'
   params: {    
@@ -248,7 +248,7 @@ module acaEnvNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module acaNsgNamingModule '../40-modules/core/naming.bicep' = {
+module acaNsgNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'aca-nsg-naming'
   params: {    
@@ -260,7 +260,7 @@ module acaNsgNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module peNsgNamingModule '../40-modules/core/naming.bicep' = {
+module peNsgNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'pe-nsg-naming'
   params: {    
@@ -272,7 +272,7 @@ module peNsgNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module acrNamingModule '../40-modules/core/naming.bicep' = {
+module acrNamingModule '../modules/shared/naming.bicep' = {
   name: 'acr-naming'
   scope: subscription()
   params: {
@@ -283,7 +283,7 @@ module acrNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module cosmosNamingModule '../40-modules/core/naming.bicep' = {
+module cosmosNamingModule '../modules/shared/naming.bicep' = {
   name: 'cosmos-naming'
   scope: subscription()
   params: {
@@ -304,7 +304,7 @@ module cosmosNamingModule '../40-modules/core/naming.bicep' = {
 
 // ========== KEY VAULT DEPLOYMENT ==========
 
-module akv '../40-modules/core/keyvault.bicep' = {
+module akv '../modules/security/keyvault.bicep' = {
   name:  'keyvault'
   params: {
     keyvaultName:            akvNamingModule.outputs.resourceName
@@ -320,7 +320,7 @@ module akv '../40-modules/core/keyvault.bicep' = {
 
 // ========== KEY VAULT PRIVATE ENDPOINT ==========
 
-module kvDns '../40-modules/core/private-dns-zone.bicep' = {
+module kvDns '../modules/networking/private-dns-zone.bicep' = {
   name:  'kvPrivateDns'
   params: {
     privateDnsZoneName:  'privatelink.vaultcore.azure.net'
@@ -329,7 +329,7 @@ module kvDns '../40-modules/core/private-dns-zone.bicep' = {
   }
 }
 
-module kvPe '../40-modules/core/private-endpoint.bicep' = {
+module kvPe '../modules/networking/private-endpoint.bicep' = {
   name:  'kvPrivateEndpoint'
   params: {
     privateEndpointName:         'pe-${akv.outputs.keyvaultName}'
@@ -344,7 +344,7 @@ module kvPe '../40-modules/core/private-endpoint.bicep' = {
 
 // ========== AZURE CONTAINER REGISTRY DEPLOYMENT ==========
 
-module acr '../40-modules/core/acr.bicep' = {
+module acr '../modules/container/acr.bicep' = {
   name: 'acr'
   params: {
     tags: standardTagsModule.outputs.tags
@@ -357,7 +357,7 @@ module acr '../40-modules/core/acr.bicep' = {
 
 // ========== ACR PRIVATE ENDPOINT ==========
 
-module acrDns '../40-modules/core/private-dns-zone.bicep' = {
+module acrDns '../modules/networking/private-dns-zone.bicep' = {
   name:  'acrPrivateDns'
   params: {
     privateDnsZoneName:  'privatelink.azurecr.io'
@@ -366,7 +366,7 @@ module acrDns '../40-modules/core/private-dns-zone.bicep' = {
   }
 }
 
-module acrPe '../40-modules/core/private-endpoint.bicep' = {
+module acrPe '../modules/networking/private-endpoint.bicep' = {
   name:  'acrPrivateEndpoint'
   params: {
     privateEndpointName:       'pe-${acr.outputs.acrName}'
@@ -381,7 +381,7 @@ module acrPe '../40-modules/core/private-endpoint.bicep' = {
 
 // ========== COSMOS DB DEPLOYMENT ==========
 
-module cosmosDb '../40-modules/core/cosmos-db.bicep' = {
+module cosmosDb '../modules/database/cosmos-db.bicep' = {
   name: 'deploy-cosmos-db'
   params: {
     cosmosDbAccountName: cosmosNamingModule.outputs.resourceName
@@ -394,7 +394,7 @@ module cosmosDb '../40-modules/core/cosmos-db.bicep' = {
 
 // ========== COSMOS DB PRIVATE ENDPOINT ==========
 
-module cosmosDns '../40-modules/core/private-dns-zone.bicep' = {
+module cosmosDns '../modules/networking/private-dns-zone.bicep' = {
   name:  'cosmosPrivateDns'
   params: {
     privateDnsZoneName:  'privatelink.documents.azure.com'
@@ -403,7 +403,7 @@ module cosmosDns '../40-modules/core/private-dns-zone.bicep' = {
   }
 }
 
-module cosmosPe '../40-modules/core/private-endpoint.bicep' = {
+module cosmosPe '../modules/networking/private-endpoint.bicep' = {
   name:  'cosmosPrivateEndpoint'
   params: {
     privateEndpointName:       'pe-${cosmosDb.outputs.cosmosDbAccountName}'
@@ -418,7 +418,7 @@ module cosmosPe '../40-modules/core/private-endpoint.bicep' = {
 
 // ========== LOG ANALYTICS WORKSPACE DEPLOYMENT ==========
 
-module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
+module workspace '../modules/monitoring/log-analytics-workspace.bicep' = {
   name:  'workspace'
   params: {
     workspaceName: lawNamingModule.outputs.resourceName
@@ -429,7 +429,7 @@ module workspace '../40-modules/core/log-analytics-workspace.bicep' = {
 
 // ========== CONTAINER APPS ENVIRONMENT DEPLOYMENT ==========
 
-module acaEnv '../40-modules/core/aca-environment.bicep' = {
+module acaEnv '../modules/container/aca-environment.bicep' = {
   name:  'acaEnvironment'
   params: {
     acaEnvironmentName: acaEnvNamingModule.outputs.resourceName
@@ -477,7 +477,7 @@ var acaAllowRules = [
   }
 ]
 
-module acaNsg '../40-modules/core/nsg.bicep' = {
+module acaNsg '../modules/networking/nsg.bicep' = {
   name: 'acaNsg'
   params: {
     nsgName: acaNsgNamingModule.outputs.resourceName
@@ -507,7 +507,7 @@ var peAllowRules = [
   }
 ]
 
-module peNsg '../40-modules/core/nsg.bicep' = {
+module peNsg '../modules/networking/nsg.bicep' = {
   name: 'peNsg'
   params: {
     nsgName: peNsgNamingModule.outputs.resourceName
