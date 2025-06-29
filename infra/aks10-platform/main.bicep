@@ -174,20 +174,6 @@ param aksAdminGroupObjectIds array = []
 // Creates a map for the Federated Identity Credential
 // This will define what UAMIs need to be created for the federated identity credentials
 // and what Kubernetes Service Account and Namespace they will be linked to
-// @description('Array of configurations for federated identity credentials. Each object links a UAMI to a specific Kubernetes Service Account and Namespace.')
-// param federationConfigs array = [
-//   {
-//     uamiTargetName: 'backend' 
-//     k8sServiceAccountName: 'secret-sharer-backend-sa'
-//     k8sNamespace: 'default' 
-//   }
-// ]
-
-// @description('List of User Assigned Managed Identities (UAMIs) to be created for the AKS deployment')
-// param userAssignedIdentities array = [
-//   'backend'
-//   'AGIC'  
-// ]
 
 @description('List of User-Assigned Managed Identities to create. Each item can optionally include federation details.')
 param managedIdentities array = [
@@ -587,17 +573,6 @@ module appGw '../40-modules/aks/appgw.bicep' = {
 // Creation of the UAMI and Federated Identity Credentials
 // These modules creates the UAMIs and the Federated Identity Credentials
 
-// Retrieves the names of the UAMIs from the federationConfigs parameter
-// var uamiNames = [for config in federationConfigs: config.uamiTargetName]
-
-// module uami '../40-modules/core/uami.bicep' = {
-//   name: 'uami'
-//   params: {
-//     uamiLocation: resourceLocation
-//     uamiNames: uamiNames
-//     tags: standardTagsModule.outputs.tags
-//   }
-// }
 module uami '../40-modules/core/uami.bicep' = {
   name: 'uami-aks'
   params: {
@@ -622,21 +597,6 @@ module federationConfigs '../40-modules/core/k8s-federation.bicep' = [
 
 // Role Assignmeents for RBAC 
 
-// This needs to be totally refactored to use /core/rbacs modules
-
-// module rbac '../40-modules/aks/rbac.bicep' = {
-//   name: 'rbac'
-//   params: {
-//     keyVaultId: akv.outputs.keyvaultId
-//     acrId: acr.outputs.acrId
-//     uamiIds: [uami.outputs.uamis[0].principalId ]
-//     aksId: aks.outputs.aksId
-//     appGwId: appGw.outputs.appGwId
-//     vnetId: network.outputs.vnetId
-//     cosmosDbAccountId: cosmosDb.outputs.cosmosDbAccountId
-//   }
-// }
-
 // Key Vault RBAC assignment
 module rbacKv '../40-modules/core/rbacKv.bicep' = {
   name: 'rbac-kv'
@@ -658,13 +618,11 @@ module rbacAcr '../40-modules/core/rbacAcr.bicep' = {
 }
 
 // Resource Group Reader RBAC assignment for AGIC
-// NOTE: Using hardcoded AGIC identity because AKS module doesn't output agicIdentityPrincipalId yet
-// TODO: Update AKS module to output AGIC identity and replace hardcoded value
 module rbacRg '../40-modules/core/rbacRg.bicep' = {
   name: 'rbac-rg-reader'
   scope: resourceGroup()
   params: {
-    principalId: '4e4dc027-5c91-47a8-b5a0-0cabdedb731d' // Auto-created AGIC identity (get from deployment)
+    principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity (Azure ARM bug)
     roleDefinitionId: 'acdd72a7-3385-48ef-bd42-f606fba81ae7' // Reader
   }
 }
@@ -699,15 +657,6 @@ module rbacAksKubeletOperator '../40-modules/core/rbacUami.bicep' = {
 }
 
 
-// // App Gateway RBAC assignment for AKS cluster identity
-// module rbacAppGwCluster '../40-modules/core/rbacAppGw.bicep' = {
-//   name: 'rbac-appgw-cluster'
-//   params: {
-//     appGwId: appGw.outputs.appGwId
-//     principalId: aks.outputs.aksId
-//     roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c' // Contributor
-//   }
-// }
 
 // VNet RBAC assignment for AGIC
 module rbacVnet '../40-modules/core/rbacVnet.bicep' = {
