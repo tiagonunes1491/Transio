@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Private DNS Zone Module for Secure Secret Sharer
+ * Private DNS Zone Module
  * =============================================================================
  * 
  * This Bicep module creates Azure Private DNS Zones and Virtual Network links

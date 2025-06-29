@@ -1,3 +1,43 @@
+/*
+ * =============================================================================
+ * Virtual Network RBAC Assignment Module
+ * =============================================================================
+ * 
+ * This Bicep module creates role-based access control (RBAC) assignments for
+ * Azure Virtual Networks. It provides a standardized way to assign permissions
+ * to managed identities, service principals, or users for network resource
+ * management with proper scope control and idempotent deployments.
+ * 
+ * ARCHITECTURE OVERVIEW:
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                     Virtual Network RBAC Assignment                     │
+ * ├─────────────────────────────────────────────────────────────────────────┤
+ * │  Azure Authorization                                                    │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ Role Assignment                                                     ││
+ * │  │ ┌─────────────────────┐  ┌─────────────────────────────────────┐   ││
+ * │  │ │ Principal Identity  │  │ Role Definition                     │   ││
+ * │  │ │ • Managed Identity  │──│ • Network Contributor               │   ││
+ * │  │ │ • Service Principal │  │ • Custom networking roles          │   ││
+ * │  │ │ • User identity     │  │ • Built-in role permissions        │   ││
+ * │  │ └─────────────────────┘  └─────────────────────────────────────┘   ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * │                                                                         │
+ * │  Virtual Network Scope                                                  │
+ * │  ┌─────────────────────────────────────────────────────────────────────┐│
+ * │  │ • VNet-level permissions                                            ││
+ * │  │ • Subnet management access                                          ││
+ * │  │ • Network security group operations                                 ││
+ * │  │ • Route table management                                            ││
+ * │  └─────────────────────────────────────────────────────────────────────┘│
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * COMMON ROLE ASSIGNMENTS:
+ * • Network Contributor: Full network resource management
+ * • Virtual Machine Contributor: VM network interface management  
+ * • Custom roles: Specific networking permissions
+ */
+
 @description('VNet resource ID')
 param vnetId string
 

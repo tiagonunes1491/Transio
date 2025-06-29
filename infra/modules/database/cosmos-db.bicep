@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * Azure Cosmos DB Module for Secure Secret Sharer
+ * Azure Cosmos DB Module
  * =============================================================================
  * 
  * This Bicep module creates and configures an Azure Cosmos DB account with

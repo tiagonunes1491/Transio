@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * User-Assigned Managed Identity Module for Secure Secret Sharer
+ * User-Assigned Managed Identity Module
  * =============================================================================
  * 
  * This Bicep module creates one or more Azure User-Assigned Managed Identities
- * (UAMIs) for secure service authentication in the Secure Secret Sharer project.
+ * (UAMIs) for secure service authentication.
  * It eliminates the need for credential management while providing a centralized
  * identity solution for Azure resource authentication and authorization.
  * 

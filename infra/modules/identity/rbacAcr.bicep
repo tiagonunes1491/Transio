@@ -1,6 +1,6 @@
 /*
  * =============================================================================
- * ACR RBAC Module for Secure Secret Sharer
+ * ACR RBAC Module
  * =============================================================================
  * 
  * This Bicep module assigns Azure Container Registry RBAC roles to principals

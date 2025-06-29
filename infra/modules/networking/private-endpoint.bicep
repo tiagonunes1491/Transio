@@ -1,12 +1,12 @@
 /*
  * =============================================================================
- * Private Endpoint Module for Secure Secret Sharer
+ * Private Endpoint Module
  * =============================================================================
  * 
  * This Bicep module creates Azure Private Endpoints for secure, private
  * connectivity to Azure services. It establishes network-isolated connections
  * that bypass the public internet, providing enhanced security for data
- * transmission between the Secure Secret Sharer application and Azure services.
+ * transmission between applications and Azure services.
  * 
  * ARCHITECTURE OVERVIEW:
  * ┌─────────────────────────────────────────────────────────────────────────┐
