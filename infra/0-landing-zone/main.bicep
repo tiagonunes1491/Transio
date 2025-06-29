@@ -69,7 +69,7 @@ param location string = 'spaincentral'
 @description('Short project identifier used in resource naming conventions')
 param projectCode string = 'ss'
 
-@description('Service identifier for this SWA/ACA platform deployment')
+@description('Service identifier for this platform deployment')
 param serviceCode string = 'swa'
 
 // ========== GOVERNANCE AND TAGGING PARAMETERS ==========
@@ -132,7 +132,7 @@ var envMapping = {
 
 // ========== RESOURCE GROUP NAMING ==========
 
-var swaRgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')
+var rgName = toLower('${projectCode}-${envMapping[environmentName]}-${serviceCode}-rg')
 
 // ========== STANDARDIZED TAGGING ==========
 
@@ -165,8 +165,8 @@ var roleIdMap = {
 
 // ========== SWA WORKLOAD RESOURCE GROUP ==========
 
-resource swaRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: swaRgName
+resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+  name: rgName
   location: location
   tags: standardTags
 }
@@ -178,9 +178,9 @@ resource swaRG 'Microsoft.Resources/resourceGroups@2021-04-01' = {
  * =============================================================================
  */
 
-// ========== MANAGED IDENTITY NAMING ==========
+// ========== MANAGED IDENTITY NAMING ===========
 
-module uamiNamingModules '../40-modules/core/naming.bicep' = [
+module uamiNamingModules '../modules/shared/naming.bicep' = [
   for (item, i) in items(workloadIdentities): {
     name: 'uami-naming-${item.key}'
     scope: subscription()
@@ -194,11 +194,11 @@ module uamiNamingModules '../40-modules/core/naming.bicep' = [
   }
 ]
 
-// ========== USER-ASSIGNED MANAGED IDENTITIES ==========
+// ========== USER-ASSIGNED MANAGED IDENTITIES ===========
 
-module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(workloadIdentities): {
+module uamiModules '../modules/identity/uami.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-uami-${item.key}'
-  scope: swaRG
+  scope: rg
   params: {
     uamiLocation: location
     uamiNames: [uamiNamingModules[i].outputs.resourceName]
@@ -206,11 +206,11 @@ module uamiModules '../40-modules/core//uami.bicep' = [for (item, i) in items(wo
   }
 }]
 
-// ========== GITHUB FEDERATED CREDENTIALS ==========
+// ========== GITHUB FEDERATED CREDENTIALS ===========
 
-module envFederationModules '../40-modules/core/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
+module envFederationModules '../modules/identity/github-federation.bicep' = [for (item, i) in items(workloadIdentities): if (contains(split(item.value.federationTypes, ','), 'environment')) {
   name: 'deploy-env-fed-${item.key}'
-  scope: swaRG
+  scope: rg
   params: {
     UamiName: uamiModules[i].outputs.uamis[0].name
     GitHubOrganizationName: gitHubOrganizationName
@@ -228,11 +228,11 @@ module envFederationModules '../40-modules/core/github-federation.bicep' = [for 
  * =============================================================================
  */
 
-// ========== RESOURCE GROUP ROLE ASSIGNMENTS ==========
+// ========== RESOURCE GROUP ROLE ASSIGNMENTS ===========
 
-module rbacAssignments '../40-modules/core/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
+module rbacAssignments '../modules/identity/rbacRg.bicep' = [for (item, i) in items(workloadIdentities): {
   name: 'deploy-rbac-${item.key}'
-  scope: swaRG
+  scope: rg
   params: {
     principalId: uamiModules[i].outputs.uamis[0].principalId
     roleDefinitionId: roleIdMap[item.value.ROLE]
@@ -266,7 +266,7 @@ output federatedCredentialNames array = [
 // ========== RESOURCE GROUP OUTPUTS ==========
 
 @description('SWA resource group name for workload deployments')
-output paasResourceGroupName string = swaRG.name
+output resourceGroupName string = rg.name
 
 // ========== AZURE ENVIRONMENT OUTPUTS ==========
 

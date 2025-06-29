@@ -173,7 +173,7 @@ param secretEnvironmentVariables array = []
 
 // ========== STANDARDIZED TAGGING ==========
 
-module standardTagsModule '../40-modules/core/tagging.bicep' = {
+module standardTagsModule '../modules/shared/tagging.bicep' = {
   scope: subscription()
   name: 'standard-tags-swa-app'
   params: {
@@ -189,7 +189,7 @@ module standardTagsModule '../40-modules/core/tagging.bicep' = {
 
 // ========== RESOURCE NAMING ==========
 
-module containerAppNamingModule '../40-modules/core/naming.bicep' = {
+module containerAppNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'container-app-naming'
   params: {
@@ -200,7 +200,7 @@ module containerAppNamingModule '../40-modules/core/naming.bicep' = {
   }
 }
 
-module swaNamingModule '../40-modules/core/naming.bicep' = {
+module swaNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'swa-naming'
   params: {
@@ -212,7 +212,7 @@ module swaNamingModule '../40-modules/core/naming.bicep' = {
 }
 
 // Generate resource names using naming module
-module uamiNamingModule '../40-modules/core/naming.bicep' = {
+module uamiNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
   name: 'uami-naming'
   params: {
@@ -235,7 +235,7 @@ module uamiNamingModule '../40-modules/core/naming.bicep' = {
 
 // ========== USER ASSIGNED MANAGED IDENTITY ==========
 
-module uami '../40-modules/core/uami.bicep' = {
+module uami '../modules/identity/uami.bicep' = {
   name: 'uami'
   params: {
     uamiLocation: resourceLocation
@@ -247,7 +247,7 @@ module uami '../40-modules/core/uami.bicep' = {
 // ========== RBAC ASSIGNMENTS ==========
 
 // Deploy ACR RBAC at the ACR scope
-module acrRbac '../40-modules/core/rbacAcr.bicep' = {
+module acrRbac '../modules/identity/rbacAcr.bicep' = {
   name: 'acrRbac'
   params: {
     registryId: sssplatacr.id
@@ -257,17 +257,17 @@ module acrRbac '../40-modules/core/rbacAcr.bicep' = {
 }
 
 // Deploy Key Vault RBAC at the Key Vault scope
-module keyVaultRbac '../40-modules/core/rbacKv.bicep' = {
+module keyVaultRbac '../modules/identity/rbacKv.bicep' = {
   name: 'keyVaultRbac'
   params: {
     keyVaultId: akv.id
-    id: uami.outputs.uamis[0].principalId
-    roleId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
+    principalId: uami.outputs.uamis[0].principalId
+    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
   }
 }
 
 // Deploy Cosmos DB RBAC in the shared resource group
-module cosmosRbac '../40-modules/core/rbacCosmos.bicep' = {
+module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
   name: 'cosmosRbac'
   params: {
     accountName: sssplatcosmos.name
@@ -289,7 +289,7 @@ var containerAppEnvironmentVariables = union(environmentVariables, [
   }
 ])
 
-module containerApp '../40-modules/core/container-app.bicep' = {
+module containerApp '../modules/container/container-app.bicep' = {
   name: 'containerApp'
   params: {
     containerAppName: containerAppNamingModule.outputs.resourceName
@@ -323,9 +323,9 @@ module containerApp '../40-modules/core/container-app.bicep' = {
   }
 }
 
-// ========== STATIC WEB APP DEPLOYMENT ==========
+// ========== STATIC WEB APP DEPLOYMENT ========== 
 
-module staticWebApp '../40-modules/core/static-web-app.bicep' = {
+module staticWebApp '../modules/web/static-web-app.bicep' = {
   name: 'staticWebApp'
   params: {
     swaName: swaNamingModule.outputs.resourceName

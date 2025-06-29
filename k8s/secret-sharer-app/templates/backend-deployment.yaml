@@ -17,6 +17,7 @@ spec:
       labels:
         {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
+        azure.workload.identity/use: "true" 
     spec:
       serviceAccountName: {{ .Values.backend.serviceAccount.name }}
       automountServiceAccountToken: true # Required for Workload Identity if SA is specified
@@ -82,6 +83,32 @@ spec:
               value: {{ .Values.cosmosdb.containerName | quote }} # From cosmosdb values
             - name: USE_MANAGED_IDENTITY
               value: {{ .Values.cosmosdb.useManagedIdentity | quote }} # Enable managed identity if set
+            {{- if .Values.backend.env }}
+            {{- if .Values.backend.env.AZURE_CLIENT_ID }}
+            - name: AZURE_CLIENT_ID
+              value: {{ .Values.backend.env.AZURE_CLIENT_ID | quote }} # Required for managed identity authentication
+            {{- end }}
+            {{- end }}
+            # Azure environment variables for better debugging and authentication
+            - name: AZURE_AUTHORITY_HOST
+              value: "https://login.microsoftonline.com/"
+            - name: AZURE_TENANT_ID
+              value: {{ .Values.backend.keyVault.tenantId | quote }}
+            # Flask environment variables
+            - name: FLASK_APP
+              value: "app/main.py"
+            - name: FLASK_ENV
+              value: "production"
+            # Azure SDK logging for debugging (can be set to INFO or DEBUG)
+            - name: AZURE_LOG_LEVEL
+              value: "INFO"
+            # Python logging level
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            # Note: Azure automatically sets MSI_ENDPOINT, IDENTITY_ENDPOINT, and IDENTITY_HEADER
+            # for workload identity, so we don't need to set them manually
+            - name: AZURE_FEDERATED_TOKEN_FILE
+              value: "/var/run/secrets/azure/tokens/azure-identity-token"
 
           # We will add livenessProbe and readinessProbe later
           # We will add resources (requests/limits) later
