@@ -5,6 +5,104 @@
 let PASSPHRASE_WORDS = [];
 let wordlistReady = null; // Promise to track wordlist loading
 
+// Encryption helpers
+
+// URL-safe base64 encoding
+const b64u = bytes =>
+  btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+
+// URL-safe base64 decoding  
+const b64uDecode = str => {
+  const padding = '='.repeat((4 - str.length % 4) % 4);
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/') + padding;
+  const binary = atob(base64);
+  return new Uint8Array(binary.split('').map(char => char.charCodeAt(0)));
+};
+
+/* ------------------ main encrypt helper ------------------ */
+async function seal(plainText, passPhrase) {
+  try {
+    // (1) 16-byte random salt
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+
+    // (2) Argon2id → 32-byte key  (≈50 ms, 64 MiB)
+    const { hash: key } = await argon2.hash({
+      pass: passPhrase,
+      salt,                           // Uint8Array
+      hashLen: 32,
+      time: 2,
+      mem: 1 << 16,                   // 64 MiB
+      parallelism: 1,
+      type: argon2.ArgonType.Argon2id
+    });
+
+    // (3) 12-byte random nonce
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+
+    // (4) AES-GCM encrypt
+    const subtleKey = await crypto.subtle.importKey(
+      'raw', key, 'AES-GCM', false, ['encrypt']
+    );
+    const ctBuf = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: nonce },
+      subtleKey,
+      new TextEncoder().encode(plainText)
+    );
+
+    // (5) JSON payload ready to POST
+    return {
+      salt:  b64u(salt),
+      nonce: b64u(nonce),
+      ct:    b64u(new Uint8Array(ctBuf)),
+      ttl:   86400,         // 1 day, will be patched after first read
+      firstRead: null
+    };
+  } catch (error) {
+    console.error('Encryption failed:', error);
+    throw new Error(`Encryption failed: ${error.message}`);
+  }
+}
+
+/* ------------------ main decrypt helper ------------------ */
+async function unseal(encryptedData, passPhrase) {
+  try {
+    // (1) Decode base64 components
+    const salt = b64uDecode(encryptedData.salt);
+    const nonce = b64uDecode(encryptedData.nonce);
+    const ct = b64uDecode(encryptedData.ct);
+
+    // (2) Derive key using same Argon2id parameters
+    const { hash: key } = await argon2.hash({
+      pass: passPhrase,
+      salt,
+      hashLen: 32,
+      time: 2,
+      mem: 1 << 16,                   // 64 MiB
+      parallelism: 1,
+      type: argon2.ArgonType.Argon2id
+    });
+
+    // (3) Import key for decryption
+    const subtleKey = await crypto.subtle.importKey(
+      'raw', key, 'AES-GCM', false, ['decrypt']
+    );
+
+    // (4) Decrypt
+    const plaintextBuf = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: nonce },
+      subtleKey,
+      ct
+    );
+
+    // (5) Return decoded text
+    return new TextDecoder().decode(plaintextBuf);
+  } catch (error) {
+    console.error('Decryption failed:', error);
+    throw new Error(`Decryption failed: ${error.message}`);
+  }
+}
+
 // Load the EFF wordlist on page load
 async function loadWordlist() {
   if (wordlistReady) {
@@ -244,51 +342,149 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // Check if E2EE is enabled
+    const isE2EEEnabled = e2eeCheckbox && e2eeCheckbox.checked;
+    const passphrase = passphraseInput ? passphraseInput.value.trim() : '';
+
+    if (isE2EEEnabled && !passphrase) {
+      alert('Please enter a passphrase for end-to-end encryption.');
+      if (passphraseInput) passphraseInput.focus();
+      return;
+    }
+
     const originalButtonText = buttonTrigger.innerHTML;
     buttonTrigger.innerHTML = '<span class="truncate">Encrypting & Creating...</span>';
     buttonTrigger.disabled = true;
 
     try {
-      const response = await fetch(shareApiEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ secret: secretText })
-      });
-      let responseData;
-      try {
-        responseData = await response.json();
-      } catch (jsonError) {
-        const errorText = await response.text();
-        throw new Error(
-          `Server returned non-JSON response: ${response.status} - ${errorText || response.statusText}`
-        );
-      }
-      if (response.ok && responseData.link_id) {
-        const secretLink = `${revealLinkBasePath}${responseData.link_id}`;
-        const newLinkData = {
-          url: secretLink,
-          timestamp: new Date().toISOString(),
-          id: responseData.link_id
+      let payloadToSend;
+      let secretLink;
+      
+      if (isE2EEEnabled) {
+        // Client-side encryption
+        console.log('🔒 Encrypting secret with E2EE...');
+        const encryptedData = await seal(secretText, passphrase);
+        
+        // Send ONLY the encrypted payload and salt/nonce (no duplicate payload)
+        payloadToSend = {
+          payload: encryptedData.ct,    // ONLY encrypted ciphertext in payload
+          e2ee: {
+            salt: encryptedData.salt,     // Salt for key derivation
+            nonce: encryptedData.nonce    // Nonce for AES-GCM
+          }
         };
-        generatedLinks.unshift(newLinkData);
-        if (generatedLinks.length > 10) {
-          generatedLinks = generatedLinks.slice(0, 10);
+        
+        console.log('📤 Sending E2EE payload to API:', {
+          payload: encryptedData.ct.substring(0, 20) + '...',
+          e2ee: {
+            salt: encryptedData.salt,
+            nonce: encryptedData.nonce
+          }
+        });
+
+        const response = await fetch(shareApiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloadToSend)
+        });
+        
+        let responseData;
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          const errorText = await response.text();
+          throw new Error(
+            `Server returned non-JSON response: ${response.status} - ${errorText || response.statusText}`
+          );
         }
-        localStorage.setItem('secretSharerLinks', JSON.stringify(generatedLinks));
-        resultArea.classList.remove('hidden');
-        secretLinkInput.value = secretLink;
-        secretInput.value = ''; // Clear input after successful creation
-        resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        updateHistoryUI(true); // Mark as new link for animation
+        
+        if (response.ok && responseData.link_id) {
+          // For E2EE, include the passphrase in the URL fragment
+          secretLink = `${revealLinkBasePath}${responseData.link_id}&p=${encodeURIComponent(passphrase)}`;
+          
+          const newLinkData = {
+            url: secretLink,
+            timestamp: new Date().toISOString(),
+            id: responseData.link_id,
+            encrypted: isE2EEEnabled
+          };
+          
+          generatedLinks.unshift(newLinkData);
+          if (generatedLinks.length > 10) {
+            generatedLinks = generatedLinks.slice(0, 10);
+          }
+          localStorage.setItem('secretSharerLinks', JSON.stringify(generatedLinks));
+          resultArea.classList.remove('hidden');
+          secretLinkInput.value = secretLink;
+          secretInput.value = ''; // Clear input after successful creation
+          
+          // Clear E2EE form if used
+          e2eeCheckbox.checked = false;
+          passphraseContainer.classList.add('hidden');
+          passphraseInput.value = '';
+          updateStrengthMeter('');
+          
+          resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          updateHistoryUI(true); // Mark as new link for animation
+        } else {
+          const errorMessage =
+            responseData.error || `Failed to share secret. Status: ${response.status}`;
+          resultArea.classList.remove('hidden');
+          secretLinkInput.value = `Error: ${errorMessage}`;
+        }
+        
       } else {
-        const errorMessage =
-          responseData.error || `Failed to share secret. Status: ${response.status}`;
-        resultArea.classList.remove('hidden');
-        secretLinkInput.value = `Error: ${errorMessage}`;
+        // Regular server-side handling - SEND TO API AS NORMAL
+        payloadToSend = { payload: secretText };
+
+        const response = await fetch(shareApiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloadToSend)
+        });
+        
+        let responseData;
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          const errorText = await response.text();
+          throw new Error(
+            `Server returned non-JSON response: ${response.status} - ${errorText || response.statusText}`
+          );
+        }
+        
+        if (response.ok && responseData.link_id) {
+          secretLink = `${revealLinkBasePath}${responseData.link_id}`;
+          
+          const newLinkData = {
+            url: secretLink,
+            timestamp: new Date().toISOString(),
+            id: responseData.link_id,
+            encrypted: isE2EEEnabled
+          };
+          
+          generatedLinks.unshift(newLinkData);
+          if (generatedLinks.length > 10) {
+            generatedLinks = generatedLinks.slice(0, 10);
+          }
+          localStorage.setItem('secretSharerLinks', JSON.stringify(generatedLinks));
+          resultArea.classList.remove('hidden');
+          secretLinkInput.value = secretLink;
+          secretInput.value = ''; // Clear input after successful creation
+          
+          resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          updateHistoryUI(true); // Mark as new link for animation
+        } else {
+          const errorMessage =
+            responseData.error || `Failed to share secret. Status: ${response.status}`;
+          resultArea.classList.remove('hidden');
+          secretLinkInput.value = `Error: ${errorMessage}`;
+        }
       }
     } catch (error) {
+      console.error('Create secret error:', error);
       resultArea.classList.remove('hidden');
-      secretLinkInput.value = 'Error: Failed to create secret. Check console & backend.';
+      secretLinkInput.value = `Error: ${error.message || 'Failed to create secret. Check console & backend.'}`;
     } finally {
       buttonTrigger.innerHTML = originalButtonText;
       buttonTrigger.disabled = false;
@@ -329,7 +525,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       linkItem.innerHTML = `
                 <div class="flex flex-col gap-1 flex-1 min-w-0">
-                    <span class="text-xs font-medium" style="color: var(--text-color-subtle);">SHARED ${formatDate(linkData.timestamp).toUpperCase()}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium" style="color: var(--text-color-subtle);">SHARED ${formatDate(linkData.timestamp).toUpperCase()}</span>
+                        ${linkData.encrypted ? 
+                          '<span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">E2EE</span>' : 
+                          ''}
+                    </div>
                     <a href="${linkData.url}" target="_blank" class="text-sm hover:text-opacity-75 transition-colors truncate block font-medium" title="${linkData.url}" style="color: var(--secondary-color);">
                         <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 256 256" class="inline mr-1 align-middle">
                             <path d="M136,136H40a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16Zm0-48H40a8,8,0,0,1,0-16h96a8,8,0,0,1,0,16ZM40,184h64a8,8,0,0,0,0-16H40a8,8,0,0,0,0,16Zm176-80v96a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40h96a8,8,0,0,1,5.66,2.34l48,48A8,8,0,0,1,208,96v8a8,8,0,0,1-16,0V99.31l-42.34-42.34H56V200H200V104Z"></path>
