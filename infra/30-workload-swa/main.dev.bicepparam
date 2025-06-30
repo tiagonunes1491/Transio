@@ -16,10 +16,11 @@ param ownerEmail = 'tiago.nunes@microsoft.com'
 // Existing infrastructure references
 param acrName = 'ssdswaacr'
 param cosmosDbAccountName = 'ss-d-swa-cosmos'
-param keyVaultName = 'ssdswakv'
+param keyVaultName = 'ssdswakv' // Note: In future deployments, this should be renamed to 'ssdswakv' to remove 'akv' reference
 
 // Database configuration
 param cosmosDatabaseName = 'swa-dev'
+param cosmosContainerName = 'secrets'
 
 
 param acaEnvironmentResourceGroupName = 'ss-d-swa-rg'
@@ -27,26 +28,15 @@ param acaEnvironmentName = 'ss-d-swa-cae'
 // Application configuration
 param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
 
-// Key Vault secrets configuration
-param keyVaultSecrets = [  {
-    name: 'cosmos-endpoint'
-    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/cosmos-endpoint'
-  }
+// Key Vault secrets configuration (only sensitive data)
+param keyVaultSecrets = [
   {
     name: 'encryption-key'
-    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/encryption-key'
-  }
-  {
-    name: 'cosmos-database-name'
-    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/cosmos-database-name'
-  }
-  {
-    name: 'cosmos-container-name'
-    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/cosmos-container-name'
+    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/encryption-key' // Note: In future deployments, this should be updated when the Key Vault name changes
   }
 ]
 
-// Environment variables
+// Environment variables (including non-sensitive configuration)
 param environmentVariables = [  
   {
     name: 'ENVIRONMENT'
@@ -68,24 +58,24 @@ param environmentVariables = [
     name: 'MAX_SECRET_LENGTH_KB'
     value: '100'
   }
-]
-
-// Secret environment variables (referencing Key Vault secrets)
-param secretEnvironmentVariables = [
-  {
-    name: 'COSMOS_ENDPOINT'
-    secretRef: 'cosmos-endpoint'
-  }
-  {
-    name: 'MASTER_ENCRYPTION_KEY'
-    secretRef: 'encryption-key'
-  }
   {
     name: 'COSMOS_DATABASE_NAME'
-    secretRef: 'cosmos-database-name'
+    value: 'swa-dev'
   }
   {
     name: 'COSMOS_CONTAINER_NAME'
-    secretRef: 'cosmos-container-name'
+    value: 'secrets'
+  }
+  {
+    name: 'COSMOS_ENDPOINT'
+    value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
+  }
+]
+
+// Secret environment variables (only sensitive data from Key Vault)
+param secretEnvironmentVariables = [
+  {
+    name: 'MASTER_ENCRYPTION_KEY'
+    secretRef: 'encryption-key'
   }
 ]

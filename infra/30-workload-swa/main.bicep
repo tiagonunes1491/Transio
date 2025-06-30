@@ -125,6 +125,9 @@ param keyVaultName string
 @description('Cosmos DB database name for scoped RBAC assignment')
 param cosmosDatabaseName string = 'swa-dev'
 
+@description('Cosmos DB container name for application configuration')
+param cosmosContainerName string = 'secrets'
+
 // ========== EXISTING RESOURCE REFERENCES ==========
 
 // Reference existing shared resources
@@ -137,7 +140,7 @@ resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existi
 }
 
 // Reference existing Key Vault resource
-resource akv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+resource kv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
 }
 
@@ -260,7 +263,7 @@ module acrRbac '../modules/identity/rbacAcr.bicep' = {
 module keyVaultRbac '../modules/identity/rbacKv.bicep' = {
   name: 'keyVaultRbac'
   params: {
-    keyVaultId: akv.id
+    keyVaultId: kv.id
     principalId: uami.outputs.uamis[0].principalId
     roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
   }
@@ -281,11 +284,19 @@ module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
 
 // ========== CONTAINER APP DEPLOYMENT ==========
 
-// Dynamically add AZURE_CLIENT_ID to environment variables
+// Dynamically add AZURE_CLIENT_ID and Cosmos DB configuration to environment variables
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'AZURE_CLIENT_ID'
     value: uami.outputs.uamis[0].clientId
+  }
+  {
+    name: 'COSMOS_DATABASE_NAME'
+    value: cosmosDatabaseName
+  }
+  {
+    name: 'COSMOS_CONTAINER_NAME'
+    value: cosmosContainerName
   }
 ])
 

@@ -160,7 +160,7 @@ The `infra/main.bicep` file defines all Azure resources. Key components include:
 
 * **Azure Resource Group**: A container for all resources (e.g., `rg-secure-secret-sharer-dev`).
 * **Azure Container Registry (ACR)**.
-* **Azure Key Vault (AKV)**.
+* **Azure Key Vault (KV)**.
 * **User Assigned Managed Identities (UAMIs)**:
     * One for the backend application to access Key Vault.
     * One for the database init container to access Key Vault.

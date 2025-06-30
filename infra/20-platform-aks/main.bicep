@@ -109,21 +109,13 @@ param cosmosDbConfig array
 @description('Enable Cosmos DB free tier - not supported on internal/enterprise subscriptions')
 param cosmosEnableFreeTier bool = false
 
-// ========== KEY VAULT PARAMETERS ==========
+// ========== EXTERNAL KEY VAULT REFERENCE ==========
 
-@description('Key Vault SKU tier - standard or premium')
-@allowed([ 'standard', 'premium' ])
-param akvSku string = 'standard'
+@description('Name of the existing Key Vault created by the bootstrap deployment')
+param existingKeyVaultName string
 
-@description('Enable RBAC on Key Vault for access control')
-param akvRbac bool = true
-
-@description('Enable purge protection on Key Vault for security')
-param akvPurgeProtection bool = true
-
-@description('Secrets to store in Key Vault')
-@secure()
-param akvSecrets object
+@description('Resource group name where the existing Key Vault is located')
+param existingKeyVaultResourceGroup string = resourceGroup().name
 
 // AKS VNET RULES
 
@@ -315,16 +307,7 @@ module vnetNamingModule '../modules/shared/naming.bicep' = {
   }
 }
 
-module akvNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
-  name: 'akv-naming'
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'kv'
-  }
-}
+
 
 module peNsgNamingModule '../modules/shared/naming.bicep' = {
   scope: subscription()
@@ -485,18 +468,11 @@ module network '../modules/networking/network.bicep' = {
 
 // ========== KEY VAULT DEPLOYMENT ==========
 
-module akv '../modules/security/keyvault.bicep' = {
-  name:  'keyvault'
-  params: {
-    keyvaultName:            akvNamingModule.outputs.resourceName
-    location:                resourceLocation
-    sku:                     akvSku
-    tenantId:                tenantId
-    enableRbac:              akvRbac
-    enablePurgeProtection:   akvPurgeProtection
-    secretsToSet:            akvSecrets
-    tags:                    standardTagsModule.outputs.tags
-  }
+// ========== EXISTING KEY VAULT REFERENCE ==========
+
+resource existingKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
+  name: existingKeyVaultName
+  scope: resourceGroup(existingKeyVaultResourceGroup)
 }
 
 // ========== KEY VAULT PRIVATE ENDPOINT ==========
@@ -513,11 +489,11 @@ module kvDns '../modules/networking/private-dns-zone.bicep' = {
 module kvPe '../modules/networking/private-endpoint.bicep' = {
   name:  'kvPrivateEndpoint'
   params: {
-    privateEndpointName:         'pe-${akv.outputs.keyvaultName}'
+    privateEndpointName:         'pe-${existingKeyVault.name}'
     privateEndpointLocation:     resourceLocation
     privateEndpointSubnetId:     network.outputs.subnetIds[2]
     privateEndpointGroupId:      'vault'
-    privateEndpointServiceId:    akv.outputs.keyvaultId
+    privateEndpointServiceId:    existingKeyVault.id
     privateEndpointTags:         standardTagsModule.outputs.tags
     privateDnsZoneIds:           [ kvDns.outputs.privateDnsZoneId ]
   }
@@ -682,7 +658,7 @@ module federationConfigs '../modules/identity/k8s-federation.bicep' = [
 module rbacKv '../modules/identity/rbacKv.bicep' = {
   name: 'rbac-kv'
   params: {
-    keyVaultId: akv.outputs.keyvaultId
+    keyVaultId: existingKeyVault.id
     principalId: uami.outputs.uamis[0].principalId
     roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
   }
@@ -793,7 +769,8 @@ module rbacVnetAgic '../modules/identity/rbacVnet.bicep' = {
 output acrLoginServer string = acr.outputs.acrLoginServer
 output acrName string = acr.name
 output aksName string = aks.outputs.aksName
-output keyvaultName string = akv.outputs.keyvaultName
+output keyvaultName string = existingKeyVault.name
+output keyvaultUri string = existingKeyVault.properties.vaultUri
 output appGwPublicIp string = appGw.outputs.publicIpAddress
 output backendUamiClientId string = uami.outputs.uamis[0].clientId  // Backend UAMI
 output backendK8sServiceAccountName string = managedIdentities[0].federation.k8sServiceAccountName

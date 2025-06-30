@@ -90,7 +90,7 @@ param enablePurgeProtection bool = true
 @secure()
 param secretsToSet object = {}
 
-resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
+resource kv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   name: keyvaultName
   location: location
   tags: tags
@@ -122,7 +122,7 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
 
 resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = [
   for secret in items(secretsToSet): {
-    parent: akv
+    parent: kv
     name: secret.key
     properties: {
       value: string(secret.value.value)
@@ -134,6 +134,6 @@ resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = [
   }
 ]
 
-output keyvaultId string = akv.id
-output keyvaultName string = akv.name
-output keyvaultUri string = akv.properties.vaultUri
+output keyvaultId string = kv.id
+output keyvaultName string = kv.name
+output keyvaultUri string = kv.properties.vaultUri
