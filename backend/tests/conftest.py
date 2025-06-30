@@ -12,7 +12,12 @@ if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
 # Set up test environment variables before importing the app
-os.environ['MASTER_ENCRYPTION_KEY'] = Fernet.generate_key().decode()
+# Generate two keys for MultiFernet testing
+current_key = Fernet.generate_key().decode()
+previous_key = Fernet.generate_key().decode()
+
+os.environ['MASTER_ENCRYPTION_KEY'] = current_key
+os.environ['MASTER_ENCRYPTION_KEY_PREVIOUS'] = previous_key
 os.environ['FLASK_DEBUG'] = 'False'
 os.environ['MAX_SECRET_LENGTH_KB'] = '100'
 os.environ['SECRET_EXPIRY_MINUTES'] = '60'
@@ -187,6 +192,34 @@ def app_context(mock_cosmos_container):
 def sample_secret():
     """Provide a sample secret for testing."""
     return "This is a test secret message"
+
+
+@pytest.fixture
+def single_key_environment():
+    """Set up environment with only current key for testing backward compatibility."""
+    with patch.dict(os.environ, {
+        'MASTER_ENCRYPTION_KEY': Fernet.generate_key().decode()
+    }, clear=False):
+        # Remove previous key if it exists
+        if 'MASTER_ENCRYPTION_KEY_PREVIOUS' in os.environ:
+            del os.environ['MASTER_ENCRYPTION_KEY_PREVIOUS']
+        yield
+
+
+@pytest.fixture
+def key_rotation_environment():
+    """Set up environment with both current and previous keys for testing key rotation."""
+    current_key = Fernet.generate_key().decode()
+    previous_key = Fernet.generate_key().decode()
+    
+    with patch.dict(os.environ, {
+        'MASTER_ENCRYPTION_KEY': current_key,
+        'MASTER_ENCRYPTION_KEY_PREVIOUS': previous_key
+    }, clear=False):
+        yield {
+            'current': current_key,
+            'previous': previous_key
+        }
 
 
 @pytest.fixture

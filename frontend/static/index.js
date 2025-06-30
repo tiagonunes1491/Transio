@@ -300,6 +300,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }
     });
+
+    // Initialize E2EE state if checkbox is checked by default
+    if (e2eeCheckbox.checked) {
+      passphraseContainer.classList.remove('hidden');
+      // Generate initial passphrase if input is empty
+      if (passphraseInput && !passphraseInput.value.trim()) {
+        // Ensure wordlist is loaded before generating passphrase
+        wordlistReady.then(async () => {
+          try {
+            passphraseInput.value = 'Generating passphrase...';
+            updateStrengthMeter('');
+            passphraseInput.value = await generatePassphrase();
+            updateStrengthMeter(passphraseInput.value);
+          } catch (error) {
+            console.error('Failed to generate initial passphrase:', error);
+            passphraseInput.value = 'Error loading wordlist';
+            updateStrengthMeter('');
+          }
+        }).catch(error => {
+          console.error('Wordlist not available for initial passphrase:', error);
+          passphraseInput.value = 'Wordlist loading...';
+          updateStrengthMeter('');
+        });
+      }
+    }
   }
 
   // Regenerate passphrase button functionality
@@ -418,11 +443,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           secretLinkInput.value = secretLink;
           secretInput.value = ''; // Clear input after successful creation
           
-          // Clear E2EE form if used
-          e2eeCheckbox.checked = false;
-          passphraseContainer.classList.add('hidden');
-          passphraseInput.value = '';
-          updateStrengthMeter('');
+          // Reset E2EE form with new passphrase for next secret
+          if (e2eeCheckbox.checked) {
+            try {
+              passphraseInput.value = 'Generating passphrase...';
+              updateStrengthMeter('');
+              passphraseInput.value = await generatePassphrase();
+              updateStrengthMeter(passphraseInput.value);
+            } catch (error) {
+              console.error('Failed to generate new passphrase:', error);
+              passphraseInput.value = 'Error generating passphrase';
+              updateStrengthMeter('');
+            }
+          }
           
           resultArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
           updateHistoryUI(true); // Mark as new link for animation
