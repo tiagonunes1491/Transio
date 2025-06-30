@@ -7,7 +7,7 @@
       onload="this.rel='stylesheet'"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&amp;family=Open+Sans:wght@400;700&amp;display=swap"
     />
-    <title>SecureSharer - Share Secrets Securely &amp; Anonymously</title>
+    <title>Transio Secrets - Share Secrets Securely &amp; Anonymously</title>
     <link rel="icon" type="image/png" href="logo.png" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link rel="stylesheet" href="shared.css" />
@@ -23,12 +23,12 @@
           class="header-custom flex items-center justify-between whitespace-nowrap px-4 sm:px-10 py-3 shadow-lg"
         >
           <div class="flex items-center gap-4">
-            <img src="logo.png" alt="SecureSharer Logo" class="h-8 w-auto drop-shadow-lg" />
+            <img src="logo.png" alt="Transio Secrets Logo" class="h-8 w-auto drop-shadow-lg" />
             <h2
               class="text-lg font-bold leading-tight tracking-[-0.015em] drop-shadow-md"
               style="font-family: var(--font-heading); color: var(--text-color-light)"
             >
-              SecureSharer
+              Transio Secrets
             </h2>
           </div>
           <div class="flex flex-1 justify-end items-center gap-6 sm:gap-8">
@@ -71,13 +71,11 @@
                     <h1
                       class="hero-title-custom text-4xl sm:text-5xl font-black leading-tight tracking-[-0.033em] @[480px]:text-5xl @[480px]:font-black @[480px]:leading-tight @[480px]:tracking-[-0.033em]"
                     >
-                      Effortless Security for Your Valuable Data.
-                    </h1>
+                      Data in Motion, Worries at Rest.                    </h1>
                     <h2
                       class="hero-subtitle-custom text-sm sm:text-base font-normal leading-relaxed @[480px]:text-base @[480px]:font-normal @[480px]:leading-normal max-w-2xl mx-auto"
                     >
-                      Create self-destructing notes for your sensitive information. Share passwords,
-                      confidential data, or private messages with peace of mind.
+                      One click to share sensitive data. One view to destroy it. Total control - no hassle.
                     </h2>
                   </div>
                   <div
@@ -85,15 +83,15 @@
                     class="create-section-custom my-12 md:my-16 lg:my-20 flex flex-col items-center px-4 sm:px-6 md:px-8 py-10 w-full max-w-[700px] mx-auto"
                   >
                     <h3 class="text-2xl md:text-3xl font-bold mb-3 text-center">
-                      Compose Your Secure Note
+                      Share Your Secret
                     </h3>
                     <p
                       class="text-sm md:text-base mb-6 text-center max-w-md"
                       style="color: var(--text-color-subtle)"
                     >
-                      Your message is encrypted and vanishes after one view. Generate a unique,
-                      one-time access link instantly.
+                      One view destroys your note - no trace left behind.
                     </p>
+                    
                     <div class="flex flex-col min-w-40 h-16 md:h-20 w-full max-w-[600px]">
                       <div class="flex w-full flex-1 items-stretch rounded-xl h-full">
                         <div
@@ -140,11 +138,78 @@
                             id="mainCreateLinkButton"
                             class="main-create-button-custom flex min-w-[100px] md:min-w-[120px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 md:h-14 px-5 md:px-6 text-base md:text-lg font-bold leading-normal tracking-[0.015em] btn-glow"
                           >
-                            <span class="truncate">Create Link</span>
+                            <span class="truncate">Share now</span>
                           </button>
                         </div>
                       </div>
                     </div>
+                    
+                    <!-- E2EE Encryption Option -->
+                    <div class="flex flex-col items-center gap-3 mt-4 w-full max-w-[600px]">
+                      <div class="flex items-center gap-3">                <input 
+                  type="checkbox" 
+                  id="e2eeCheckbox" 
+                  checked
+                  class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                        <label for="e2eeCheckbox" class="text-sm font-medium cursor-pointer select-none" style="color: var(--text-color-dark);">
+                          End-to-End Encryption with passphrase
+                        </label>
+                      </div>
+                      <div id="passphraseContainer" class="w-full max-w-[400px] hidden">
+                        <div class="flex gap-2">
+                          <input
+                            type="text"
+                            id="passphraseInput"
+                            placeholder="Auto-generated passphrase"
+                            class="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            style="background-color: var(--accent-color-white);"
+                          />
+                          <button
+                            type="button"
+                            id="regeneratePassphraseBtn"
+                            class="flex min-w-[120px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 text-white text-sm font-bold leading-normal tracking-[0.015em] btn-glow"
+                            title="Generate new passphrase"
+                            style="background-color: var(--secondary-color);"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" class="mr-2">
+                              <path d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,1-.26.25L44.59,96H72a8,8,0,0,1,0,16H24a8,8,0,0,1-8-8V56a8,8,0,0,1,16,0V85.8L60.25,60A96,96,0,0,1,224,128Z"></path>
+                            </svg>
+                            <span class="truncate">Generate</span>
+                          </button>
+                          <button
+                            type="button"
+                            id="copyPassphraseButton"
+                            class="flex items-center justify-center w-10 h-10 rounded-md text-white transition-all duration-300 p-2 border btn-glow"
+                            title="Copy passphrase to clipboard"
+                            style="
+                              background-color: var(--text-color-subtle);
+                              border-color: transparent;
+                            "
+                          >
+                            <span class="sr-only">Copy passphrase to clipboard</span>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              fill="currentColor"
+                              viewBox="0 0 256 256"
+                            >
+                              <path
+                                d="M216,32H88a8,8,0,0,0-8,8V80H40a8,8,0,0,0-8,8V216a8,8,0,0,0,8,8H168a8,8,0,0,0,8-8V176h40a8,8,0,0,0,8-8V40A8,8,0,0,0,216,32ZM160,208H48V96H80v72a8,8,0,0,0,8,8h72Zm48-48H96V48H208Z"
+                              ></path>
+                            </svg>
+                          </button>
+                        </div>
+                        <div id="strengthMeter" class="mt-2 text-xs" style="color: var(--text-color-subtle);">
+                          Pass-phrase strength: <span id="strengthLabel">-</span>
+                        </div>
+                        <p class="text-xs mt-1 text-center" style="color: var(--text-color-subtle);">
+                          This passphrase will be required to decrypt your secret
+                        </p>
+                      </div>
+                    </div>
+                    
                     <div
                       id="resultArea"
                       class="result-area-custom hidden mt-6 p-4 rounded-xl max-w-[600px] w-full shadow-xl"
@@ -224,7 +289,7 @@
             >
               <div class="px-4 sm:px-6 md:px-8 py-8 md:py-12">
                 <h2 class="text-[32px] font-bold mb-4" style="color: var(--primary-color)">
-                  Why use SecureSharer?
+                  Why use Transio Secrets?
                 </h2>
                 <p
                   class="text-base md:text-lg mt-2 mb-10 max-w-2xl mx-auto leading-relaxed"
@@ -310,7 +375,7 @@
             >
               <div class="px-4 sm:px-6 md:px-8 py-8 md:py-12">
                 <h2 class="text-[32px] font-bold mb-4" style="color: var(--primary-color)">
-                  How SecureSharer Works
+                  How Transio Secrets Works
                 </h2>
                 <p
                   class="text-base md:text-lg mt-2 mb-10 max-w-2xl mx-auto leading-relaxed"
@@ -496,7 +561,7 @@
             </a>
           </div>
           <p class="text-sm font-normal leading-normal" style="color: var(--text-color-subtle)">
-            &copy; 2025 SecureSharer. All rights reserved. Built for privacy.
+            &copy; 2025 Transio Secrets. All rights reserved. Built for privacy.
           </p>
         </footer>
       </div>
@@ -522,6 +587,7 @@
       </svg>
       <span class="whitespace-nowrap">Create your secret!</span>
     </button>
+    <script src="https://cdn.jsdelivr.net/npm/argon2-browser@1.18.0/dist/argon2-bundled.min.js"></script>
     <script src="utils.js"></script>
     <script src="index.js"></script>
   </body>

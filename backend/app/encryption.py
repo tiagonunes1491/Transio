@@ -1,42 +1,52 @@
 # backend/app/encryption.py
 import logging
-from cryptography.fernet import Fernet, InvalidToken
+from cryptography.fernet import Fernet, MultiFernet, InvalidToken
 from config import Config
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)
 
-# Initialize Fernet with the master key from config
+# Initialize MultiFernet with the master keys from config
 cipher_suite = None
 
 try:
-    # Initialize the Fernet cipher suite with the key from configuration
-    cipher_suite = Fernet(Config.MASTER_ENCRYPTION_KEY_BYTES)
-    logger.info("Encryption suite initialized successfully.")
+    # Initialize the MultiFernet cipher suite with keys from configuration
+    if len(Config.MASTER_ENCRYPTION_KEYS) == 1:
+        # Single key - use regular Fernet
+        cipher_suite = Fernet(Config.MASTER_ENCRYPTION_KEYS[0])
+        logger.info("Encryption suite initialized with single key.")
+    else:
+        # Multiple keys - use MultiFernet for key rotation support
+        fernets = [Fernet(key) for key in Config.MASTER_ENCRYPTION_KEYS]
+        cipher_suite = MultiFernet(fernets)
+        logger.info(f"Encryption suite initialized with {len(Config.MASTER_ENCRYPTION_KEYS)} keys for rotation support.")
 except AttributeError:
-    # This happens if MASTER_ENCRYPTION_KEY_BYTES doesn't exist in Config
+    # This happens if MASTER_ENCRYPTION_KEYS doesn't exist in Config
     logger.critical(
-        "Encryption key (MASTER_ENCRYPTION_KEY_BYTES) is not initialized in config."
+        "Encryption keys (MASTER_ENCRYPTION_KEYS) are not initialized in config."
     )
     raise SystemExit(
-        "Failed to initialize encryption suite: Master encryption key is missing."
+        "Failed to initialize encryption suite: Master encryption keys are missing."
     )
 except ValueError as ve:
-    # This error occurs if the key is not a valid Fernet key
-    logger.critical(f"Error initializing Fernet cipher due to an invalid key: {ve}")
+    # This error occurs if any key is not a valid Fernet key
+    logger.critical(f"Error initializing Fernet cipher due to invalid key(s): {ve}")
     raise SystemExit(
-        f"Failed to initialize encryption suite: Invalid master key ({ve})."
+        f"Failed to initialize encryption suite: Invalid master key(s) ({ve})."
     )
 except Exception as e:
     # Catch any other unexpected errors during Fernet initialization
-    logger.critical(f"An unexpected error occurred during Fernet initialization: {e}")
+    logger.critical(f"An unexpected error occurred during encryption suite initialization: {e}")
     raise SystemExit(
-        "Failed to initialize encryption suite due to an unexpected error with the master key."
+        "Failed to initialize encryption suite due to an unexpected error with the master key(s)."
     )
 
 
 def encrypt_secret(secret_text: str) -> bytes:
-    """Encrypts a text secret."""
+    """
+    Encrypts a text secret using MultiFernet.
+    MultiFernet always uses the first key (most recent) for encryption.
+    """
     if (
         not cipher_suite
     ):  # Should not happen if SystemExit was raised, but as a safeguard
@@ -60,8 +70,9 @@ def encrypt_secret(secret_text: str) -> bytes:
 
 def decrypt_secret(encrypted_token: bytes) -> str | None:
     """
-    Decrypts an encrypted token back to text.
-    Returns None if decryption fails (e.g., invalid token, wrong key, corrupted data).
+    Decrypts an encrypted token back to text using MultiFernet.
+    MultiFernet will try each key in order until one successfully decrypts the data.
+    Returns None if decryption fails with all available keys.
     """
     if not cipher_suite:  # Safeguard
         logger.critical(
@@ -78,10 +89,10 @@ def decrypt_secret(encrypted_token: bytes) -> str | None:
         return decrypted_text_bytes.decode("utf-8")  # Decode bytes back to string
     except InvalidToken:
         # This is an expected exception if the token is tampered with, incorrect,
-        # or if the wrong key was used (e.g., key changed after encryption).
+        # or if none of the available keys can decrypt it (e.g., encrypted with a very old key).
         # For security, log this attempt but don't reveal specifics to the client.
         logger.warning(
-            "Decryption failed: Invalid token or key. This could indicate tampering or an old link."
+            "Decryption failed: Invalid token or no valid key found. This could indicate tampering, corruption, or an expired link."
         )
         return None
     except Exception as e:

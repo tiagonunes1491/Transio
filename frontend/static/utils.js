@@ -1,4 +1,4 @@
-/* utils.js - Shared utility functions for SecureSharer */
+/* utils.js - Shared utility functions for Transio Secrets */
 /* exported copyToClipboard, truncateLink, formatDate, copyToClipboardFallback, showManualCopyDialog, showCopySuccess, escapeHTML */
 /**
  * Copy text to clipboard with visual feedback and fallbacks for HTTP environments

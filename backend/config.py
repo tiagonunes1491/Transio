@@ -25,6 +25,8 @@ else:
 
 class Config:
     MASTER_ENCRYPTION_KEY = os.getenv("MASTER_ENCRYPTION_KEY")
+    MASTER_ENCRYPTION_KEY_PREVIOUS = os.getenv("MASTER_ENCRYPTION_KEY_PREVIOUS")
+    
     FLASK_APP = os.getenv("FLASK_APP", "app/main.py")  # Default value if not in .env
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "True").lower() in (
         "true",
@@ -65,15 +67,34 @@ class Config:
             "MASTER_ENCRYPTION_KEY not set. Please set it in .env file or environment."
         )
 
-    # Ensure the key is bytes for Fernet and validate it's a proper Fernet key
+    # Collect all available keys for MultiFernet
+    encryption_keys = []
+    
+    # Ensure the current key is bytes for Fernet and validate it's a proper Fernet key
     try:
-        MASTER_ENCRYPTION_KEY_BYTES = MASTER_ENCRYPTION_KEY.encode("utf-8")
+        current_key_bytes = MASTER_ENCRYPTION_KEY.encode("utf-8")
         # Test if it's a valid Fernet key by attempting to initialize a Fernet instance
-        Fernet(MASTER_ENCRYPTION_KEY_BYTES)  # This will raise if invalid
+        Fernet(current_key_bytes)  # This will raise if invalid
+        encryption_keys.append(current_key_bytes)
     except Exception as e:
         # Log the error and re-raise with a clearer message
         logging.error(f"Invalid MASTER_ENCRYPTION_KEY: {e}")
         raise ValueError(f"Invalid MASTER_ENCRYPTION_KEY: {e}")
+    
+    # Add previous key if available
+    if MASTER_ENCRYPTION_KEY_PREVIOUS:
+        try:
+            previous_key_bytes = MASTER_ENCRYPTION_KEY_PREVIOUS.encode("utf-8")
+            # Test if it's a valid Fernet key
+            Fernet(previous_key_bytes)  # This will raise if invalid
+            encryption_keys.append(previous_key_bytes)
+            logging.info("Previous encryption key loaded successfully for key rotation support.")
+        except Exception as e:
+            # Log the error but don't fail - previous key is optional
+            logging.warning(f"Invalid MASTER_ENCRYPTION_KEY_PREVIOUS (ignoring): {e}")
+    
+    # Store the validated keys for use by encryption module
+    MASTER_ENCRYPTION_KEYS = encryption_keys
 
 
 # You can add other configuration variables here as needed
