@@ -28,13 +28,9 @@ param acaEnvironmentName = 'ss-d-swa-cae'
 // Application configuration
 param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
 
-// Key Vault secrets configuration (only sensitive data)
-param keyVaultSecrets = [
-  {
-    name: 'encryption-key'
-    keyVaultUrl: 'https://ssdswakv.vault.azure.net/secrets/encryption-key' // Note: In future deployments, this should be updated when the Key Vault name changes
-  }
-]
+// Key Vault secrets configuration (simplified approach with direct secret URIs)
+param encryptionKeyUri = 'https://ssdswakv.vault.azure.net/secrets/encryption-key'
+param encryptionKeyPreviousUri = 'https://ssdswakv.vault.azure.net/secrets/encryption-key' // Note: Update with specific version when using previous revision
 
 // Environment variables (including non-sensitive configuration)
 param environmentVariables = [  
@@ -69,13 +65,5 @@ param environmentVariables = [
   {
     name: 'COSMOS_ENDPOINT'
     value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
-  }
-]
-
-// Secret environment variables (only sensitive data from Key Vault)
-param secretEnvironmentVariables = [
-  {
-    name: 'MASTER_ENCRYPTION_KEY'
-    secretRef: 'encryption-key'
   }
 ]

@@ -159,14 +159,14 @@ resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
 @description('Full container image reference including registry and tag for backend deployment')
 param containerImage string
 
-@description('Array of Key Vault secret references for secure application configuration')
-param keyVaultSecrets array = []
+@description('Key Vault URI for the current encryption key')
+param encryptionKeyUri string
+
+@description('Key Vault URI for the previous encryption key (for key rotation support)')
+param encryptionKeyPreviousUri string
 
 @description('Environment variables for the Container App')
 param environmentVariables array = []
-
-@description('Secret environment variables for the Container App')
-param secretEnvironmentVariables array = []
 
 /*
  * =============================================================================
@@ -284,7 +284,7 @@ module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
 
 // ========== CONTAINER APP DEPLOYMENT ==========
 
-// Dynamically add AZURE_CLIENT_ID and Cosmos DB configuration to environment variables
+// Dynamically add AZURE_CLIENT_ID and secret environment variables to environment variables
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'AZURE_CLIENT_ID'
@@ -297,6 +297,14 @@ var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'COSMOS_CONTAINER_NAME'
     value: cosmosContainerName
+  }
+  {
+    name: 'MASTER_ENCRYPTION_KEY'
+    secretRef: 'encryption-key'
+  }
+  {
+    name: 'MASTER_ENCRYPTION_KEY_PREVIOUS'
+    secretRef: 'encryption-key-previous'
   }
 ])
 
@@ -314,11 +322,18 @@ module containerApp '../modules/container/container-app.bicep' = {
         '${uami.outputs.uamis[0].id}': {}
       }
     }
-    secrets: [for secret in keyVaultSecrets: {
-      name: secret.name
-      keyVaultUrl: secret.keyVaultUrl
-      identity: uami.outputs.uamis[0].id
-    }]
+    secrets: [
+      {
+        name: 'encryption-key'
+        keyVaultUrl: encryptionKeyUri
+        identity: uami.outputs.uamis[0].id
+      }
+      {
+        name: 'encryption-key-previous'
+        keyVaultUrl: encryptionKeyPreviousUri
+        identity: uami.outputs.uamis[0].id
+      }
+    ]
     registries: [
       {
         server: split(containerImage, '/')[0] // Extract ACR server from image
@@ -326,7 +341,6 @@ module containerApp '../modules/container/container-app.bicep' = {
       }
     ]
     environmentVariables: containerAppEnvironmentVariables
-    secretEnvironmentVariables: secretEnvironmentVariables
     targetPort: 5000 // Flask app runs on port 5000
     externalIngress: true // Enable external access
     enableIngress: true
