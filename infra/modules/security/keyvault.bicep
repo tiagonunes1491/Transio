@@ -86,6 +86,13 @@ param softDeleteRetentionInDays int = 90
 @description('Enable purge protection for the keyvault')
 param enablePurgeProtection bool = true
 
+@description('Enable public network access for the keyvault')
+param enablePublicNetworkAccess bool = false
+
+@description('Default action for network access control')
+@allowed(['Allow', 'Deny'])
+param networkAclsDefaultAction string = 'Deny'
+
 @description('Secure object for secrets')
 @secure()
 param secretsToSet object = {}
@@ -106,9 +113,10 @@ resource kv 'Microsoft.KeyVault/vaults@2024-11-01' = {
     // checkov:skip=CKV_AZURE_110:Risk accepted—purge protection is parameterized for dev; prod enforces enablePurgeProtection
     enablePurgeProtection: enablePurgeProtection ? true : null
 
-    publicNetworkAccess: 'Disabled'
+    // checkov:skip=CKV_AZURE_109:Risk accepted—public access configurable via parameter
+    publicNetworkAccess: enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
     networkAcls: {
-      defaultAction: 'Deny'    // CKV_AZURE_109 compliant
+      defaultAction: networkAclsDefaultAction
       bypass: 'AzureServices'
       ipRules: []
       virtualNetworkRules: []

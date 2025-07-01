@@ -38,7 +38,15 @@
  * • Platform-Specific: Each platform + environment combination gets its own Key Vault
  * • Secret Management: No secrets created during deployment - handled in separate step
  * • Access Control: RBAC-based access for platform managed identities
- * • Network Security: Supports private endpoint connectivity from platform
+ * • Network Security: SECURE BY DEFAULT - private endpoint only, public access disabled
+ * • Development Override: Public access can be explicitly enabled via parameters for dev environments
+ * 
+ * SECURITY DEFAULTS:
+ * • Public Network Access: DISABLED by default
+ * • Network ACLs: DENY all by default (private endpoint access only)
+ * • RBAC Authorization: ENABLED by default
+ * • Purge Protection: ENABLED by default
+ * • Soft Delete: ENABLED by default (90-day retention)
  * 
  * USAGE PATTERN:
  * 1. Deploy this bootstrap Key Vault for specific platform + environment
@@ -99,6 +107,13 @@ param kvRbac bool = true
 @description('Enable purge protection on Key Vault for security')
 param kvPurgeProtection bool = true
 
+@description('Enable public network access for Key Vault - SECURE BY DEFAULT: disabled for production security')
+param kvEnablePublicNetworkAccess bool = false
+
+@description('Default action for Key Vault network access control - SECURE BY DEFAULT: deny all except private endpoints')
+@allowed(['Allow', 'Deny'])
+param kvNetworkAclsDefaultAction string = 'Deny'
+
 /*
  * =============================================================================
  * RESOURCE NAMING AND TAGGING MODULES
@@ -145,14 +160,16 @@ module kvNamingModule '../modules/shared/naming.bicep' = {
 module kv '../modules/security/keyvault.bicep' = {
   name: 'bootstrap-keyvault'
   params: {
-    keyvaultName:            kvNamingModule.outputs.resourceName
-    location:                resourceLocation
-    sku:                     kvSku
-    tenantId:                tenantId
-    enableRbac:              kvRbac
-    enablePurgeProtection:   kvPurgeProtection
-    secretsToSet:            {} // No secrets created during bootstrap deployment
-    tags:                    standardTagsModule.outputs.tags
+    keyvaultName:                kvNamingModule.outputs.resourceName
+    location:                    resourceLocation
+    sku:                         kvSku
+    tenantId:                    tenantId
+    enableRbac:                  kvRbac
+    enablePurgeProtection:       kvPurgeProtection
+    enablePublicNetworkAccess:   kvEnablePublicNetworkAccess
+    networkAclsDefaultAction:    kvNetworkAclsDefaultAction
+    secretsToSet:                {} // No secrets created during bootstrap deployment
+    tags:                        standardTagsModule.outputs.tags
   }
 }
 

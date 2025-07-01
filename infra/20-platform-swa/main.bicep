@@ -123,9 +123,6 @@ param cosmosEnableFreeTier bool = false
 @description('Name of the existing Key Vault created by the bootstrap deployment')
 param existingKeyVaultName string
 
-@description('Resource group name where the existing Key Vault is located')
-param existingKeyVaultResourceGroup string = resourceGroup().name
-
 
 
 /*
@@ -287,7 +284,6 @@ module cosmosNamingModule '../modules/shared/naming.bicep' = {
 
 resource existingKeyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: existingKeyVaultName
-  scope: resourceGroup(existingKeyVaultResourceGroup)
 }
 
 // ========== KEY VAULT PRIVATE ENDPOINT ==========
