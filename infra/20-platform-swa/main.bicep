@@ -405,6 +405,7 @@ module acaEnv '../modules/container/aca-environment.bicep' = {
     acaEnvironmentTags: standardTagsModule.outputs.tags
     workspaceId: workspace.outputs.workspaceId
     acaEnvironmentSubnetId: network.outputs.subnetIds[0]
+    isInternal: false // Set to external for Static Web App backend linking
   }
 }
 
@@ -534,3 +535,9 @@ output cosmosDbAccountName string = cosmosDb.outputs.cosmosDbAccountName
 
 @description('Array of created Cosmos DB databases with configuration details')
 output cosmosDbDatabases array = cosmosDb.outputs.databases
+
+@description('Primary Cosmos DB database name for application configuration')
+output cosmosDbDatabaseName string = cosmosDb.outputs.databases[0].name
+
+@description('Primary Cosmos DB container name for application configuration')
+output cosmosDbContainerName string = cosmosDb.outputs.databases[0].containers[0].name

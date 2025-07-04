@@ -67,3 +67,6 @@ param environmentVariables = [
     value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
   }
 ]
+
+// Container App ingress configuration
+param useExternalIngress = true

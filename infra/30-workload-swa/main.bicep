@@ -168,6 +168,9 @@ param encryptionKeyPreviousUri string
 @description('Environment variables for the Container App')
 param environmentVariables array = []
 
+@description('Whether to enable external ingress for Container App (required for SWA backend linking)')
+param useExternalIngress bool = true
+
 /*
  * =============================================================================
  * RESOURCE NAMING MODULES
@@ -342,7 +345,7 @@ module containerApp '../modules/container/container-app.bicep' = {
     ]
     environmentVariables: containerAppEnvironmentVariables
     targetPort: 5000 // Flask app runs on port 5000
-    externalIngress: true // Enable external access
+    externalIngress: useExternalIngress // Enable external access based on parameter
     enableIngress: true
     ingressTransport: 'auto'
   }

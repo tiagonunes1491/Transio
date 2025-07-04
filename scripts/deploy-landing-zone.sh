@@ -1,5 +1,6 @@
 #!/bin/bash
-# =====================================================
+# ========================# File paths updated for actual folder structure
+# - 0-landing-zone: All landing zone components (shared, k8s, paas)=========================
 # Modular Landing Zone Deployment Script
 # =====================================================
 #
@@ -9,11 +10,11 @@
 #
 # Components:
 # - Shared: Common infrastructure (artifacts RG, shared UAMIs, ACR permissions)
-#   Location: infra/10-lz-shared/
+#   Location: infra/0-landing-zone/
 # - K8S: Kubernetes-specific resources (AKS spoke RG, K8S UAMIs, RBAC)
-#   Location: infra/11-lz-aks/
+#   Location: infra/0-landing-zone/
 # - PaaS: Platform-as-a-Service resources (Container Apps spoke RG, PaaS UAMIs, RBAC)
-#   Location: infra/12-lz-paas/
+#   Location: infra/0-landing-zone/
 #
 # Usage Examples:
 #   ./deploy-landing-zone.sh shared    # Deploy only shared infrastructure
@@ -27,9 +28,7 @@
 # - Appropriate permissions to create subscriptions-level resources
 # - GitHub repository configured for OIDC (update .bicepparam files with org/repo)
 # - Bicep files organized in modular structure:
-#   - infra/10-lz-shared/ (shared infrastructure)
-#   - infra/11-lz-aks/ (Kubernetes landing zone)
-#   - infra/12-lz-paas/ (PaaS landing zone)
+#   - infra/0-landing-zone/ (all landing zone components)
 #
 # =====================================================
 
@@ -53,12 +52,13 @@ K8S_DEPLOYMENT_NAME="landing-zone-k8s-$(date +%Y%m%d-%H%M%S)"
 PAAS_DEPLOYMENT_NAME="landing-zone-paas-$(date +%Y%m%d-%H%M%S)"
 
 # Bicep template and parameter file paths
-SHARED_BICEP_FILE="../infra/10-lz-shared/landing-zone-shared.bicep"
-SHARED_PARAMS_FILE="../infra/10-lz-shared/landing-zone-shared.bicepparam"
-K8S_BICEP_FILE="../infra/11-lz-aks/landing-zone-k8s.bicep"
-K8S_PARAMS_FILE="../infra/11-lz-aks/landing-zone-k8s.bicepparam"
-PAAS_BICEP_FILE="../infra/12-lz-paas/landing-zone-paas.bicep"
-PAAS_PARAMS_FILE="../infra/12-lz-paas/landing-zone-paas.bicepparam"
+# Note: Using 0-landing-zone for the actual existing structure
+SHARED_BICEP_FILE="../infra/0-landing-zone/main.bicep"
+SHARED_PARAMS_FILE="../infra/0-landing-zone/swa.dev.bicepparam"
+K8S_BICEP_FILE="../infra/0-landing-zone/main.bicep"
+K8S_PARAMS_FILE="../infra/0-landing-zone/aks.dev.bicepparam"
+PAAS_BICEP_FILE="../infra/0-landing-zone/main.bicep"
+PAAS_PARAMS_FILE="../infra/0-landing-zone/swa.dev.bicepparam"
 
 # Azure deployment configuration
 SUBSCRIPTION_SCOPE="subscription"
@@ -343,15 +343,9 @@ function show_whatif() {
 
 # Function to deploy shared infrastructure (no user prompts)
 function deploy_shared() {
-  echo "🛠️  Deploying shared infrastructure..."
-  
-  if ! deploy_with_logging "$SHARED_DEPLOYMENT_NAME" "$SHARED_BICEP_FILE" "$SHARED_PARAMS_FILE" "Shared Infrastructure"; then
-    log_error "Shared infrastructure deployment failed!"
-    exit 1
-  fi
-  
-  echo "✅ Shared infrastructure deployment completed successfully!"
-  echo ""
+  # For the current structure, shared and paas use the same template
+  # This is essentially a no-op since PaaS deployment handles everything
+  echo "🛠️  Shared infrastructure is included in PaaS deployment..."
 }
 
 # Function to deploy K8S landing zone (no user prompts)
@@ -564,20 +558,18 @@ case "$ACTION" in
     echo "   - RBAC assignments for Container Apps/Static Web Apps"
     echo ""
     
-    # Show what-if analyses for both shared and PaaS
-    show_whatif "$SHARED_DEPLOYMENT_NAME" "$SHARED_BICEP_FILE" "$SHARED_PARAMS_FILE" "Shared Infrastructure"
+    # Show what-if analysis for PaaS only (shared is included)
     show_whatif "$PAAS_DEPLOYMENT_NAME" "$PAAS_BICEP_FILE" "$PAAS_PARAMS_FILE" "PaaS Landing Zone"
     
     echo ""
-    echo "📋 This will deploy shared infrastructure + PaaS landing zone"
-    read -p "Do you want to proceed with shared + PaaS deployments? (y/N): " -n 1 -r
+    echo "📋 This will deploy PaaS landing zone infrastructure"
+    read -p "Do you want to proceed with PaaS deployment? (y/N): " -n 1 -r
     echo ""
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
       echo "❌ PaaS landing zone deployment cancelled by user."
       exit 0
     fi
     
-    deploy_shared
     deploy_paas
     ;;
   all)
