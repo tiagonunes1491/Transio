@@ -81,7 +81,7 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
     }
     vnetConfiguration: {
       infrastructureSubnetId: acaEnvironmentSubnetId
-      internal: false
+      internal: true
     }
   }
 }
