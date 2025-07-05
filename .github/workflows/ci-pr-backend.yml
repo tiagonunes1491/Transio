@@ -4,7 +4,7 @@ on:
     branches:
       - 'development'
     paths:
-      - 'backend/**'
+      - 'src/backend/**'
 jobs:
   check_changes:
     name: 'Check for file changes'
@@ -23,14 +23,14 @@ jobs:
         id: changed-file-requirements
         with:
           # We tell the action to ONLY look for changes in this specific file.
-          files: backend/requirements.txt
+          files: src/backend/requirements.txt
       
       - uses: tj-actions/changed-files@v44
         id: changed-files-backend
         with:
           # Get all changed Python files in backend directory
           files: |
-            backend/**/*.py
+            src/backend/**/*.py
           # Output the files as a comma-separated list
           separator: ','
 
@@ -39,7 +39,7 @@ jobs:
         with:
           # Get all changed Python files in backend directory
           files: |
-            backend/Dockerfile
+            src/backend/Dockerfile
 
   format_and_lint:
     needs: check_changes
@@ -63,7 +63,7 @@ jobs:
     if: needs.check_changes.outputs.sca_required != ''
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
-      paths: 'backend/requirements.txt'
+      paths: 'src/backend/requirements.txt'
     
   backend_tests:
     needs: check_changes
@@ -73,7 +73,6 @@ jobs:
     with:
       python-version: '3.11'
       coverage-threshold: 90
-      upload-coverage: true
 
   # If any changes that require a new build are detected, run the container build and analysis job
   container_analysis:
@@ -82,9 +81,9 @@ jobs:
     if: needs.check_changes.outputs.sca_required != '' || needs.check_changes.outputs.lint_required != '' || needs.check_changes.outputs.trivy_required != ''  
     uses: ./.github/workflows/reusable-container-scan.yml
     with:
-      path: 'backend/Dockerfile'
+      path: 'src/backend/Dockerfile'
       container-name: 'backend-app'
-      build-context: 'backend'
+      build-context: 'src/backend'
 
   post-comment:
     name: 'Post Validation Results Comment'
@@ -181,5 +180,5 @@ jobs:
 
             No backend files were changed in this PR - validation skipped.
 
-            If you expected backend validation to run, check that changes are in the `backend/` directory with the appropriate file extensions (`.py`, `requirements.txt`, `Dockerfile`).
+            If you expected backend validation to run, check that changes are in the `src/backend/` directory with the appropriate file extensions (`.py`, `requirements.txt`, `Dockerfile`).
           edit-mode: replace

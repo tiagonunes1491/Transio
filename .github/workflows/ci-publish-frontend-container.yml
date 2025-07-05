@@ -4,16 +4,16 @@ on:
         branches: [development]
         paths:
         # --- TRIGGER on changes to these files ---
-        - 'frontend/**/*.html'
-        - 'frontend/**/*.css'
-        - 'frontend/**/*.js'
-        - 'frontend/package.json'
-        - 'frontend/nginx.conf'
-        - 'frontend/Dockerfile'
+        - 'src/frontend/**/*.html'
+        - 'src/frontend/**/*.css'
+        - 'src/frontend/**/*.js'
+        - 'src/frontend/package.json'
+        - 'src/frontend/nginx.conf'
+        - 'src/frontend/Dockerfile'
 
         # --- IGNORE changes in this subdirectory ---
-        - '!frontend/tests/**'
-        - '!frontend/coverage/**'
+        - '!src/frontend/tests/**'
+        - '!src/frontend/coverage/**'
     workflow_dispatch:
 jobs:
   build_and_push_image:
@@ -23,9 +23,9 @@ jobs:
       contents: read    # Required by actions/checkout to read the repo
     uses: ./.github/workflows/reusable-build-push.yml
     with:
-      dockerfile-path: 'frontend/Dockerfile'
+      dockerfile-path: 'src/frontend/Dockerfile'
       image-name: 'frontend-app'
-      build-context: './frontend'
+      build-context: './src/frontend'
       acr-name: ${{ vars.ACR_NAME }}
       environment: shared
     secrets:

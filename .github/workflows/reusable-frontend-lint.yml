@@ -25,14 +25,14 @@ jobs:
         with:
           node-version: ${{ inputs.node-version }}
           cache: 'npm'
-          cache-dependency-path: 'frontend/package.json'
+          cache-dependency-path: 'src/frontend/package.json'
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: src/frontend
         run: npm ci
 
       - name: Install linting dependencies
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           # Install ESLint and Prettier with needed plugins locally
           npm install --no-save eslint prettier eslint-config-standard eslint-plugin-promise eslint-plugin-import eslint-plugin-node html-validate
@@ -62,9 +62,9 @@ jobs:
           
           # Run ESLint only on JavaScript files in static directory (production files)
           for file in "${FILES_ARRAY[@]}"; do
-            if [[ "$file" == frontend/* ]]; then
-              # Remove frontend/ prefix since we're already in frontend directory
-              file_path="${file#frontend/}"
+            if [[ "$file" == src/frontend/* ]]; then
+              # Remove src/frontend/ prefix since we're already in src/frontend directory
+              file_path="${file#src/frontend/}"
               # Only lint JavaScript files in static directory, not config files
               if [[ "$file_path" == static/*.js ]]; then
                 echo "Linting: $file_path"
@@ -86,9 +86,9 @@ jobs:
           
           # Run Prettier check only on production files in static directory
           for file in "${FILES_ARRAY[@]}"; do
-            if [[ "$file" == frontend/* ]]; then
-              # Remove frontend/ prefix since we're already in frontend directory
-              file_path="${file#frontend/}"
+            if [[ "$file" == src/frontend/* ]]; then
+              # Remove src/frontend/ prefix since we're already in src/frontend directory
+              file_path="${file#src/frontend/}"
               # Run Prettier only on production files in static directory
               if [[ "$file_path" == static/*.js || "$file_path" == static/*.css || "$file_path" == static/*.html ]]; then
                 echo "Checking format: $file_path"
