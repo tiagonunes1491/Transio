@@ -189,7 +189,7 @@ class TestEncryptionModuleInitialization:
 
     def test_encryption_module_has_cipher_suite(self):
         """Test that the encryption module properly initialized cipher_suite."""
-        from backend.app import encryption
+        from app import encryption
 
         # The cipher_suite should be initialized if we got here
         assert encryption.cipher_suite is not None

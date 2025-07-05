@@ -73,6 +73,7 @@ def app(mock_cosmos_container):
     """Create a test Flask application using the actual app structure."""
     # Mock Cosmos DB functions before importing app modules
     with patch('app.get_cosmos_container', return_value=mock_cosmos_container), \
+         patch('app.storage.get_cosmos_container', return_value=mock_cosmos_container), \
          patch('app.storage.get_container', return_value=mock_cosmos_container), \
          patch('app.init_cosmos_db', return_value=True):
         
@@ -99,6 +100,7 @@ def app_context(mock_cosmos_container):
     """Provide application context for tests that need it."""
     # Mock Cosmos DB functions before importing app modules
     with patch('app.get_cosmos_container', return_value=mock_cosmos_container), \
+         patch('app.storage.get_cosmos_container', return_value=mock_cosmos_container), \
          patch('app.storage.get_container', return_value=mock_cosmos_container), \
          patch('app.init_cosmos_db', return_value=True):
         
@@ -156,5 +158,6 @@ def encrypted_secret_bytes():
 @pytest.fixture
 def mock_cosmos_session(mock_cosmos_container):
     """Mock Cosmos DB session for testing storage functions."""
-    with patch('app.storage.get_container', return_value=mock_cosmos_container):
+    with patch('app.storage.get_cosmos_container', return_value=mock_cosmos_container), \
+         patch('app.storage.get_container', return_value=mock_cosmos_container):
         yield mock_cosmos_container
