@@ -9,18 +9,38 @@ This directory contains the test suite for Transio backend.
 export MASTER_ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
 # Run all tests with coverage
-../run_tests.sh
+../scripts/run_tests.sh
 
-# Run specific test modules
-python -m pytest tests/test_encryption.py -v
-python -m pytest tests/test_main_module.py -v
+# Run specific test categories
+python -m pytest tests/unit/ -v           # Unit tests only
+python -m pytest tests/security/ -v       # Security tests only
+python -m pytest tests/unit/test_encryption.py -v  # Specific test file
 ```
 
 ## Test Organization
 
-- **Core Tests**: `test_encryption.py`, `test_storage.py`, `test_models.py`, `test_main.py`, `test_main_module.py`
-- **Security Tests**: `test_security.py`, `test_penetration.py`, `test_advanced_pentest.py`, `test_protocol_pentest.py`, `test_comprehensive_owasp.py`, `test_complete_security_coverage.py`
-- **Configuration**: `conftest.py` (fixtures), `pytest.ini` (settings)
+Tests are organized into logical subdirectories:
+
+### Unit Tests (`tests/unit/`)
+Core functionality tests for individual components:
+- `test_encryption.py` - Cryptographic functions
+- `test_storage.py` - Database operations  
+- `test_models.py` - Data models
+- `test_main.py` - API endpoints
+- `test_main_module.py` - Main module functionality
+- `test_multifernet.py` - Multi-key encryption
+
+### Security Tests (`tests/security/`)
+Comprehensive security validation tests:
+- `test_security.py` - Basic security tests
+- `test_penetration.py` - Penetration testing
+- `test_advanced_pentest.py` - Advanced penetration tests
+- `test_protocol_pentest.py` - Protocol-level security
+- `test_comprehensive_owasp.py` - OWASP compliance
+- `test_complete_security_coverage.py` - Final security validation
+
+### Configuration
+- `conftest.py` (fixtures), `pytest.ini` (settings)
 
 ## Coverage
 
