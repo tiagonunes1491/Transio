@@ -23,6 +23,11 @@ const b64uDecode = str => {
 /* ------------------ main encrypt helper ------------------ */
 async function seal(plainText, passPhrase) {
   try {
+    // Check if Web Crypto API is available
+    if (!crypto || !crypto.subtle) {
+      throw new Error('Web Crypto API not available. Please use HTTPS or localhost.');
+    }
+
     // (1) 16-byte random salt
     const salt = crypto.getRandomValues(new Uint8Array(16));
 
@@ -67,6 +72,11 @@ async function seal(plainText, passPhrase) {
 /* ------------------ main decrypt helper ------------------ */
 async function unseal(encryptedData, passPhrase) {
   try {
+    // Check if Web Crypto API is available
+    if (!crypto || !crypto.subtle) {
+      throw new Error('Web Crypto API not available. Please use HTTPS or localhost.');
+    }
+
     // (1) Decode base64 components
     const salt = b64uDecode(encryptedData.salt);
     const nonce = b64uDecode(encryptedData.nonce);
@@ -247,6 +257,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const regeneratePassphraseBtn = document.getElementById('regeneratePassphraseBtn');
   const copyPassphraseButton = document.getElementById('copyPassphraseButton');
   const strengthMeter = document.getElementById('strengthMeter');
+
+  // Check if Web Crypto API is available and disable E2EE if not
+  const isWebCryptoAvailable = !!(crypto && crypto.subtle);
+  if (!isWebCryptoAvailable && e2eeCheckbox) {
+    e2eeCheckbox.disabled = true;
+    e2eeCheckbox.checked = false;
+    e2eeCheckbox.parentElement.title = 'End-to-End Encryption requires HTTPS or localhost';
+    
+    // Add a warning message
+    const warningMessage = document.createElement('div');
+    warningMessage.className = 'text-xs text-amber-600 mt-1';
+    warningMessage.innerHTML = '⚠️ E2EE requires HTTPS or localhost. Using server-side encryption.';
+    e2eeCheckbox.parentElement.appendChild(warningMessage);
+  }
 
   let generatedLinks = [];
   try {
