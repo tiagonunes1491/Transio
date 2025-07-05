@@ -353,28 +353,137 @@ if [[ "$SKIP_BOOTSTRAP_KV" == false ]]; then
   log "INFO" "This creates the platform-specific Key Vault that will be used by the platform infrastructure..."
   log "INFO" "Target resource group: $LANDING_ZONE_RESOURCE_GROUP"
   
-  if ! az deployment group create \
-    --template-file "$BOOTSTRAP_KV_BICEP_FILE" \
-    --parameters "$BOOTSTRAP_KV_PARAMS_FILE" \
-    --resource-group "$LANDING_ZONE_RESOURCE_GROUP" \
-    --name "$BOOTSTRAP_KV_DEPLOYMENT_NAME" \
-    --verbose; then
-    log "ERROR" "Bootstrap Key Vault deployment failed"
-    get_deployment_errors "$BOOTSTRAP_KV_DEPLOYMENT_NAME" "$LANDING_ZONE_RESOURCE_GROUP"
-    exit 1
+  # =====================
+  # 2.0. Check for and recover soft-deleted Key Vault
+  # =====================
+  log "INFO" "Checking for existing soft-deleted Key Vault..."
+  
+  # First, we need to determine what the Key Vault name will be based on the bicep parameters
+  # Read the expected Key Vault name from the naming convention
+  EXPECTED_KV_NAME="ssdswakv"  # Based on actual Key Vault naming: ssdswakv
+  
+  # Check if a Key Vault with this name exists in soft-deleted state
+  log "INFO" "Checking for soft-deleted Key Vault: $EXPECTED_KV_NAME"
+  DELETED_KV_INFO=$(az keyvault list-deleted --query "[?name=='$EXPECTED_KV_NAME']" -o json 2>/dev/null || echo "[]")
+  
+  # Also check without location filter in case of any location mismatch
+  if [[ "$DELETED_KV_INFO" == "[]" || "$DELETED_KV_INFO" == "" ]]; then
+    log "INFO" "No soft-deleted Key Vault found with location filter, checking globally..."
+    DELETED_KV_INFO=$(az keyvault list-deleted --query "[?name=='$EXPECTED_KV_NAME']" -o json 2>/dev/null || echo "[]")
   fi
-  log "INFO" "Bootstrap Key Vault deployment completed"
   
-  # Retrieve Key Vault name from deployment outputs
-  log "INFO" "Retrieving Key Vault name from Bootstrap deployment..."
-  BOOTSTRAP_KV_NAME=$(az deployment group show \
-    --name "$BOOTSTRAP_KV_DEPLOYMENT_NAME" \
-    --resource-group "$LANDING_ZONE_RESOURCE_GROUP" \
-    --query properties.outputs.keyVaultName.value -o tsv)
+  if [[ "$DELETED_KV_INFO" != "[]" && "$DELETED_KV_INFO" != "" ]]; then
+    log "WARNING" "Found soft-deleted Key Vault: $EXPECTED_KV_NAME"
+    log "INFO" "Attempting to recover soft-deleted Key Vault..."
+    
+    if az keyvault recover --name "$EXPECTED_KV_NAME" --location "$LOCATION" 2>/dev/null; then
+      log "INFO" "✅ Successfully recovered soft-deleted Key Vault: $EXPECTED_KV_NAME"
+      log "INFO" "Waiting 30 seconds for recovery to complete..."
+      sleep 30
+      
+      # Verify the Key Vault is now accessible
+      if az keyvault show --name "$EXPECTED_KV_NAME" >/dev/null 2>&1; then
+        log "INFO" "✅ Key Vault is now accessible: $EXPECTED_KV_NAME"
+        
+        # Since we recovered the Key Vault, we should skip the Bicep deployment
+        # and use the recovered Key Vault
+        log "INFO" "Using recovered Key Vault instead of deploying new one"
+        BOOTSTRAP_KV_NAME="$EXPECTED_KV_NAME"
+        
+        # Skip the Bicep deployment section and go directly to permissions setup
+        log "INFO" "Skipping Bicep deployment since Key Vault was recovered"
+      else
+        log "WARNING" "Key Vault recovery completed but Key Vault is not accessible yet"
+        log "WARNING" "Proceeding with Bicep deployment which may handle the final setup"
+      fi
+    else
+      log "WARNING" "Failed to recover soft-deleted Key Vault: $EXPECTED_KV_NAME"
+      log "WARNING" "This may be due to purge protection or insufficient permissions"
+      log "WARNING" "Proceeding with Bicep deployment which will likely fail"
+      log "WARNING" "Manual intervention may be required to purge or recover the Key Vault"
+    fi
+  else
+    log "INFO" "No soft-deleted Key Vault found for name: $EXPECTED_KV_NAME"
+    log "INFO" "Proceeding with normal Bicep deployment"
+  fi
   
-  if [[ -z "$BOOTSTRAP_KV_NAME" || "$BOOTSTRAP_KV_NAME" == "null" ]]; then
-    log "ERROR" "Failed to retrieve Key Vault name from Bootstrap deployment"
-    exit 1
+  # Initialize BOOTSTRAP_KV_NAME variable
+  BOOTSTRAP_KV_NAME=""
+  
+  # Only attempt Bicep deployment if we didn't recover a Key Vault
+  if [[ -z "$BOOTSTRAP_KV_NAME" ]]; then
+    # Final check for soft-deleted Key Vault before deployment (fallback)
+    log "INFO" "Performing final check for soft-deleted Key Vault before deployment..."
+    FINAL_DELETED_CHECK=$(az keyvault list-deleted --query "[?name=='$EXPECTED_KV_NAME']" -o json 2>/dev/null || echo "[]")
+    
+    if [[ "$FINAL_DELETED_CHECK" != "[]" && "$FINAL_DELETED_CHECK" != "" ]]; then
+      log "WARNING" "Found soft-deleted Key Vault in final check: $EXPECTED_KV_NAME"
+      log "INFO" "Attempting recovery before deployment..."
+      
+      if az keyvault recover --name "$EXPECTED_KV_NAME" --location "$LOCATION" 2>/dev/null; then
+        log "INFO" "✅ Successfully recovered Key Vault in final check: $EXPECTED_KV_NAME"
+        BOOTSTRAP_KV_NAME="$EXPECTED_KV_NAME"
+        log "INFO" "Waiting 30 seconds for recovery to complete..."
+        sleep 30
+      else
+        log "WARNING" "Failed to recover Key Vault in final check, proceeding with deployment"
+      fi
+    fi
+    
+    # Proceed with Bicep deployment only if recovery didn't work
+    if [[ -z "$BOOTSTRAP_KV_NAME" ]]; then
+      log "INFO" "Deploying Key Vault via Bicep template..."
+      if ! az deployment group create \
+        --template-file "$BOOTSTRAP_KV_BICEP_FILE" \
+        --parameters "$BOOTSTRAP_KV_PARAMS_FILE" \
+        --resource-group "$LANDING_ZONE_RESOURCE_GROUP" \
+        --name "$BOOTSTRAP_KV_DEPLOYMENT_NAME" \
+        --no-prompt \
+        --verbose; then
+        log "ERROR" "Bootstrap Key Vault deployment failed"
+        get_deployment_errors "$BOOTSTRAP_KV_DEPLOYMENT_NAME" "$LANDING_ZONE_RESOURCE_GROUP"
+      
+      # Check if the error is related to soft-delete conflict
+      log "INFO" "Checking if deployment failed due to soft-delete conflict..."
+      DEPLOYMENT_ERROR=$(az deployment group show --name "$BOOTSTRAP_KV_DEPLOYMENT_NAME" --resource-group "$LANDING_ZONE_RESOURCE_GROUP" --query 'properties.error' -o json 2>/dev/null || echo "{}")
+      
+      # Check for soft-delete related error messages in the entire error object
+      if echo "$DEPLOYMENT_ERROR" | grep -q "soft delete" || \
+         echo "$DEPLOYMENT_ERROR" | grep -q "same name already exists in deleted state" || \
+         echo "$DEPLOYMENT_ERROR" | grep -q "already exists in deleted state"; then
+        log "WARNING" "Deployment failed due to soft-delete conflict"
+        log "INFO" "Attempting Key Vault recovery as fallback..."
+        
+        if az keyvault recover --name "$EXPECTED_KV_NAME" --location "$LOCATION" 2>/dev/null; then
+          log "INFO" "✅ Successfully recovered Key Vault after deployment failure"
+          BOOTSTRAP_KV_NAME="$EXPECTED_KV_NAME"
+          log "INFO" "Waiting 30 seconds for recovery to complete..."
+          sleep 30
+        else
+          log "ERROR" "Failed to recover Key Vault after deployment failure"
+          log "ERROR" "Manual intervention required - either purge or recover the Key Vault manually"
+          exit 1
+        fi
+      else
+        log "ERROR" "Deployment failed for reasons other than soft-delete conflict"
+        exit 1
+      fi
+    else
+      log "INFO" "Bootstrap Key Vault deployment completed"
+      
+      # Retrieve Key Vault name from deployment outputs
+      log "INFO" "Retrieving Key Vault name from Bootstrap deployment..."
+      BOOTSTRAP_KV_NAME=$(az deployment group show \
+        --name "$BOOTSTRAP_KV_DEPLOYMENT_NAME" \
+        --resource-group "$LANDING_ZONE_RESOURCE_GROUP" \
+        --query properties.outputs.keyVaultName.value -o tsv)
+      
+      if [[ -z "$BOOTSTRAP_KV_NAME" || "$BOOTSTRAP_KV_NAME" == "null" ]]; then
+        log "ERROR" "Failed to retrieve Key Vault name from Bootstrap deployment"
+        exit 1
+      fi
+      fi
+    fi
   fi
   
   log "INFO" "Bootstrap Key Vault name: $BOOTSTRAP_KV_NAME"
@@ -533,7 +642,7 @@ else
     log "WARNING" "Could not retrieve Bootstrap Key Vault name from existing deployment"
     log "WARNING" "Platform deployment may fail if it requires Key Vault references"
     # Set a default based on naming convention from the bicep file
-    BOOTSTRAP_KV_NAME="ss-dev-swa-kv"
+    BOOTSTRAP_KV_NAME="ssdswakv"
     log "INFO" "Using default Key Vault name: $BOOTSTRAP_KV_NAME"
   else
     log "INFO" "Retrieved existing Bootstrap Key Vault name: $BOOTSTRAP_KV_NAME"
@@ -560,6 +669,7 @@ if [[ "$SKIP_INFRA" == false ]]; then
     --parameters "$PLATFORM_PARAMS_FILE" \
     --resource-group "$LANDING_ZONE_RESOURCE_GROUP" \
     --name "$PLATFORM_DEPLOYMENT_NAME" \
+    --no-prompt \
     --verbose; then
     log "ERROR" "SWA Platform infrastructure deployment failed"
     get_deployment_errors "$PLATFORM_DEPLOYMENT_NAME" "$LANDING_ZONE_RESOURCE_GROUP"
@@ -805,6 +915,7 @@ if ! az deployment group create \
   --template-file "$WORKLOAD_BICEP_FILE" \
   --parameters "$WORKLOAD_PARAMS_FILE" \
   --name "$WORKLOAD_DEPLOYMENT_NAME" \
+  --no-prompt \
   --parameters \
     containerImage="$ACR_LOGIN_SERVER/secure-secret-sharer-backend:$BACKEND_TAG" \
     acaEnvironmentName="$ACA_ENV_NAME_FOR_WORKLOAD" \

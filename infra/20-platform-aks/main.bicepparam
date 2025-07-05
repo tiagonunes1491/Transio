@@ -15,8 +15,8 @@ param owner = 'tiago-nunes'
 param ownerEmail = 'tiago.nunes@example.com'
 
 // External Key Vault reference (created by bootstrap deployment)
-param existingKeyVaultName = 'ss-dev-aks-kv'  // Platform-specific Key Vault
-param existingKeyVaultResourceGroup = 'rg-ss-dev-aks'
+param existingKeyVaultName = 'ssdakskv'  // Platform-specific Key Vault
+param existingKeyVaultResourceGroup = 'ss-d-aks-rg'
 
 // Azure Container Registry configuration
 param acrSku = 'Premium'

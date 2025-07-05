@@ -196,24 +196,24 @@ function get_deployment_errors() {
   
   # Get failed operations with more detail
   log_info "Failed operations:"
-  az deployment sub operation list \
+  az deployment operation sub list \
     --name "$deployment_name" \
-    --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,Error:properties.statusMessage.error.message,Code:properties.statusMessage.error.code,Details:properties.statusMessage.error.details[0].message}" \
-    --output table
+    --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,Error:properties.statusMessage.error.message,Code:properties.statusMessage.error.code}" \
+    --output table 2>/dev/null || echo "Unable to retrieve operation details"
   
   # Get the full error JSON for the failed operations
   log_info "Detailed error information (JSON):"
-  az deployment sub operation list \
+  az deployment operation sub list \
     --name "$deployment_name" \
     --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,FullError:properties.statusMessage}" \
-    --output json
+    --output json 2>/dev/null || echo "Unable to retrieve detailed error information"
   
   # Get all operations for context
   log_info "All deployment operations:"
-  az deployment sub operation list \
+  az deployment operation sub list \
     --name "$deployment_name" \
     --query "[].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,State:properties.provisioningState,Timestamp:properties.timestamp}" \
-    --output table
+    --output table 2>/dev/null || echo "Unable to retrieve operation list"
 }
 
 # Enhanced deployment function with comprehensive error handling
@@ -238,14 +238,14 @@ function deploy_with_logging() {
   log_info "Beginning Azure deployment..."
   
   # Attempt deployment with comprehensive logging
+  log_info "Executing deployment command..."
   if az deployment sub create \
     --name "$deployment_name" \
     --location "spaincentral" \
     --template-file "$bicep_file" \
     --parameters "$params_file" \
-    --verbose \
-    --debug \
-    --output json > /dev/null 2>&1; then
+    --no-prompt \
+    --verbose; then
     
     # Success case
     local end_time=$(date +%s)
@@ -387,14 +387,9 @@ function deploy_all() {
   echo "   - K8S (11-lz-aks): Kubernetes resources (K8S spoke RG, K8S UAMIs, RBAC)"
   echo "   - PaaS (12-lz-paas): Platform-as-a-Service resources (PaaS spoke RG, PaaS UAMIs, RBAC)"
   echo ""
-  read -p "Do you want to proceed with ALL landing zone deployments? (y/N): " -n 1 -r
-  echo ""
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Complete landing zone deployment cancelled by user."
-    exit 0
-  fi
+  echo "🚀 Proceeding with ALL landing zone deployments (non-interactive mode)..."
 
-  # Deploy all components without further prompts
+  # Deploy all components without prompts
   deploy_shared
   deploy_k8s
   deploy_paas
@@ -517,12 +512,7 @@ case "$ACTION" in
     show_whatif "$SHARED_DEPLOYMENT_NAME" "$SHARED_BICEP_FILE" "$SHARED_PARAMS_FILE" "Shared Infrastructure"
     
     echo ""
-    read -p "Do you want to proceed with the shared infrastructure deployment? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "❌ Shared infrastructure deployment cancelled by user."
-      exit 0
-    fi
+    echo "🚀 Proceeding with shared infrastructure deployment (non-interactive mode)..."
     
     deploy_shared
     ;;
@@ -540,12 +530,7 @@ case "$ACTION" in
     
     echo ""
     echo "📋 This will deploy shared infrastructure + K8S landing zone"
-    read -p "Do you want to proceed with shared + K8S deployments? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "❌ K8S landing zone deployment cancelled by user."
-      exit 0
-    fi
+    echo "🚀 Proceeding with shared + K8S deployments (non-interactive mode)..."
     
     deploy_shared
     deploy_k8s
@@ -563,12 +548,7 @@ case "$ACTION" in
     
     echo ""
     echo "📋 This will deploy PaaS landing zone infrastructure"
-    read -p "Do you want to proceed with PaaS deployment? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "❌ PaaS landing zone deployment cancelled by user."
-      exit 0
-    fi
+    echo "🚀 Proceeding with PaaS deployment (non-interactive mode)..."
     
     deploy_paas
     ;;
