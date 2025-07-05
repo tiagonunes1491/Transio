@@ -1,0 +1,4 @@
+- Review all backend tests
+- Move to subfolders (e.g. security, unit testing..)
+- Create a Readme inside /src/backend/tests
+- Ensure that src/backend/scripts/run_tests.sh works
