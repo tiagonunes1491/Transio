@@ -25,7 +25,7 @@ services:
   # Setup service to initialize the Cosmos DB emulator
   cosmossetup:
     build:
-      context: ./backend
+      context: ../../src/backend
       dockerfile: Dockerfile
     environment:
       - PYTHONPATH=/opt/app
@@ -34,13 +34,13 @@ services:
       cosmosdb:
         condition: service_healthy
     volumes:
-      - ./scripts:/opt/app/scripts
+      - ../../scripts:/opt/app/scripts
     network_mode: "service:cosmosdb"  # Use the same network as cosmosdb to access localhost:8081
 
   # Backend Service (Flask Application)
   backend:
     build:
-      context: ./backend # Path to the directory containing the backend's Dockerfile
+      context: ../../src/backend # Path to the directory containing the backend's Dockerfile
       dockerfile: Dockerfile # Specifies the Dockerfile name (default is Dockerfile)
     ports:
       # Maps port 5000 on the host to port 5000 in the backend container.
@@ -70,7 +70,7 @@ services:
   # Frontend Service (Nginx Server for Static Files)
   frontend:
     build:
-      context: ./frontend # Path to the directory containing the frontend's Dockerfile
+      context: ../../src/frontend # Path to the directory containing the frontend's Dockerfile
       dockerfile: Dockerfile
     ports:
       # Maps port 8080 on the host to port 80 in the frontend (Nginx) container.
