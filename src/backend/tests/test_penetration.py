@@ -116,12 +116,11 @@ class TestCryptographicSecurity:
     
     def test_encryption_key_strength(self):
         """Test encryption key strength and format."""
-        from backend.config import Config
+        from backend.app.config import Config
         
         # Verify key is proper length for Fernet (32 bytes base64 encoded)
-        key_bytes = Config.MASTER_ENCRYPTION_KEY_BYTES
+        key_bytes = Config.MASTER_ENCRYPTION_KEYS[0]
         assert len(key_bytes) >= 32, "Encryption key should be at least 32 bytes"
-        
         # Verify key can create valid Fernet instance
         try:
             test_fernet = Fernet(key_bytes)

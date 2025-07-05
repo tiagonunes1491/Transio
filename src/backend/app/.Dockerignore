@@ -1,0 +1,53 @@
+# Byte-compiled / cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Test, coverage, and report files
+tests/
+.coverage
+coverage.*
+.pytest_cache/
+htmlcov/
+
+# Virtual environments (local)
+venv/
+.venv/
+env/
+ENV/
+
+# Local env files (never commit secrets)
+.env
+.env.*
+!.env.example    # (if you want to include example only)
+
+# Git / version control
+.git/
+.gitignore
+
+# Editor / IDE files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation, unless needed in image
+*.md
+docs/
+
+# Build, dist, packaging
+build/
+dist/
+*.egg-info/
+
+# Scripts, if not required inside the image
+scripts/
+
+# Node or frontend artifacts, if any
+node_modules/
+npm-debug.log
+yarn-error.log
