@@ -26,7 +26,7 @@ else:
 class Config:
     MASTER_ENCRYPTION_KEY = os.getenv("MASTER_ENCRYPTION_KEY")
     MASTER_ENCRYPTION_KEY_PREVIOUS = os.getenv("MASTER_ENCRYPTION_KEY_PREVIOUS")
-    
+
     FLASK_APP = os.getenv("FLASK_APP", "app/main.py")  # Default value if not in .env
     FLASK_DEBUG = os.getenv("FLASK_DEBUG", "True").lower() in (
         "true",
@@ -39,21 +39,35 @@ class Config:
 
     # --- Cosmos DB Configuration ---
     COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT")
-    COSMOS_KEY = os.getenv("COSMOS_KEY")  # Optional - will use managed identity if not provided
+    COSMOS_KEY = os.getenv(
+        "COSMOS_KEY"
+    )  # Optional - will use managed identity if not provided
     COSMOS_DATABASE_NAME = os.getenv("COSMOS_DATABASE_NAME", "Transio")
     COSMOS_CONTAINER_NAME = os.getenv("COSMOS_CONTAINER_NAME", "secrets")
-    
+
     # Use managed identity for authentication (prefer this for production)
-    USE_MANAGED_IDENTITY = os.getenv("USE_MANAGED_IDENTITY", "false").lower() in ("true", "1", "t")
+    USE_MANAGED_IDENTITY = os.getenv("USE_MANAGED_IDENTITY", "false").lower() in (
+        "true",
+        "1",
+        "t",
+    )
 
     # Validate Cosmos DB configuration
     if not COSMOS_ENDPOINT:
-        logging.warning("COSMOS_ENDPOINT not set. Using default local emulator endpoint.")
+        logging.warning(
+            "COSMOS_ENDPOINT not set. Using default local emulator endpoint."
+        )
         COSMOS_ENDPOINT = "https://localhost:8081"
-    
+
     # For local development, default to emulator key if no managed identity and no key provided
-    if not COSMOS_KEY and not USE_MANAGED_IDENTITY and COSMOS_ENDPOINT == "https://localhost:8081":
-        logging.warning("COSMOS_KEY not set and managed identity not enabled. Using default local emulator key.")
+    if (
+        not COSMOS_KEY
+        and not USE_MANAGED_IDENTITY
+        and COSMOS_ENDPOINT == "https://localhost:8081"
+    ):
+        logging.warning(
+            "COSMOS_KEY not set and managed identity not enabled. Using default local emulator key."
+        )
         # This is the well-known emulator key for local development
         COSMOS_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 
@@ -65,7 +79,7 @@ class Config:
 
     # Collect all available keys for MultiFernet
     encryption_keys = []
-    
+
     # Ensure the current key is bytes for Fernet and validate it's a proper Fernet key
     try:
         current_key_bytes = MASTER_ENCRYPTION_KEY.encode("utf-8")
@@ -76,7 +90,7 @@ class Config:
         # Log the error and re-raise with a clearer message
         logging.error(f"Invalid MASTER_ENCRYPTION_KEY: {e}")
         raise ValueError(f"Invalid MASTER_ENCRYPTION_KEY: {e}")
-    
+
     # Add previous key if available
     if MASTER_ENCRYPTION_KEY_PREVIOUS:
         try:
@@ -84,10 +98,12 @@ class Config:
             # Test if it's a valid Fernet key
             Fernet(previous_key_bytes)  # This will raise if invalid
             encryption_keys.append(previous_key_bytes)
-            logging.info("Previous encryption key loaded successfully for key rotation support.")
+            logging.info(
+                "Previous encryption key loaded successfully for key rotation support."
+            )
         except Exception as e:
             # Log the error but don't fail - previous key is optional
             logging.warning(f"Invalid MASTER_ENCRYPTION_KEY_PREVIOUS (ignoring): {e}")
-    
+
     # Store the validated keys for use by encryption module
     MASTER_ENCRYPTION_KEYS = encryption_keys
