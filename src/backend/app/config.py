@@ -57,10 +57,6 @@ class Config:
         # This is the well-known emulator key for local development
         COSMOS_KEY = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 
-    # Legacy database configuration (keeping for backward compatibility during migration)
-    # This will be removed after full migration    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-
     if not MASTER_ENCRYPTION_KEY:
         # Fail fast - encryption key is required for this security application
         raise ValueError(
@@ -95,6 +91,3 @@ class Config:
     
     # Store the validated keys for use by encryption module
     MASTER_ENCRYPTION_KEYS = encryption_keys
-
-
-# You can add other configuration variables here as needed
