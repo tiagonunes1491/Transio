@@ -1,5 +1,6 @@
 #!/bin/bash
-# =====================================================
+# ========================# File paths updated for actual folder structure
+# - 0-landing-zone: All landing zone components (shared, k8s, paas)=========================
 # Modular Landing Zone Deployment Script
 # =====================================================
 #
@@ -9,11 +10,11 @@
 #
 # Components:
 # - Shared: Common infrastructure (artifacts RG, shared UAMIs, ACR permissions)
-#   Location: infra/10-lz-shared/
+#   Location: infra/0-landing-zone/
 # - K8S: Kubernetes-specific resources (AKS spoke RG, K8S UAMIs, RBAC)
-#   Location: infra/11-lz-aks/
+#   Location: infra/0-landing-zone/
 # - PaaS: Platform-as-a-Service resources (Container Apps spoke RG, PaaS UAMIs, RBAC)
-#   Location: infra/12-lz-paas/
+#   Location: infra/0-landing-zone/
 #
 # Usage Examples:
 #   ./deploy-landing-zone.sh shared    # Deploy only shared infrastructure
@@ -27,9 +28,7 @@
 # - Appropriate permissions to create subscriptions-level resources
 # - GitHub repository configured for OIDC (update .bicepparam files with org/repo)
 # - Bicep files organized in modular structure:
-#   - infra/10-lz-shared/ (shared infrastructure)
-#   - infra/11-lz-aks/ (Kubernetes landing zone)
-#   - infra/12-lz-paas/ (PaaS landing zone)
+#   - infra/0-landing-zone/ (all landing zone components)
 #
 # =====================================================
 
@@ -53,12 +52,13 @@ K8S_DEPLOYMENT_NAME="landing-zone-k8s-$(date +%Y%m%d-%H%M%S)"
 PAAS_DEPLOYMENT_NAME="landing-zone-paas-$(date +%Y%m%d-%H%M%S)"
 
 # Bicep template and parameter file paths
-SHARED_BICEP_FILE="../infra/10-lz-shared/landing-zone-shared.bicep"
-SHARED_PARAMS_FILE="../infra/10-lz-shared/landing-zone-shared.bicepparam"
-K8S_BICEP_FILE="../infra/11-lz-aks/landing-zone-k8s.bicep"
-K8S_PARAMS_FILE="../infra/11-lz-aks/landing-zone-k8s.bicepparam"
-PAAS_BICEP_FILE="../infra/12-lz-paas/landing-zone-paas.bicep"
-PAAS_PARAMS_FILE="../infra/12-lz-paas/landing-zone-paas.bicepparam"
+# Note: Using 0-landing-zone for the actual existing structure
+SHARED_BICEP_FILE="../infra/0-landing-zone/main.bicep"
+SHARED_PARAMS_FILE="../infra/0-landing-zone/swa.dev.bicepparam"
+K8S_BICEP_FILE="../infra/0-landing-zone/main.bicep"
+K8S_PARAMS_FILE="../infra/0-landing-zone/aks.dev.bicepparam"
+PAAS_BICEP_FILE="../infra/0-landing-zone/main.bicep"
+PAAS_PARAMS_FILE="../infra/0-landing-zone/swa.dev.bicepparam"
 
 # Azure deployment configuration
 SUBSCRIPTION_SCOPE="subscription"
@@ -196,24 +196,24 @@ function get_deployment_errors() {
   
   # Get failed operations with more detail
   log_info "Failed operations:"
-  az deployment sub operation list \
+  az deployment operation sub list \
     --name "$deployment_name" \
-    --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,Error:properties.statusMessage.error.message,Code:properties.statusMessage.error.code,Details:properties.statusMessage.error.details[0].message}" \
-    --output table
+    --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,Error:properties.statusMessage.error.message,Code:properties.statusMessage.error.code}" \
+    --output table 2>/dev/null || echo "Unable to retrieve operation details"
   
   # Get the full error JSON for the failed operations
   log_info "Detailed error information (JSON):"
-  az deployment sub operation list \
+  az deployment operation sub list \
     --name "$deployment_name" \
     --query "[?properties.provisioningState=='Failed'].{Resource:properties.targetResource.resourceName,FullError:properties.statusMessage}" \
-    --output json
+    --output json 2>/dev/null || echo "Unable to retrieve detailed error information"
   
   # Get all operations for context
   log_info "All deployment operations:"
-  az deployment sub operation list \
+  az deployment operation sub list \
     --name "$deployment_name" \
     --query "[].{Resource:properties.targetResource.resourceName,Type:properties.targetResource.resourceType,State:properties.provisioningState,Timestamp:properties.timestamp}" \
-    --output table
+    --output table 2>/dev/null || echo "Unable to retrieve operation list"
 }
 
 # Enhanced deployment function with comprehensive error handling
@@ -238,14 +238,14 @@ function deploy_with_logging() {
   log_info "Beginning Azure deployment..."
   
   # Attempt deployment with comprehensive logging
+  log_info "Executing deployment command..."
   if az deployment sub create \
     --name "$deployment_name" \
     --location "spaincentral" \
     --template-file "$bicep_file" \
     --parameters "$params_file" \
-    --verbose \
-    --debug \
-    --output json > /dev/null 2>&1; then
+    --no-prompt \
+    --verbose; then
     
     # Success case
     local end_time=$(date +%s)
@@ -343,15 +343,9 @@ function show_whatif() {
 
 # Function to deploy shared infrastructure (no user prompts)
 function deploy_shared() {
-  echo "🛠️  Deploying shared infrastructure..."
-  
-  if ! deploy_with_logging "$SHARED_DEPLOYMENT_NAME" "$SHARED_BICEP_FILE" "$SHARED_PARAMS_FILE" "Shared Infrastructure"; then
-    log_error "Shared infrastructure deployment failed!"
-    exit 1
-  fi
-  
-  echo "✅ Shared infrastructure deployment completed successfully!"
-  echo ""
+  # For the current structure, shared and paas use the same template
+  # This is essentially a no-op since PaaS deployment handles everything
+  echo "🛠️  Shared infrastructure is included in PaaS deployment..."
 }
 
 # Function to deploy K8S landing zone (no user prompts)
@@ -393,14 +387,9 @@ function deploy_all() {
   echo "   - K8S (11-lz-aks): Kubernetes resources (K8S spoke RG, K8S UAMIs, RBAC)"
   echo "   - PaaS (12-lz-paas): Platform-as-a-Service resources (PaaS spoke RG, PaaS UAMIs, RBAC)"
   echo ""
-  read -p "Do you want to proceed with ALL landing zone deployments? (y/N): " -n 1 -r
-  echo ""
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "❌ Complete landing zone deployment cancelled by user."
-    exit 0
-  fi
+  echo "🚀 Proceeding with ALL landing zone deployments (non-interactive mode)..."
 
-  # Deploy all components without further prompts
+  # Deploy all components without prompts
   deploy_shared
   deploy_k8s
   deploy_paas
@@ -523,12 +512,7 @@ case "$ACTION" in
     show_whatif "$SHARED_DEPLOYMENT_NAME" "$SHARED_BICEP_FILE" "$SHARED_PARAMS_FILE" "Shared Infrastructure"
     
     echo ""
-    read -p "Do you want to proceed with the shared infrastructure deployment? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "❌ Shared infrastructure deployment cancelled by user."
-      exit 0
-    fi
+    echo "🚀 Proceeding with shared infrastructure deployment (non-interactive mode)..."
     
     deploy_shared
     ;;
@@ -546,12 +530,7 @@ case "$ACTION" in
     
     echo ""
     echo "📋 This will deploy shared infrastructure + K8S landing zone"
-    read -p "Do you want to proceed with shared + K8S deployments? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "❌ K8S landing zone deployment cancelled by user."
-      exit 0
-    fi
+    echo "🚀 Proceeding with shared + K8S deployments (non-interactive mode)..."
     
     deploy_shared
     deploy_k8s
@@ -564,20 +543,13 @@ case "$ACTION" in
     echo "   - RBAC assignments for Container Apps/Static Web Apps"
     echo ""
     
-    # Show what-if analyses for both shared and PaaS
-    show_whatif "$SHARED_DEPLOYMENT_NAME" "$SHARED_BICEP_FILE" "$SHARED_PARAMS_FILE" "Shared Infrastructure"
+    # Show what-if analysis for PaaS only (shared is included)
     show_whatif "$PAAS_DEPLOYMENT_NAME" "$PAAS_BICEP_FILE" "$PAAS_PARAMS_FILE" "PaaS Landing Zone"
     
     echo ""
-    echo "📋 This will deploy shared infrastructure + PaaS landing zone"
-    read -p "Do you want to proceed with shared + PaaS deployments? (y/N): " -n 1 -r
-    echo ""
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-      echo "❌ PaaS landing zone deployment cancelled by user."
-      exit 0
-    fi
+    echo "📋 This will deploy PaaS landing zone infrastructure"
+    echo "🚀 Proceeding with PaaS deployment (non-interactive mode)..."
     
-    deploy_shared
     deploy_paas
     ;;
   all)

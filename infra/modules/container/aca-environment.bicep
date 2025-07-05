@@ -65,6 +65,9 @@ param workspaceId string
 @description('The VNET subnet ID the Azure Container Apps Environment.')
 param acaEnvironmentSubnetId string
 
+@description('Whether the Container Apps Environment should be internal (true) or external (false)')
+param isInternal bool = true
+
 
 resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
   name: acaEnvironmentName
@@ -81,7 +84,7 @@ resource acaEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
     }
     vnetConfiguration: {
       infrastructureSubnetId: acaEnvironmentSubnetId
-      internal: false
+      internal: isInternal
     }
   }
 }

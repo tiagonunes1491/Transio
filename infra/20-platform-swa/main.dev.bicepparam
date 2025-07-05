@@ -14,32 +14,8 @@ param createdBy = 'bicep-deployment'
 param owner = 'tiago-nunes'
 param ownerEmail = 'tiago.nunes@example.com'
 
-// Key Vault configuration
-param akvSku = 'standard'
-param akvRbac = true
-param akvPurgeProtection = false
-param akvSecrets = {
-  'cosmos-endpoint': {
-    value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
-    contentType: 'uri'
-    expires: 1782585600
-  }
-  'encryption-key': {
-    value: '=fF3jdnJGZiQWSTrGD9kM2I5_7oP8qRsT6uVwXyZaBcE='
-    contentType: 'base64'
-    expires: 1782585600
-  }
-  'cosmos-database-name': {
-    value: 'swa-dev'
-    contentType: 'string'
-    expires: 1782585600
-  }
-  'cosmos-container-name': {
-    value: 'secrets'
-    contentType: 'string'
-    expires: 1782585600
-  }
-}
+// External Key Vault reference (created by bootstrap deployment)
+param existingKeyVaultName = 'ssdswakv'  // Platform-specific Key Vault
 
 // Azure Container Registry configuration
 param acrSku = 'Premium'

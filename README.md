@@ -33,7 +33,7 @@ The application follows a tiered architecture:
 3.  **Database**: A containerized PostgreSQL instance for storing encrypted secrets, with strong authentication and specific user roles.
 4.  **Secure Azure Infrastructure**:
     * **Azure Kubernetes Service (AKS)**: Hosts the application containers, configured with security best practices like OIDC Issuer and Workload Identity.
-    * **Azure Key Vault (AKV)**: Securely stores all sensitive application data, including the master encryption key and database credentials. Access is controlled via Azure RBAC and User Assigned Managed Identities.
+    * **Azure Key Vault (KV)**: Securely stores all sensitive application data, including the master encryption key. Access is controlled via Azure RBAC and User Assigned Managed Identities.
     * **Azure Container Registry (ACR)**: Stores hardened Docker images, scanned for vulnerabilities.
     * **Azure Application Gateway (AppGW)**: Provides secure L7 load balancing and ingress control for the application, managed by the Application Gateway Ingress Controller (AGIC).
       

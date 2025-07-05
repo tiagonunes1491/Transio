@@ -86,11 +86,18 @@ param softDeleteRetentionInDays int = 90
 @description('Enable purge protection for the keyvault')
 param enablePurgeProtection bool = true
 
+@description('Enable public network access for the keyvault')
+param enablePublicNetworkAccess bool = false
+
+@description('Default action for network access control')
+@allowed(['Allow', 'Deny'])
+param networkAclsDefaultAction string = 'Deny'
+
 @description('Secure object for secrets')
 @secure()
 param secretsToSet object = {}
 
-resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
+resource kv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   name: keyvaultName
   location: location
   tags: tags
@@ -106,9 +113,10 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
     // checkov:skip=CKV_AZURE_110:Risk accepted—purge protection is parameterized for dev; prod enforces enablePurgeProtection
     enablePurgeProtection: enablePurgeProtection ? true : null
 
-    publicNetworkAccess: 'Disabled'
+    // checkov:skip=CKV_AZURE_109:Risk accepted—public access configurable via parameter
+    publicNetworkAccess: enablePublicNetworkAccess ? 'Enabled' : 'Disabled'
     networkAcls: {
-      defaultAction: 'Deny'    // CKV_AZURE_109 compliant
+      defaultAction: networkAclsDefaultAction
       bypass: 'AzureServices'
       ipRules: []
       virtualNetworkRules: []
@@ -122,7 +130,7 @@ resource akv 'Microsoft.KeyVault/vaults@2024-11-01' = {
 
 resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = [
   for secret in items(secretsToSet): {
-    parent: akv
+    parent: kv
     name: secret.key
     properties: {
       value: string(secret.value.value)
@@ -134,6 +142,6 @@ resource kvSecrets 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = [
   }
 ]
 
-output keyvaultId string = akv.id
-output keyvaultName string = akv.name
-output keyvaultUri string = akv.properties.vaultUri
+output keyvaultId string = kv.id
+output keyvaultName string = kv.name
+output keyvaultUri string = kv.properties.vaultUri

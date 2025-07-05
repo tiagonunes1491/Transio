@@ -125,6 +125,9 @@ param keyVaultName string
 @description('Cosmos DB database name for scoped RBAC assignment')
 param cosmosDatabaseName string = 'swa-dev'
 
+@description('Cosmos DB container name for application configuration')
+param cosmosContainerName string = 'secrets'
+
 // ========== EXISTING RESOURCE REFERENCES ==========
 
 // Reference existing shared resources
@@ -137,7 +140,7 @@ resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existi
 }
 
 // Reference existing Key Vault resource
-resource akv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
+resource kv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
 }
 
@@ -156,14 +159,17 @@ resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
 @description('Full container image reference including registry and tag for backend deployment')
 param containerImage string
 
-@description('Array of Key Vault secret references for secure application configuration')
-param keyVaultSecrets array = []
+@description('Key Vault URI for the current encryption key')
+param encryptionKeyUri string
+
+@description('Key Vault URI for the previous encryption key (for key rotation support)')
+param encryptionKeyPreviousUri string
 
 @description('Environment variables for the Container App')
 param environmentVariables array = []
 
-@description('Secret environment variables for the Container App')
-param secretEnvironmentVariables array = []
+@description('Whether to enable external ingress for Container App (required for SWA backend linking)')
+param useExternalIngress bool = true
 
 /*
  * =============================================================================
@@ -260,7 +266,7 @@ module acrRbac '../modules/identity/rbacAcr.bicep' = {
 module keyVaultRbac '../modules/identity/rbacKv.bicep' = {
   name: 'keyVaultRbac'
   params: {
-    keyVaultId: akv.id
+    keyVaultId: kv.id
     principalId: uami.outputs.uamis[0].principalId
     roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
   }
@@ -281,11 +287,27 @@ module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
 
 // ========== CONTAINER APP DEPLOYMENT ==========
 
-// Dynamically add AZURE_CLIENT_ID to environment variables
+// Dynamically add AZURE_CLIENT_ID and secret environment variables to environment variables
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'AZURE_CLIENT_ID'
     value: uami.outputs.uamis[0].clientId
+  }
+  {
+    name: 'COSMOS_DATABASE_NAME'
+    value: cosmosDatabaseName
+  }
+  {
+    name: 'COSMOS_CONTAINER_NAME'
+    value: cosmosContainerName
+  }
+  {
+    name: 'MASTER_ENCRYPTION_KEY'
+    secretRef: 'encryption-key'
+  }
+  {
+    name: 'MASTER_ENCRYPTION_KEY_PREVIOUS'
+    secretRef: 'encryption-key-previous'
   }
 ])
 
@@ -303,11 +325,18 @@ module containerApp '../modules/container/container-app.bicep' = {
         '${uami.outputs.uamis[0].id}': {}
       }
     }
-    secrets: [for secret in keyVaultSecrets: {
-      name: secret.name
-      keyVaultUrl: secret.keyVaultUrl
-      identity: uami.outputs.uamis[0].id
-    }]
+    secrets: [
+      {
+        name: 'encryption-key'
+        keyVaultUrl: encryptionKeyUri
+        identity: uami.outputs.uamis[0].id
+      }
+      {
+        name: 'encryption-key-previous'
+        keyVaultUrl: encryptionKeyPreviousUri
+        identity: uami.outputs.uamis[0].id
+      }
+    ]
     registries: [
       {
         server: split(containerImage, '/')[0] // Extract ACR server from image
@@ -315,9 +344,8 @@ module containerApp '../modules/container/container-app.bicep' = {
       }
     ]
     environmentVariables: containerAppEnvironmentVariables
-    secretEnvironmentVariables: secretEnvironmentVariables
     targetPort: 5000 // Flask app runs on port 5000
-    externalIngress: true // Enable external access
+    externalIngress: useExternalIngress // Enable external access based on parameter
     enableIngress: true
     ingressTransport: 'auto'
   }
