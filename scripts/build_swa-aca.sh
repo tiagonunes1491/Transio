@@ -9,6 +9,12 @@ set -euo pipefail
 # 4. Platform Infrastructure (Container Apps Environment, Cosmos DB, etc.)
 # 5. Workload Applications (Static Web App + Container App)
 # 
+# NOTE: This script has been updated to work with the new folder structure:
+# - Backend: src/backend/ (contains Dockerfile and backend code)
+# - Frontend: src/frontend/ (contains static files for SWA deployment)
+# - Helm Charts: deploy/helm/ (not used by this SWA deployment script)
+# - Infrastructure: infra/ (unchanged)
+#
 # NOTE: After folder structure changes (from 01-bootstrap-kv to 10-bootstrap-kv), the deploy-landing-zone.sh 
 # script may reference old folder paths. If landing zone deployment fails, use --skip-landing-zone
 # and manually deploy the landing zone using the 0-landing-zone/ folder.
@@ -794,7 +800,7 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
     TAG_VALUE="${!TAG_VAR:-latest}"
     IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
-    docker build -t "$IMAGE" "../$svc" --progress=plain
+    docker build -t "$IMAGE" "../src/$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
     docker push "$IMAGE"
     IMAGES+=("$svc:$IMAGE")
@@ -1015,11 +1021,11 @@ if [[ "$SKIP_FRONTEND" == false ]]; then
   fi
   
   log "INFO" "Deployment token retrieved successfully"
-  log "INFO" "Deploying static files from ./frontend/static to production environment..."
+  log "INFO" "Deploying static files from ./src/frontend/static to production environment..."
   
   # Deploy static files using SWA CLI
   swa deploy \
-    --app-location "../frontend/static" \
+    --app-location "../src/frontend/static" \
     --deployment-token "$DEPLOYMENT_TOKEN" \
     --env "production"
   

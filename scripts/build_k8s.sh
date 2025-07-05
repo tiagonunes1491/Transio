@@ -10,6 +10,12 @@ set -euo pipefail
 # 5. Container Images (build and push to ACR)
 # 6. Workload Applications (Helm chart deployment to AKS)
 # 
+# NOTE: This script has been updated to work with the new folder structure:
+# - Backend: src/backend/ (contains Dockerfile and backend code)
+# - Frontend: src/frontend/ (contains frontend code)
+# - Helm Charts: deploy/helm/ (contains Kubernetes manifests and Helm chart)
+# - Infrastructure: infra/ (unchanged)
+#
 # NOTE: After folder structure changes (from 01-bootstrap-kv to 10-bootstrap-kv), the deploy-landing-zone.sh 
 # script may reference old folder paths. If landing zone deployment fails, use --skip-landing-zone
 # and manually deploy the landing zone using the 0-landing-zone/ folder.
@@ -875,7 +881,7 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
     TAG_VALUE="${!TAG_VAR:-latest}"
     IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
-    docker build -t "$IMAGE" "../$svc" --progress=plain
+    docker build -t "$IMAGE" "../src/$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
     docker push "$IMAGE"
     IMAGES+=("$svc:$IMAGE")
@@ -947,7 +953,7 @@ log "INFO" "- AZURE_LOG_LEVEL: INFO"
 log "INFO" "- PYTHONUNBUFFERED: 1"
 log "INFO" "=============================================="
 log "INFO" "COPY-PASTE COMMAND (with actual values):"
-echo "helm upgrade --install secret-sharer ../k8s/secret-sharer-app \\"
+echo "helm upgrade --install secret-sharer ../deploy/helm \\"
 echo "  --namespace default --create-namespace \\"
 echo "  --set backend.serviceAccount.name=\"$BACKEND_SERVICE_ACCOUNT_NAME\" \\"
 echo "  --set backend.image.tag=\"$BACKEND_TAG\" \\"
@@ -966,7 +972,7 @@ echo "  --timeout=15m \\"
 echo "  --wait \\"
 echo "  --debug"
 log "INFO" "=============================================="
-helm upgrade --install secret-sharer ../k8s/secret-sharer-app \
+helm upgrade --install secret-sharer ../deploy/helm \
   --namespace default --create-namespace \
   --set backend.serviceAccount.name="$BACKEND_SERVICE_ACCOUNT_NAME" \
   --set backend.image.tag="$BACKEND_TAG" \
