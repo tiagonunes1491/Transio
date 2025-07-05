@@ -4,7 +4,7 @@ using 'main.bicep'
 
 // Basic configuration
 param resourceLocation = 'spaincentral'
-param projectCode = 'ss'
+param projectCode = 'ts'
 param serviceCode = 'swa'
 param environmentName = 'dev'
 

@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * Static Web Apps Landing Zone Infrastructure for Secure Secret Sharer
+ * Static Web Apps Landing Zone Infrastructure for Transio
  * =============================================================================
  * 
  * This Bicep template creates the Static Web Apps (SWA) landing zone
- * infrastructure for the Secure Secret Sharer application. It establishes the
+ * infrastructure for the Transio application. It establishes the
  * foundational identity and access management components needed for deploying
  * and managing Static Web Apps and Container Apps workloads.
  * 
@@ -67,7 +67,7 @@ param environmentName string = 'dev'
 param location string = 'spaincentral'
 
 @description('Short project identifier used in resource naming conventions')
-param projectCode string = 'ss'
+param projectCode string = 'ts'
 
 @description('Service identifier for this platform deployment')
 param serviceCode string = 'swa'

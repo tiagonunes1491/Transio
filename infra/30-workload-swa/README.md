@@ -1,16 +1,16 @@
-# Application Deployment (SWA) - SecureSharer
+# Application Deployment (SWA) - Transio
 
-This directory contains the actual SecureSharer application deployment infrastructure using Static Web Apps and Container Apps. It deploys the frontend and backend components onto the previously established platform infrastructure.
+This directory contains the actual Transio application deployment infrastructure using Static Web Apps and Container Apps. It deploys the frontend and backend components onto the previously established platform infrastructure.
 
 ## Overview
 
-This deployment creates the actual SecureSharer application components, including the React frontend hosted on Static Web Apps and the Python Flask backend running on Container Apps, with secure connectivity and proper configuration management.
+This deployment creates the actual Transio application components, including the React frontend hosted on Static Web Apps and the Python Flask backend running on Container Apps, with secure connectivity and proper configuration management.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                    SecureSharer Application Deployment                  │
+│                    Transio Application Deployment                  │
 ├─────────────────────────────────────────────────────────────────────────┤
 │  Application Resource Group                                             │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
@@ -43,14 +43,14 @@ This deployment creates the actual SecureSharer application components, includin
 ## Key Components
 
 ### Frontend (Static Web App)
-- **React Application**: Modern web interface for SecureSharer
+- **React Application**: Modern web interface for Transio
 - **Global CDN**: Worldwide content delivery for optimal performance
 - **GitHub Integration**: Automated deployment from source code
 - **SSL/TLS**: Automatic certificate management and HTTPS enforcement
 - **Custom Domains**: Support for production domain configuration
 
 ### Backend (Container App)
-- **Flask API**: Python-based REST API for SecureSharer functionality
+- **Flask API**: Python-based REST API for Transio functionality
 - **Auto Scaling**: Dynamic scaling based on CPU/memory utilization
 - **Health Monitoring**: Built-in health checks and observability
 - **Secure Configuration**: Environment variables from Key Vault
@@ -62,7 +62,7 @@ This deployment creates the actual SecureSharer application components, includin
 - **RBAC Assignments**: Granular permissions for service access
 - **Network Isolation**: Backend services in private network
 
-## SecureSharer-Specific Configuration
+## Transio-Specific Configuration
 
 ### Application Features
 - **Secret Sharing**: Secure temporary secret sharing functionality
@@ -78,12 +78,12 @@ This deployment creates the actual SecureSharer application components, includin
 
 ## Resource Naming
 
-Application resources follow SecureSharer naming convention:
-- Pattern: `ss-{env}-swa-{resourceType}`
+Application resources follow Transio naming convention:
+- Pattern: `ts-{env}-swa-{resourceType}`
 - Examples:
-  - `ss-d-swa-swa` (Development Static Web App)
-  - `ss-p-swa-ca` (Production Container App)
-  - `ss-d-swa-id-ca-backend` (Backend Managed Identity)
+  - `ts-d-swa-swa` (Development Static Web App)
+  - `ts-p-swa-ca` (Production Container App)
+  - `ts-d-swa-id-ca-backend` (Backend Managed Identity)
 
 ## Environment Configuration
 
@@ -110,10 +110,10 @@ Application resources follow SecureSharer naming convention:
 
 ### Parameters
 
-Key SecureSharer-specific parameters:
-- `projectCode`: Set to `'ss'` for SecureSharer
+Key Transio-specific parameters:
+- `projectCode`: Set to `'ts'` for Transio
 - `serviceCode`: Set to `'swa'` for this application
-- `containerImage`: Full path to SecureSharer backend container image
+- `containerImage`: Full path to Transio backend container image
 - `keyVaultSecrets`: Array of secrets required by the application
 - `environmentVariables`: Application configuration variables
 
@@ -121,7 +121,7 @@ Key SecureSharer-specific parameters:
 
 ```bash
 az deployment group create \
-  --resource-group ss-dev-swa-rg \
+  --resource-group ts-dev-swa-rg \
   --template-file main.bicep \
   --parameters @main.dev.bicepparam
 ```
@@ -129,7 +129,7 @@ az deployment group create \
 ## Application Configuration
 
 ### Key Vault Secrets
-The SecureSharer application requires the following secrets:
+The Transio application requires the following secrets:
 - Database connection strings
 - Encryption keys
 - Third-party API keys

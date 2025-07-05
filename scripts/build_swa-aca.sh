@@ -798,7 +798,7 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
   for svc in "${SERVICES[@]}"; do
     TAG_VAR="${svc^^}_TAG"
     TAG_VALUE="${!TAG_VAR:-latest}"
-    IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
+    IMAGE="$ACR_LOGIN_SERVER/transio-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
     docker build -t "$IMAGE" "../src/$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
@@ -813,7 +813,7 @@ else
   for svc in "${SERVICES[@]}"; do
     TAG_VAR="${svc^^}_TAG"
     TAG_VALUE="${!TAG_VAR:-latest}"
-    IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
+    IMAGE="$ACR_LOGIN_SERVER/transio-$svc:$TAG_VALUE"
     IMAGES+=("$svc:$IMAGE")
   done
 fi
@@ -875,7 +875,7 @@ log "INFO" "Previous encryption key version: $previous_key_version"
 
 # Deploy workload using Bicep with dynamic key version parameters
 log "INFO" "Deploying workload with latest encryption key versions..."
-log "INFO" "Container Image: secure-secret-sharer-backend:$BACKEND_TAG"
+log "INFO" "Container Image: transio-backend:$BACKEND_TAG"
 log "INFO" "Encryption Key (Current): $latest_key_version"
 log "INFO" "Encryption Key (Previous): $previous_key_version"
 
@@ -897,7 +897,7 @@ log "INFO" "Extracted deployment parameters:"
 log "INFO" "  ACR Name: '$ACR_NAME_FOR_WORKLOAD'"
 log "INFO" "  ACA Environment Name: '$ACA_ENV_NAME_FOR_WORKLOAD'"
 log "INFO" "  Cosmos Account Name: '$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD'"
-log "INFO" "  Container Image: '$ACR_LOGIN_SERVER/secure-secret-sharer-backend:$BACKEND_TAG'"
+log "INFO" "  Container Image: '$ACR_LOGIN_SERVER/transio-backend:$BACKEND_TAG'"
 
 # Additional validation for extracted values
 if [[ -z "$ACA_ENV_NAME_FOR_WORKLOAD" || "$ACA_ENV_NAME_FOR_WORKLOAD" == "null" ]]; then
@@ -923,7 +923,7 @@ if ! az deployment group create \
   --name "$WORKLOAD_DEPLOYMENT_NAME" \
   --no-prompt \
   --parameters \
-    containerImage="$ACR_LOGIN_SERVER/secure-secret-sharer-backend:$BACKEND_TAG" \
+    containerImage="$ACR_LOGIN_SERVER/transio-backend:$BACKEND_TAG" \
     acaEnvironmentName="$ACA_ENV_NAME_FOR_WORKLOAD" \
     acaEnvironmentResourceGroupName="$LANDING_ZONE_RESOURCE_GROUP" \
     acrName="$ACR_NAME_FOR_WORKLOAD" \

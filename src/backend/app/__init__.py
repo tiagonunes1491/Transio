@@ -13,7 +13,7 @@ def init_cosmos_db(app):
         endpoint = app.config.get('COSMOS_ENDPOINT')
         key = app.config.get('COSMOS_KEY')
         use_managed_identity = app.config.get('USE_MANAGED_IDENTITY', False)
-        database_name = app.config.get('COSMOS_DATABASE_NAME', 'SecureSharer')
+        database_name = app.config.get('COSMOS_DATABASE_NAME', 'Transio')
         container_name = app.config.get('COSMOS_CONTAINER_NAME', 'secrets')
         
         if not endpoint:

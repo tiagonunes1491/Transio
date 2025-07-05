@@ -1,6 +1,6 @@
 # Coverage Measurement Guide
 
-This guide explains how to use pytest-cov for comprehensive test coverage measurement in the SecureSharer backend.
+This guide explains how to use pytest-cov for comprehensive test coverage measurement in the Transio backend.
 
 ## Overview
 

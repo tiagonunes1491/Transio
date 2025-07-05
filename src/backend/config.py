@@ -40,7 +40,7 @@ class Config:
     # --- Cosmos DB Configuration ---
     COSMOS_ENDPOINT = os.getenv("COSMOS_ENDPOINT")
     COSMOS_KEY = os.getenv("COSMOS_KEY")  # Optional - will use managed identity if not provided
-    COSMOS_DATABASE_NAME = os.getenv("COSMOS_DATABASE_NAME", "SecureSharer")
+    COSMOS_DATABASE_NAME = os.getenv("COSMOS_DATABASE_NAME", "Transio")
     COSMOS_CONTAINER_NAME = os.getenv("COSMOS_CONTAINER_NAME", "secrets")
     
     # Use managed identity for authentication (prefer this for production)

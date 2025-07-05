@@ -1,7 +1,7 @@
 {
-  "name": "securesharer-frontend",
+  "name": "transio-frontend",
   "version": "1.0.0",
-  "description": "Frontend tests for SecureSharer application",
+  "description": "Frontend tests for Transio application",
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",

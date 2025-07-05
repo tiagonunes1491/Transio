@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * SWA Platform Infrastructure for Secure Secret Sharer
+ * SWA Platform Infrastructure for Transio
  * =============================================================================
  * 
  * This Bicep template establishes the Static Web App (SWA) platform infrastructure
- * for the Secure Secret Sharer application. It creates a comprehensive platform
+ * for the Transio application. It creates a comprehensive platform
  * environment that supports both Container Apps and Static Web Apps with secure
  * networking, identity management, and monitoring capabilities.
  * 
@@ -73,7 +73,7 @@ targetScope = 'resourceGroup'
 param resourceLocation string = 'spaincentral'
 
 @description('Short project identifier used in resource naming conventions')
-param projectCode string = 'ss'
+param projectCode string = 'ts'
 
 @description('Service identifier for this SWA/ACA platform deployment')
 param serviceCode string = 'swa'

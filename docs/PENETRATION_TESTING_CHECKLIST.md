@@ -1,6 +1,6 @@
 # Penetration Testing Checklist
 
-This checklist provides a comprehensive manual penetration testing guide for SecureSharer beyond OWASP Top 10.
+This checklist provides a comprehensive manual penetration testing guide for Transio beyond OWASP Top 10.
 
 ## Pre-Testing Setup
 

@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * Bootstrap Key Vault for Secure Secret Sharer
+ * Bootstrap Key Vault for Transio
  * =============================================================================
  * 
  * This Bicep template creates a platform-specific Azure Key Vault for the 
- * Secure Secret Sharer application. Each platform deployment (AKS, SWA/ACA) 
+ * Transio application. Each platform deployment (AKS, SWA/ACA) 
  * and environment (dev, prod) gets its own dedicated Key Vault created during 
  * the bootstrap phase, before platform infrastructure deployment.
  * 
@@ -72,7 +72,7 @@ param tenantId string = subscription().tenantId
 param resourceLocation string = 'spaincentral'
 
 @description('Short project identifier used in resource naming conventions')
-param projectCode string = 'ss'
+param projectCode string = 'ts'
 
 @description('Service identifier for this platform-specific Key Vault deployment (e.g., swa, aks)')
 param serviceCode string

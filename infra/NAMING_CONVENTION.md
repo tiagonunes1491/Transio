@@ -1,6 +1,6 @@
-# SecureSharer Infrastructure Naming Convention
+# Transio Infrastructure Naming Convention
 
-This document describes the standardized naming convention implemented across all SecureSharer infrastructure, based on Cloud Adoption Framework (CAF) standards.
+This document describes the standardized naming convention implemented across all Transio infrastructure, based on Cloud Adoption Framework (CAF) standards.
 
 ## Naming Pattern
 
@@ -10,7 +10,7 @@ All Azure resources follow the pattern: `{proj}-{env}-{svc}-{rtype}{-seq}`
 
 | Component | Description | Example | Rules |
 |-----------|-------------|---------|-------|
-| **proj** | Project code (2-3 letters) | `ss` | Lowercase letters only, `^[a-z]{2,3}$` |
+| **proj** | Project code (2-3 letters) | `ts` | Lowercase letters only, `^[a-z]{2,3}$` |
 | **env** | Environment code | `d`, `s`, `p`, `sh` | dev→d, staging→s, prod→p, shared→sh |
 | **svc** | Service code (2-4 letters) | `hub`, `aks`, `swa`, `plat` | Lowercase letters only, `^[a-z]{2,4}$` |
 | **rtype** | Resource type code | `rg`, `acr`, `cosmos`, `id` | CAF standard abbreviations |
@@ -20,18 +20,18 @@ All Azure resources follow the pattern: `{proj}-{env}-{svc}-{rtype}{-seq}`
 
 | Azure Resource | Code | Example Name |
 |---------------|------|--------------|
-| Resource Group | `rg` | `ss-d-aks-rg` |
-| Container Registry | `acr` | `ssshplatacr` (sanitized) |
-| Cosmos DB | `cosmos` | `ssshplatcosmos` (sanitized) |
-| Key Vault | `kv` | `ssdakskv` (sanitized) |
-| Log Analytics | `log` | `ss-sh-hub-log` |
-| Static Web App | `swa` | `ss-d-swa-swa` |
-| Container App Environment | `cae` | `ss-d-swa-cae` |
-| Container App | `ca` | `ss-d-swa-ca` |
-| User Assigned Managed Identity | `id` | `ss-d-k8s-id` |
-| Virtual Network | `vnet` | `ss-d-hub-vnet` |
-| Private Endpoint | `pe` | `ss-d-aks-pe` |
-| Subnet | `sub` | `ss-d-aks-sub` |
+| Resource Group | `rg` | `ts-d-aks-rg` |
+| Container Registry | `acr` | `tsshplatacr` (sanitized) |
+| Cosmos DB | `cosmos` | `tsshplatcosmos` (sanitized) |
+| Key Vault | `kv` | `tsdakskv` (sanitized) |
+| Log Analytics | `log` | `ts-sh-hub-log` |
+| Static Web App | `swa` | `ts-d-swa-swa` |
+| Container App Environment | `cae` | `ts-d-swa-cae` |
+| Container App | `ca` | `ts-d-swa-ca` |
+| User Assigned Managed Identity | `id` | `ts-d-k8s-id` |
+| Virtual Network | `vnet` | `ts-d-hub-vnet` |
+| Private Endpoint | `pe` | `ts-d-aks-pe` |
+| Subnet | `sub` | `ts-d-aks-sub` |
 
 ### Sanitization Rules
 
@@ -56,7 +56,7 @@ All resources must include these standardized tags:
 | Tag | Description | Pattern/Values | Example |
 |-----|-------------|----------------|---------|
 | `environment` | Deployment environment | `dev`, `staging`, `prod`, `shared` | `dev` |
-| `project` | Project code | `^[a-z]{2,3}$` | `ss` |
+| `project` | Project code | `^[a-z]{2,3}$` | `ts` |
 | `service` | Service code | `^[a-z]{2,4}$` | `aks` |
 | `costCenter` | Cost center code | `^[0-9]{4,6}$` | `1000` |
 | `createdBy` | Creator information | `^[A-Za-z0-9 _-]+$` | `bicep-deployment` |
@@ -75,7 +75,7 @@ The naming convention is implemented through reusable Bicep modules:
 module naming '../40-modules/core/naming.bicep' = {
   name: 'resource-naming'
   params: {
-    projectCode: 'ss'
+    projectCode: 'ts'
     environment: 'dev'
     serviceCode: 'aks'
     resourceType: 'rg'
@@ -91,7 +91,7 @@ module tags '../40-modules/core/tagging.bicep' = {
   name: 'resource-tagging'
   params: {
     environment: 'dev'
-    project: 'ss'
+    project: 'ts'
     service: 'aks'
     costCenter: '1000'
     createdBy: 'bicep-deployment'
@@ -105,19 +105,19 @@ module tags '../40-modules/core/tagging.bicep' = {
 ## Examples
 
 ### Resource Group Names
-- Shared hub: `ss-sh-hub-rg`
-- Dev AKS: `ss-d-aks-rg`
-- Prod SWA: `ss-p-swa-rg`
-- Management: `ss-d-mgmt-rg`
+- Shared hub: `ts-sh-hub-rg`
+- Dev AKS: `ts-d-aks-rg`
+- Prod SWA: `ts-p-swa-rg`
+- Management: `ts-d-mgmt-rg`
 
 ### Identity Names
-- Dev K8s identity: `ss-d-k8s-id`
-- Shared ACR push: `ss-sh-acr-push-id`
-- Prod SWA identity: `ss-p-swa-id`
+- Dev K8s identity: `ts-d-k8s-id`
+- Shared ACR push: `ts-sh-acr-push-id`
+- Prod SWA identity: `ts-p-swa-id`
 
 ### Service Names
-- Shared ACR: `ssshplatacr`
-- Shared Cosmos: `ssshplatcosmos`
-- Dev Key Vault: `ssdakskv`
+- Shared ACR: `tsshplatacr`
+- Shared Cosmos: `tsshplatcosmos`
+- Dev Key Vault: `tsdakskv`
 
-This naming convention ensures consistency, compliance, and easy resource identification across all SecureSharer infrastructure.
+This naming convention ensures consistency, compliance, and easy resource identification across all Transio infrastructure.

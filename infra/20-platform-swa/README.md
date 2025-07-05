@@ -1,10 +1,10 @@
-# Platform Infrastructure (SWA) - SecureSharer
+# Platform Infrastructure (SWA) - Transio
 
-This directory contains the Static Web Apps (SWA) platform infrastructure for the SecureSharer project. It establishes a comprehensive platform environment that supports both Container Apps and Static Web Apps with secure networking, identity management, and monitoring capabilities.
+This directory contains the Static Web Apps (SWA) platform infrastructure for the Transio project. It establishes a comprehensive platform environment that supports both Container Apps and Static Web Apps with secure networking, identity management, and monitoring capabilities.
 
 ## Overview
 
-This deployment creates the foundational platform infrastructure required for hosting the SecureSharer application using a modern Static Web Apps + Container Apps architecture pattern.
+This deployment creates the foundational platform infrastructure required for hosting the Transio application using a modern Static Web Apps + Container Apps architecture pattern.
 
 ## Architecture
 
@@ -59,12 +59,12 @@ This deployment creates the foundational platform infrastructure required for ho
 
 ## Resource Naming
 
-All resources follow the SecureSharer naming convention:
-- Pattern: `ss-{env}-swa-{resourceType}`
+All resources follow the Transio naming convention:
+- Pattern: `ts-{env}-swa-{resourceType}`
 - Examples:
-  - `ss-d-swa-rg` (Development SWA Resource Group)
-  - `ss-p-swa-cae` (Production Container Apps Environment)
-  - `ss-d-swa-kv` (Development Key Vault)
+  - `ts-d-swa-rg` (Development SWA Resource Group)
+  - `ts-p-swa-cae` (Production Container Apps Environment)
+  - `ts-d-swa-kv` (Development Key Vault)
 
 ## Security Features
 
@@ -84,8 +84,8 @@ All resources follow the SecureSharer naming convention:
 
 ### Parameters
 
-Key SecureSharer-specific parameters:
-- `projectCode`: Set to `'ss'` for SecureSharer
+Key Transio-specific parameters:
+- `projectCode`: Set to `'ts'` for Transio
 - `serviceCode`: Set to `'swa'` for this platform
 - `environmentName`: Target environment (`dev` or `prod`)
 - `resourceLocation`: Azure region (default: `spaincentral`)
@@ -95,7 +95,7 @@ Key SecureSharer-specific parameters:
 
 ```bash
 az deployment group create \
-  --resource-group ss-dev-swa-rg \
+  --resource-group ts-dev-swa-rg \
   --template-file main.bicep \
   --parameters @main.dev.bicepparam
 ```
@@ -103,8 +103,8 @@ az deployment group create \
 ## Integration Points
 
 This platform provides the foundation for:
-- **SecureSharer Frontend**: Static Web Apps hosting React application
-- **SecureSharer Backend**: Container Apps hosting API services
+- **Transio Frontend**: Static Web Apps hosting React application
+- **Transio Backend**: Container Apps hosting API services
 - **Data Layer**: Cosmos DB for application data storage
 - **Configuration**: Key Vault for secrets and app settings
 - **Monitoring**: Log Analytics for operational insights
@@ -119,6 +119,6 @@ This platform provides the foundation for:
 ## Next Steps
 
 After deploying this platform, you can deploy:
-1. SecureSharer application workloads (`20-workload-swa`)
+1. Transio application workloads (`20-workload-swa`)
 2. Application-specific configuration and secrets
 3. Monitoring and alerting rules

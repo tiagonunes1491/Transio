@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * AKS Platform Infrastructure for Secure Secret Sharer
+ * AKS Platform Infrastructure for Transio
  * =============================================================================
  * 
  * This Bicep template establishes the Azure Kubernetes Service (AKS) platform
- * infrastructure for the Secure Secret Sharer application. It creates a
+ * infrastructure for the Transio application. It creates a
  * comprehensive Kubernetes platform environment with secure networking,
  * container registry, identity management, and monitoring capabilities.
  * 
@@ -44,7 +44,7 @@
  * 
  * RESOURCE NAMING:
  * All resources follow the naming convention: {projectCode}-{env}-{serviceCode}-{resourceType}
- * Example: ss-dev-aks-cluster, ss-prod-aks-acr
+ * Example: ts-dev-aks-cluster, ts-prod-aks-acr
  */
 
 targetScope = 'resourceGroup'
@@ -64,7 +64,7 @@ param tenantId string = subscription().tenantId
 param resourceLocation string = 'spaincentral'
 
 @description('Short project identifier used in resource naming conventions')
-param projectCode string = 'ss'
+param projectCode string = 'ts'
 
 @description('Service identifier for this SWA/ACA platform deployment')
 param serviceCode string 

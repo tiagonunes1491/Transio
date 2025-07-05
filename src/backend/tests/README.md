@@ -1,6 +1,6 @@
 # Backend Tests
 
-This directory contains the test suite for SecureSharer backend. 
+This directory contains the test suite for Transio backend. 
 
 ## Quick Start
 

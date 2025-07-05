@@ -12,7 +12,7 @@ param environmentName = 'dev'
 param location = 'spaincentral'
 
 // Project and service identification
-param projectCode = 'ss'
+param projectCode = 'ts'
 param serviceCode = 'aks'
 
 // Tagging information

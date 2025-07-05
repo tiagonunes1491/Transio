@@ -55,7 +55,7 @@
  * for Container Apps, virtual machines, and other Azure resources.
  */
 @description('Name of the Network Security Group')
-param nsgName string = 'nsg-securesharer-mvp'
+param nsgName string = 'nsg-transio-mvp'
 
 @description('Tags of the Network Security Group')
 param tags object

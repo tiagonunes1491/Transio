@@ -1,5 +1,5 @@
 Context
-I have Bicep templates that deploy SecureSharer resources.
+I have Bicep templates that deploy Transio resources.
 
 Enforced conventions
 Naming pattern (all lower-case, hyphen-separated)
@@ -8,7 +8,7 @@ bash
 Copy
 Edit
 <prefix>-<env>-<flavour>-<service>-<seq?>
-  prefix   = ss                       # project code
+  prefix   = ts                       # project code
   env      = dev | prod | shr         # shr = shared hub  (later: qa, sbx…)
   flavour  = aks | swa | shared       # shared = cross-env services
   service  = rg | acr | cdb | db | vnet | aks | swa | aca | kv | log
@@ -16,7 +16,7 @@ Edit
 Required tags on every resource
 
 Project	Environment	Flavour	CostCenter	Owner	DataClass	Deployment
-SecureSharer	dev / prod / shr	aks / swa / shared	R&D	tiago.nunes	Confidential	<pipeline-run-id>
+Transio	dev / prod / shr	aks / swa / shared	R&D	tiago.nunes	Confidential	<pipeline-run-id>
 
 Your tasks
 
@@ -50,7 +50,7 @@ Below is a **single, opinionated convention** you can drop into the repo and ref
 
 | Segment     | Example                                                      | Rules & Rationale                                                                                                 |
 | ----------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| **prefix**  | **`ss`**                                                     | Short, unique project code (Secure-Sharer). Keeps names unique across tenants.                                    |
+| **prefix**  | **`ts`**                                                     | Short, unique project code (Transio). Keeps names unique across tenants.                                    |
 | **env**     | `dev` \| `prod`                                              | Lower-case, three-letter environment codes. Extendable (`qa`, `sbx`).                                             |
 | **flavour** | `shared` \| `aks` \| `swa`                                   | Identifies the platform flavour that “owns” the resource.<br>For flavour-agnostic hub resources use **`shared`**. |
 | **service** | `rg`, `acr`, `cdb`, `vnet`, `aks`, `swa`, `aca`, `kv`, `log` | Azure-approved two- to four-letter abbreviations (see cheat-sheet below).                                         |
@@ -60,14 +60,14 @@ Below is a **single, opinionated convention** you can drop into the repo and ref
 
 | Resource            | Abbrev | Example name         |
 | ------------------- | ------ | -------------------- |
-| Resource Group      | `rg`   | `ss-prod-shared-rg`  |
-| Azure Container Reg | `acr`  | `ss-prod-shared-acr` |
-| Cosmos DB account   | `cdb`  | `ss-prod-shared-cdb` |
-| Cosmos database     | `db`   | `ss-prod-swa-db`     |
-| AKS cluster         | `aks`  | `ss-prod-aks-aks`    |
-| Static Web App      | `swa`  | `ss-prod-swa-swa`    |
-| Container App env   | `aca`  | `ss-prod-swa-aca`    |
-| Key Vault           | `kv`   | `ss-prod-shared-kv`  |
+| Resource Group      | `rg`   | `ts-prod-shared-rg`  |
+| Azure Container Reg | `acr`  | `ts-prod-shared-acr` |
+| Cosmos DB account   | `cdb`  | `ts-prod-shared-cdb` |
+| Cosmos database     | `db`   | `ts-prod-swa-db`     |
+| AKS cluster         | `aks`  | `ts-prod-aks-aks`    |
+| Static Web App      | `swa`  | `ts-prod-swa-swa`    |
+| Container App env   | `aca`  | `ts-prod-swa-aca`    |
+| Key Vault           | `kv`   | `ts-prod-shared-kv`  |
 | Log Analytics       | `log`  | `ss-prod-shared-log` |
 
 > **Length guard:** This pattern tops out at \~40 chars (well under the 64-char Cosmos & 80-char Storage limits).
@@ -78,12 +78,12 @@ Below is a **single, opinionated convention** you can drop into the repo and ref
 
 | Tag Key (PascalCase) | Value example              | Why                                          |
 | -------------------- | -------------------------- | -------------------------------------------- |
-| `Project`            | `SecureSharer`             | Portfolio grouping across tenants.           |
+| `Project`            | `Transio`             | Portfolio grouping across tenants.           |
 | `Environment`        | `dev` / `prod`             | Filter cost & alerts easily.                 |
 | `Flavour`            | `aks` / `swa` / `shared`   | Maps to landing-zone folders.                |
 | `CostCenter`         | `R&D`                      | Required by most FinOps teams—even if dummy. |
 | `Owner`              | `tiago.nunes`              | Human accountable.                           |
-| `Contact`            | `slack:#securesharer`      | Ops escalation path.                         |
+| `Contact`            | `slack:#transio`      | Ops escalation path.                         |
 | `DataClass`          | `Confidential`             | Quick compliance filter.                     |
 | `Deployment`         | Git SHA or pipeline run-id | Trace resource to pipeline artefact.         |
 | `Expires` (optional) | `2025-12-31`               | Auto-clean lab resources with tag policy.    |

@@ -1,10 +1,10 @@
-# Landing Zone Infrastructure - SecureSharer
+# Landing Zone Infrastructure - Transio
 
-This directory contains the foundational identity and access management infrastructure for the SecureSharer project. This landing zone is platform-agnostic and supports both Azure Kubernetes Service (AKS) and Static Web Apps (SWA) deployment patterns.
+This directory contains the foundational identity and access management infrastructure for the Transio project. This landing zone is platform-agnostic and supports both Azure Kubernetes Service (AKS) and Static Web Apps (SWA) deployment patterns.
 
 ## Overview
 
-The landing zone establishes the core identity and access management components required for deploying and managing SecureSharer workloads across different platform architectures, including both containerized workloads on AKS and serverless workloads using Static Web Apps with Container Apps.
+The landing zone establishes the core identity and access management components required for deploying and managing Transio workloads across different platform architectures, including both containerized workloads on AKS and serverless workloads using Static Web Apps with Container Apps.
 
 ## Architecture
 
@@ -34,8 +34,8 @@ This landing zone is platform-agnostic and can be deployed with either AKS or SW
 └─────────────────────────────────────────────────────────────────────────┘
 
 Deployment Options:
-├── AKS Pattern: Creates ss-{env}-aks-rg with AKS-specific identities
-└── SWA Pattern: Creates ss-{env}-swa-rg with SWA-specific identities
+├── AKS Pattern: Creates ts-{env}-aks-rg with AKS-specific identities
+└── SWA Pattern: Creates ts-{env}-swa-rg with SWA-specific identities
 ```
 
 ## Key Components
@@ -43,8 +43,8 @@ Deployment Options:
 - **User-Assigned Managed Identities**: Provides secure, keyless authentication for Azure services
 - **GitHub Federation**: Enables passwordless CI/CD authentication from GitHub Actions
 - **RBAC Role Assignments**: Implements principle of least privilege access control
-- **Resource Naming**: Uses SecureSharer-specific naming conventions with configurable service codes
-- **Platform Flexibility**: Supports both AKS (`ss-{env}-aks-*`) and SWA (`ss-{env}-swa-*`) naming patterns
+- **Resource Naming**: Uses Transio-specific naming conventions with configurable service codes
+- **Platform Flexibility**: Supports both AKS (`ts-{env}-aks-*`) and SWA (`ts-{env}-swa-*`) naming patterns
 
 ## Security Features
 
@@ -55,7 +55,7 @@ Deployment Options:
 
 ## Deployment
 
-This template operates at subscription scope and is designed to be deployed first in the SecureSharer infrastructure pipeline. The same landing zone template supports both AKS and SWA deployment patterns through different parameter configurations.
+This template operates at subscription scope and is designed to be deployed first in the Transio infrastructure pipeline. The same landing zone template supports both AKS and SWA deployment patterns through different parameter configurations.
 
 ### Prerequisites
 
@@ -65,7 +65,7 @@ This template operates at subscription scope and is designed to be deployed firs
 ### Parameters
 
 Key parameters include:
-- `projectCode`: Set to `'ss'` for SecureSharer
+- `projectCode`: Set to `'ts'` for Transio
 - `serviceCode`: Platform identifier (`'aks'` for Kubernetes or `'swa'` for Static Web Apps)
 - `environmentName`: Target environment (`dev` or `prod`)
 - `resourceLocation`: Azure region (default: `spaincentral`)
@@ -85,7 +85,7 @@ az deployment sub create \
   --parameters @aks-dev.bicepparam
 ```
 
-This creates: `ss-d-aks-rg` resource group with AKS-specific managed identities.
+This creates: `ts-d-aks-rg` resource group with AKS-specific managed identities.
 
 ### For Static Web Apps Deployment Pattern
 
@@ -96,7 +96,7 @@ az deployment sub create \
   --parameters @swa-dev.bicepparam
 ```
 
-This creates: `ss-d-swa-rg` resource group with SWA-specific managed identities.
+This creates: `ts-d-swa-rg` resource group with SWA-specific managed identities.
 
 ## Next Steps
 

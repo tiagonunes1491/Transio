@@ -1,6 +1,6 @@
 # Bootstrap Key Vault Deployment
 
-This directory contains the bootstrap Key Vault deployment for the Secure Secret Sharer application. Each platform and environment combination gets its own dedicated Key Vault that must be deployed before the corresponding platform infrastructure.
+This directory contains the bootstrap Key Vault deployment for the Transio application. Each platform and environment combination gets its own dedicated Key Vault that must be deployed before the corresponding platform infrastructure.
 
 ## Purpose
 
@@ -43,12 +43,12 @@ The bootstrap Key Vault serves as the platform-specific secrets management solut
 The bootstrap Key Vault must be deployed in the following order for each platform:
 
 1. **Bootstrap Key Vault** (this deployment) - `infra/10-bootstrap-kv/`
-   - Deploy for SWA: `swa.dev.bicepparam` → creates `ss-dev-swa-kv`
-   - Deploy for AKS: `aks.dev.bicepparam` → creates `ss-dev-aks-kv`
+   - Deploy for SWA: `swa.dev.bicepparam` → creates `ts-dev-swa-kv`
+   - Deploy for AKS: `aks.dev.bicepparam` → creates `ts-dev-aks-kv`
 2. **Secret Management** - Configure secrets in each Key Vault externally
 3. **Platform Infrastructure** - Deploy platform referencing its Key Vault:
-   - AKS Platform - `infra/20-platform-aks/` → references `ss-dev-aks-kv`
-   - SWA/ACA Platform - `infra/20-platform-swa/` → references `ss-dev-swa-kv`
+   - AKS Platform - `infra/20-platform-aks/` → references `ts-dev-aks-kv`
+   - SWA/ACA Platform - `infra/20-platform-swa/` → references `ts-dev-swa-kv`
 4. **Workload Deployments** - `infra/30-workload-*/`
 
 ## Deployment Commands
@@ -67,7 +67,7 @@ Deploy for each platform separately:
 
 ```powershell
 # Set variables for SWA deployment
-$resourceGroupName = "rg-ss-dev-swa"
+$resourceGroupName = "rg-ts-dev-swa"
 $subscriptionId = "your-subscription-id"
 $location = "spaincentral"
 
@@ -86,7 +86,7 @@ az deployment group create `
 
 ```powershell
 # Set variables for AKS deployment
-$resourceGroupName = "rg-ss-dev-aks"
+$resourceGroupName = "rg-ts-dev-aks"
 $subscriptionId = "your-subscription-id"
 $location = "spaincentral"
 
@@ -107,22 +107,22 @@ After Key Vault deployment, configure secrets externally:
 
 ```powershell
 # Configure SWA secrets
-az keyvault secret set --vault-name "ss-dev-swa-kv" --name "cosmos-endpoint" --value "https://..."
-az keyvault secret set --vault-name "ss-dev-swa-kv" --name "encryption-key" --value "base64-key"
+az keyvault secret set --vault-name "ts-dev-swa-kv" --name "cosmos-endpoint" --value "https://..."
+az keyvault secret set --vault-name "ts-dev-swa-kv" --name "encryption-key" --value "base64-key"
 
 # Configure AKS secrets  
-az keyvault secret set --vault-name "ss-dev-aks-kv" --name "cosmos-endpoint" --value "https://..."
-az keyvault secret set --vault-name "ss-dev-aks-kv" --name "encryption-key" --value "base64-key"
+az keyvault secret set --vault-name "ts-dev-aks-kv" --name "cosmos-endpoint" --value "https://..."
+az keyvault secret set --vault-name "ts-dev-aks-kv" --name "encryption-key" --value "base64-key"
 ```
 
 ### Verify Deployment
 
 ```powershell
 # Get SWA Key Vault details
-az keyvault show --name "ss-dev-swa-kv" --resource-group "rg-ss-dev-swa"
+az keyvault show --name "ts-dev-swa-kv" --resource-group "rg-ts-dev-swa"
 
 # Get AKS Key Vault details
-az keyvault show --name "ss-dev-aks-kv" --resource-group "rg-ss-dev-aks"
+az keyvault show --name "ts-dev-aks-kv" --resource-group "rg-ts-dev-aks"
 
 # List Key Vault properties for platform configurations
 az deployment group show `
@@ -149,7 +149,7 @@ The deployment uses the following key parameters:
 
 Resources follow the naming pattern: `{projectCode}-{environment}-{serviceCode}-{resourceType}`
 
-Example: `ss-dev-swa-kv`, `ss-dev-aks-kv`
+Example: `ts-dev-swa-kv`, `ts-dev-aks-kv`
 
 ## Security Features
 
@@ -193,10 +193,10 @@ Secrets are **not** created during the bootstrap deployment. They should be mana
 
 ```powershell
 # Set application secrets
-az keyvault secret set --vault-name "ss-dev-bootstrap-kv" --name "cosmos-endpoint" --value "https://..."
-az keyvault secret set --vault-name "ss-dev-bootstrap-kv" --name "encryption-key" --value "base64-encoded-key"
-az keyvault secret set --vault-name "ss-dev-bootstrap-kv" --name "cosmos-database-name" --value "ssdb"
-az keyvault secret set --vault-name "ss-dev-bootstrap-kv" --name "cosmos-container-name" --value "secrets"
+az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "cosmos-endpoint" --value "https://..."
+az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "encryption-key" --value "base64-encoded-key"
+az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "cosmos-database-name" --value "ssdb"
+az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "cosmos-container-name" --value "secrets"
 ```
 
 ## Platform Integration
@@ -220,7 +220,7 @@ The SWA/ACA platform (`infra/20-platform-swa/`) references this Key Vault via:
 
 1. **Resource Group Doesn't Exist**
    ```powershell
-   az group create --name "rg-ss-dev-bootstrap" --location "spaincentral"
+   az group create --name "rg-ts-dev-bootstrap" --location "spaincentral"
    ```
 
 2. **Insufficient Permissions**
@@ -236,13 +236,13 @@ The SWA/ACA platform (`infra/20-platform-swa/`) references this Key Vault via:
 
 ```powershell
 # Check deployment status
-az deployment group list --resource-group "rg-ss-dev-bootstrap"
+az deployment group list --resource-group "rg-ts-dev-bootstrap"
 
 # Validate Key Vault configuration
-az keyvault show --name "ss-dev-bootstrap-kv" --query "{name:name,sku:properties.sku.name,rbac:properties.enableRbacAuthorization,purgeProtection:properties.enablePurgeProtection}"
+az keyvault show --name "ts-dev-bootstrap-kv" --query "{name:name,sku:properties.sku.name,rbac:properties.enableRbacAuthorization,purgeProtection:properties.enablePurgeProtection}"
 
 # Test Key Vault connectivity
-az keyvault secret list --vault-name "ss-dev-bootstrap-kv"
+az keyvault secret list --vault-name "ts-dev-bootstrap-kv"
 ```
 
 ## Next Steps
