@@ -11,13 +11,12 @@ from cryptography.fernet import Fernet
 
 from backend.app.storage import (
     store_encrypted_secret,
-    retrieve_and_delete_secret,
-    check_secret_exists,
-    cleanup_expired_secrets
+    retrieve_secret,
+    delete_secret,
+    retrieve_and_delete_secret
 )
 from backend.app.encryption import encrypt_secret, decrypt_secret
 from backend.app.models import Secret
-from backend.app import db
 
 
 class TestDoSAndRateLimiting:
@@ -152,12 +151,12 @@ class TestCryptographicSecurity:
         
         # Measure timing for real secret check
         start_time = time.time()
-        exists_real = check_secret_exists(real_link_id)
+        exists_real = retrieve_secret(real_link_id) is not None
         real_time = time.time() - start_time
         
         # Measure timing for fake secret check
         start_time = time.time()
-        exists_fake = check_secret_exists(fake_link_id)
+        exists_fake = retrieve_secret(fake_link_id) is not None
         fake_time = time.time() - start_time
         
         assert exists_real is True

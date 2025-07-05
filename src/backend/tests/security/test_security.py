@@ -6,12 +6,11 @@ from unittest.mock import patch
 
 from backend.app.storage import (
     store_encrypted_secret,
-    retrieve_and_delete_secret,
-    check_secret_exists,
-    cleanup_expired_secrets
+    retrieve_secret,
+    delete_secret,
+    retrieve_and_delete_secret
 )
 from backend.app.models import Secret
-from backend.app import db
 
 
 class TestSQLInjectionResistance:
@@ -43,7 +42,7 @@ class TestSQLInjectionResistance:
             result = retrieve_and_delete_secret(payload)
             assert result is None, f"SQL injection payload '{payload}' should return None"
             
-            exists = check_secret_exists(payload)
+            exists = retrieve_secret(payload) is not None
             assert exists is False, f"SQL injection payload '{payload}' should return False for existence check"
     
     def test_link_id_sql_injection_via_api(self, client):
@@ -118,7 +117,7 @@ class TestSQLInjectionResistance:
             result = retrieve_and_delete_secret(payload)
             assert result is None, f"Boolean SQL injection should not leak data: '{payload}'"
             
-            exists = check_secret_exists(payload)
+            exists = retrieve_secret(payload) is not None
             assert exists is False, f"Boolean SQL injection should not confirm existence: '{payload}'"
     
     def test_time_based_sql_injection(self, client, app_context):
@@ -159,7 +158,7 @@ class TestSQLInjectionResistance:
             result = retrieve_and_delete_secret(payload)
             assert result is None, f"UNION SQL injection should not return data: '{payload}'"
             
-            exists = check_secret_exists(payload)
+            exists = retrieve_secret(payload) is not None
             assert exists is False, f"UNION SQL injection should not confirm existence: '{payload}'"
     
     def test_stacked_queries_sql_injection(self, client, app_context):
@@ -340,7 +339,7 @@ class TestDatabaseSecurity:
             result = retrieve_and_delete_secret(payload)
             assert result is None, f"Special character SQL injection should return None: '{payload}'"
             
-            exists = check_secret_exists(payload)
+            exists = retrieve_secret(payload) is not None
             assert exists is False, f"Special character SQL injection should return False: '{payload}'"
     
     def test_sql_injection_parameter_pollution(self, client):
@@ -377,7 +376,7 @@ class TestDatabaseSecurity:
             result = retrieve_and_delete_secret(payload)
             assert result is None, f"SQL injection should return None: '{payload}'"
             
-            exists = check_secret_exists(payload)
+            exists = retrieve_secret(payload) is not None
             assert exists is False, f"SQL injection should return False: '{payload}'"
         
         # Verify no secrets were affected by injection attempts

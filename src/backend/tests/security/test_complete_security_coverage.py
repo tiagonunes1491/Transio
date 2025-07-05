@@ -165,7 +165,7 @@ class TestAdvancedCryptographicSecurity:
     
     def test_timing_attack_resistance_comprehensive(self, client, app_context):
         """Test comprehensive timing attack resistance."""
-        from backend.app.storage import check_secret_exists
+        from backend.app.storage import retrieve_secret
         import time
         
         # Test timing differences between existing and non-existing secrets
@@ -183,7 +183,7 @@ class TestAdvancedCryptographicSecurity:
             # Time checks for existing secret
             for _ in range(10):
                 start = time.time()
-                exists = check_secret_exists(existing_id)
+                exists = retrieve_secret(existing_id) is not None
                 end = time.time()
                 existing_times.append(end - start)
                 assert exists is True
@@ -192,7 +192,7 @@ class TestAdvancedCryptographicSecurity:
             fake_id = 'non-existent-id-12345'
             for _ in range(10):
                 start = time.time()
-                exists = check_secret_exists(fake_id)
+                exists = retrieve_secret(fake_id) is not None
                 end = time.time()
                 non_existing_times.append(end - start)
                 assert exists is False

@@ -1,7 +1,12 @@
 # backend/tests/conftest.py
-import pytest
-import os
 import sys
+import os
+
+# Mock Azure dependencies before any other imports
+sys.path.insert(0, '/tmp')
+import azure_mocks
+
+import pytest
 from unittest.mock import patch, MagicMock
 from cryptography.fernet import Fernet
 
@@ -42,14 +47,14 @@ def mock_cosmos_container():
     def mock_read_item(item, partition_key):
         if item in _storage:
             return _storage[item]
-        from azure.cosmos.exceptions import CosmosResourceNotFoundError
+        from azure_mocks import CosmosResourceNotFoundError
         raise CosmosResourceNotFoundError(message=f"Item {item} not found")
     
     def mock_delete_item(item, partition_key):
         if item in _storage:
             del _storage[item]
         else:
-            from azure.cosmos.exceptions import CosmosResourceNotFoundError
+            from azure_mocks import CosmosResourceNotFoundError
             raise CosmosResourceNotFoundError(message=f"Item {item} not found")
     
     def mock_query_items(query, enable_cross_partition_query=False):
@@ -129,28 +134,21 @@ def app(mock_cosmos_container):
                 current_app.logger.error(f"Error sharing secret: {e}", exc_info=True)
                 return jsonify({"error": "Failed to store secret due to an internal server error."}), 500
         
-        @app.route('/api/share/secret/<link_id>', methods=['GET', 'HEAD'])
+        @app.route('/api/share/secret/<link_id>', methods=['GET'])
         def retrieve_secret_api(link_id):
             """API endpoint to retrieve (and delete) a secret."""
             from flask import request, jsonify, current_app
-            from backend.app.storage import retrieve_and_delete_secret, check_secret_exists
+            from backend.app.storage import retrieve_and_delete_secret
             from backend.app.encryption import decrypt_secret
             
             if not link_id:
                 current_app.logger.warning("Attempt to retrieve secret with empty link_id.")
                 return jsonify({"error": "Secret ID is required"}), 404
-                
-            if request.method == "HEAD":
-                exists = check_secret_exists(link_id)
-                if exists:
-                    return "", 200
-                else:
-                    return "", 404
 
-            encrypted_data = retrieve_and_delete_secret(link_id)
+            secret_obj = retrieve_and_delete_secret(link_id)
 
-            if encrypted_data:
-                decrypted_secret = decrypt_secret(encrypted_data)
+            if secret_obj:
+                decrypted_secret = decrypt_secret(secret_obj.encrypted_secret)
                 if decrypted_secret is not None:
                     current_app.logger.info(f"Secret {link_id} retrieved and returned as JSON.")
                     return jsonify({"secret": decrypted_secret}), 200
