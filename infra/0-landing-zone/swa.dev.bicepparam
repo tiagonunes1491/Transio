@@ -18,13 +18,13 @@ param serviceCode = 'swa'
 // Tagging information
 param costCenter = '1000'
 param createdBy = 'bicep-deployment'
-param owner = 'tiago-nunes'
-param ownerEmail = 'tiago.nunes@example.com'
+param owner = ''
+param ownerEmail = ''
 
 // GitHub integration configuration
 // Update these values with your actual GitHub organization and repository
-param gitHubOrganizationName = 'tiagonunes1491'
-param gitHubRepositoryName = 'SecureSharer'
+param gitHubOrganizationName = ''
+param gitHubRepositoryName = ''
 
 // PaaS workload identities configuration
 // These UAMIs will be used for PaaS workloads (Container Apps, Static Web Apps, etc.)

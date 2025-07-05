@@ -9,8 +9,8 @@ param environmentName = 'dev'
 // Tagging configuration
 param costCenter = '1000'
 param createdBy = 'bicep-deployment-dev'
-param owner = 'tiago-nunes'
-param ownerEmail = 'tiago.nunes@microsoft.com'
+param owner = ''
+param ownerEmail = ''
 
 
 // Existing infrastructure references

@@ -11,5 +11,5 @@ param kvEnablePublicNetworkAccess = true
 param kvNetworkAclsDefaultAction = 'Allow'
 param costCenter = '1000'
 param createdBy = 'bicep-deployment'
-param owner = 'tiago-nunes'
-param ownerEmail = 'tiago.nunes@example.com'
+param owner = ''
+param ownerEmail = ''
