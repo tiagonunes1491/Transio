@@ -4,12 +4,12 @@ on:
         branches: [development]
         paths:
         # --- TRIGGER on changes to these files ---
-        - 'backend/**/*.py'
-        - 'backend/requirements.txt'
-        - 'backend/Dockerfile'
+        - 'src/backend/**/*.py'
+        - 'src/backend/requirements.txt'
+        - 'src/backend/Dockerfile'
 
         # --- IGNORE changes in this subdirectory ---
-        - '!backend/tests/**'
+        - '!src/backend/tests/**'
     workflow_dispatch:
 jobs:
   build_and_push_image:
@@ -19,9 +19,9 @@ jobs:
       contents: read    # Required by actions/checkout to read the repo
     uses: ./.github/workflows/reusable-build-push.yml
     with:
-      dockerfile-path: 'backend/Dockerfile'
+      dockerfile-path: 'src/backend/Dockerfile'
       image-name: 'backend-app'
-      build-context: './backend'
+      build-context: './src/backend'
       acr-name: ${{ vars.ACR_NAME }}
       environment: shared
     secrets:

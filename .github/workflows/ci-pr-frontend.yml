@@ -4,9 +4,9 @@ on:
     branches:
       - 'development'
     paths:
-      - 'frontend/static/**'
-      - 'frontend/Dockerfile'
-      - 'frontend/nginx.conf'
+      - 'src/frontend/static/**'
+      - 'src/frontend/Dockerfile'
+      - 'src/frontend/nginx.conf'
 jobs:
   check_changes:
     name: 'Check for file changes'
@@ -25,7 +25,7 @@ jobs:
         with:
           # Get all changed files in frontend static directory (production files only)
           files: |
-            frontend/static/**
+            src/frontend/static/**
           # Output the files as a comma-separated list
           separator: ','
 
@@ -34,9 +34,9 @@ jobs:
         with:
           # Get changes that require a rebuild
           files: |
-            frontend/Dockerfile
-            frontend/nginx.conf
-            frontend/static/**
+            src/frontend/Dockerfile
+            src/frontend/nginx.conf
+            src/frontend/static/**
 
   format_and_lint:
     needs: check_changes
@@ -59,7 +59,7 @@ jobs:
     if: needs.check_changes.outputs.lint_required != ''
     uses: ./.github/workflows/reusable-sca-scan.yml
     with:
-      paths: 'frontend/static'
+      paths: 'src/frontend/static'
     
   frontend_tests:
     needs: check_changes
@@ -76,9 +76,9 @@ jobs:
     if: needs.check_changes.outputs.build_required != '' || needs.check_changes.outputs.lint_required != ''
     uses: ./.github/workflows/reusable-container-scan.yml
     with:
-      path: 'frontend/Dockerfile'
+      path: 'src/frontend/Dockerfile'
       container-name: 'frontend-app'
-      build-context: 'frontend'
+      build-context: 'src/frontend'
       
   post-comment:
     name: 'Post Validation Results Comment'
@@ -179,5 +179,5 @@ jobs:
 
             No frontend files were changed in this PR - validation skipped.
 
-            If you expected frontend validation to run, check that changes are in the `frontend/` directory with the appropriate file extensions (`.js`, `.html`, `.css`, `Dockerfile`).
+            If you expected frontend validation to run, check that changes are in the `src/frontend/` directory with the appropriate file extensions (`.js`, `.html`, `.css`, `Dockerfile`).
           edit-mode: replace

@@ -58,10 +58,10 @@ EXPOSE 5000
 # Define environment variables needed by Flask and your app.
 # These will be used by config.py if a .env file isn't present.
 # FLASK_APP tells Flask where your application instance is.
-# FLASK_DEBUG can be set to False for production builds, but True is fine for now.
+# FLASK_DEBUG should be False for containerized deployments for security.
 # The MASTER_ENCRYPTION_KEY MUST be provided when running the container.
 ENV FLASK_APP=app.main
-ENV FLASK_DEBUG=True
+ENV FLASK_DEBUG=False
 # Example: ENV MASTER_ENCRYPTION_KEY="your_key_here_from_docker_compose_or_env" (but set it at runtime)
 
 # Healthcheck to ensure the application is running
