@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load and execute view.js to ensure coverage tracking
-const viewPath = path.join(__dirname, '..', 'static', 'view.js');
+const viewPath = path.join(__dirname, '..', '..', 'static', 'view.js');
 const viewSource = fs.readFileSync(viewPath, 'utf8');
 
 describe('View Page Functions', () => {

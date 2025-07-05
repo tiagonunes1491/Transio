@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load and execute index.js to ensure coverage tracking
-const indexPath = path.join(__dirname, '..', 'static', 'index.js');
+const indexPath = path.join(__dirname, '..', '..', 'static', 'index.js');
 const indexSource = fs.readFileSync(indexPath, 'utf8');
 
 // Mock DOM elements and environment
