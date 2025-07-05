@@ -1,10 +1,10 @@
-# Frontend Testing for SecureSharer
+# Frontend Testing for Transio
 
-This directory contains unit tests for the SecureSharer frontend JavaScript code.
+This directory contains unit tests for the Transio frontend JavaScript code.
 
 ## Overview
 
-The frontend testing suite validates the core JavaScript functionality of the SecureSharer application, ensuring that all client-side features work correctly and securely.
+The frontend testing suite validates the core JavaScript functionality of the Transio application, ensuring that all client-side features work correctly and securely.
 
 ## Test Coverage
 

@@ -1,16 +1,16 @@
-# SecureSharer: A Cloud-Native Security Showcase
+# Transio: A Cloud-Native Security Showcase
 
 ## 🚀 Executive Summary
 
-Secure Secret Sharer is a production-grade application designed for sharing sensitive text-based information securely. Users can create self-destructing, encrypted notes that are accessible via a unique one-time link. Once viewed, the secret is permanently deleted.
+Transio is a production-grade application designed for sharing sensitive text-based information securely. Users can create self-destructing, encrypted notes that are accessible via a unique one-time link. Once viewed, the secret is permanently deleted.
 
 This project serves as a comprehensive demonstration of **cloud-native security best practices** and **defense-in-depth strategies** deployed on **Azure Kubernetes Service (AKS)**. It showcases expertise in securing containerized applications, managing secrets with Azure Key Vault, implementing robust network policies, and leveraging Azure Workload Identity for secure, credential-less access to cloud resources.
 
 ## 🎬 Application Demo
 
-Watch this short GIF to see how Secure Secret Sharer allows users to create, share, and view one-time secrets:
+Watch this short GIF to see how Transio allows users to create, share, and view one-time secrets:
 
-![SecureSharer Demo GIF](docs/SecretShare.gif)
+![Transio Demo GIF](docs/SecretShare.gif)
 
 The flow demonstrated includes:
 1.  User composes a secret message.
@@ -37,7 +37,7 @@ The application follows a tiered architecture:
     * **Azure Container Registry (ACR)**: Stores hardened Docker images, scanned for vulnerabilities.
     * **Azure Application Gateway (AppGW)**: Provides secure L7 load balancing and ingress control for the application, managed by the Application Gateway Ingress Controller (AGIC).
       
-![Architecture Diagram](docs/diagram-securesharer.drawio.png)
+![Architecture Diagram](docs/diagram-transio.drawio.png)
 
 ## ✨ Core Features
 
