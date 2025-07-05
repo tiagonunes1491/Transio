@@ -23,7 +23,7 @@ os.environ['MAX_SECRET_LENGTH_KB'] = '100'
 os.environ['SECRET_EXPIRY_MINUTES'] = '60'
 os.environ['COSMOS_ENDPOINT'] = 'https://localhost:8081'
 os.environ['COSMOS_KEY'] = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='
-os.environ['COSMOS_DATABASE_NAME'] = 'TestSecureSharer'
+os.environ['COSMOS_DATABASE_NAME'] = 'TestTransio'
 os.environ['COSMOS_CONTAINER_NAME'] = 'test_secrets'
 
 
@@ -79,7 +79,7 @@ def app(mock_cosmos_container):
     app.config['MAX_SECRET_LENGTH_BYTES'] = 100 * 1024
     app.config['COSMOS_ENDPOINT'] = 'https://localhost:8081'
     app.config['COSMOS_KEY'] = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='
-    app.config['COSMOS_DATABASE_NAME'] = 'TestSecureSharer'
+    app.config['COSMOS_DATABASE_NAME'] = 'TestTransio'
     app.config['COSMOS_CONTAINER_NAME'] = 'test_secrets'
     
     # Mock the Cosmos DB container
@@ -180,7 +180,7 @@ def app_context(mock_cosmos_container):
     app.config['TESTING'] = True
     app.config['COSMOS_ENDPOINT'] = 'https://localhost:8081'
     app.config['COSMOS_KEY'] = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='
-    app.config['COSMOS_DATABASE_NAME'] = 'TestSecureSharer'
+    app.config['COSMOS_DATABASE_NAME'] = 'TestTransio'
     app.config['COSMOS_CONTAINER_NAME'] = 'test_secrets'
     
     with patch('backend.app.container', mock_cosmos_container):
