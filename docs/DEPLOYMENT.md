@@ -16,7 +16,7 @@ Before you begin, ensure you have the following:
 * **Project Repository**: Clone this project repository to your local machine.
     ```bash
     git clone <repository-url>
-    cd secure-secret-sharer
+    cd transio
     ```
 * **(For Windows Users) WSL & Ubuntu**:
     * Ensure Windows Subsystem for Linux (WSL) is enabled and an Ubuntu distribution is installed. Run the `scripts/install_wsl_prereqs.ps1` script in an elevated PowerShell console.
@@ -56,7 +56,7 @@ The script performs the following actions:
 * **Key Vault Secrets**: The Bicep template provisions Azure Key Vault. However, the secrets themselves (`postgres-password`, `app-db-user`, `app-db-password`, `app-master-encryption-key`) **must be created manually in the Azure Key Vault** after the Key Vault is provisioned by the Bicep step in `build_dev.sh` but *before* the Helm deployment step is executed by the script.
 
     **Action Required: Create Secrets in Azure Key Vault**
-    After the Bicep deployment part of `build_dev.sh` completes and your Key Vault (e.g., `kv-securesharer-dev` as per the Bicep variables, or the value outputted by the script) is created:
+    After the Bicep deployment part of `build_dev.sh` completes and your Key Vault (e.g., `kv-transio-dev` as per the Bicep variables, or the value outputted by the script) is created:
     1.  Navigate to your Key Vault in the Azure portal.
     2.  Go to **Secrets** and click **+ Generate/Import**.
     3.  Create the following secrets with appropriate values:
@@ -88,7 +88,7 @@ Run the script:
 
 * `--skip-infra`: Skips the Bicep infrastructure deployment. Useful if infrastructure is already deployed and you only want to update images/application.
 * `--skip-containers`: Skips building and pushing container images. Useful if images are already in ACR.
-* `--full-rebuild`: **Deletes the Azure resource group** (default: `rg-secure-secret-sharer-dev`) and purges the Key Vault before starting a new deployment. **Use with extreme caution.**
+* `--full-rebuild`: **Deletes the Azure resource group** (default: `rg-transio-dev`) and purges the Key Vault before starting a new deployment. **Use with extreme caution.**
 * `-h` or `--help`: Displays usage information.
 
 Example: To run a full deployment including infrastructure and containers:
@@ -158,7 +158,7 @@ The `build_dev.sh` script will output instructions for updating your local `host
 
 The `infra/main.bicep` file defines all Azure resources. Key components include:
 
-* **Azure Resource Group**: A container for all resources (e.g., `rg-secure-secret-sharer-dev`).
+* **Azure Resource Group**: A container for all resources (e.g., `rg-transio-dev`).
 * **Azure Container Registry (ACR)**.
 * **Azure Key Vault (KV)**.
 * **User Assigned Managed Identities (UAMIs)**:
@@ -181,7 +181,7 @@ To remove all deployed Azure resources:
  If you prefer to delete manually or if the script encounters issues:
  * **Delete Resource Group**:
      ```bash
-     # Identify your resource group name (e.g., rg-secure-secret-sharer-dev from build_dev.sh output)
+     # Identify your resource group name (e.g., rg-transio-dev from build_dev.sh output)
      az group delete --name <your-resource-group-name> --yes --no-wait
      ```
  * **Purge Key Vault**: If purge protection was enabled and the Key Vault is soft-deleted, you might need to purge it manually from the Azure Portal or via CLI:

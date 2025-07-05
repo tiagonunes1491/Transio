@@ -156,7 +156,7 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
   
   # Step 2: Clean up local kubectl context
   log "INFO" "Step 2: Cleaning up local kubectl context..."
-  AKS_NAME="aks-secure-secret-sharer-dev"
+  AKS_NAME="aks-transio-dev"
   if command -v kubectl >/dev/null && kubectl config get-contexts 2>/dev/null | grep -q "$AKS_NAME"; then
     kubectl config delete-context "$AKS_NAME" 2>/dev/null || true
     log "INFO" "✅ Kubectl context for '$AKS_NAME' removed"
@@ -265,7 +265,7 @@ if [[ "$FULL_REBUILD" == true ]]; then
   
   # Step 2: Clean up local kubectl context
   log "INFO" "Step 2: Cleaning up local kubectl context..."
-  AKS_NAME="aks-secure-secret-sharer-dev"
+  AKS_NAME="aks-transio-dev"
   if command -v kubectl >/dev/null && kubectl config get-contexts 2>/dev/null | grep -q "$AKS_NAME"; then
     kubectl config delete-context "$AKS_NAME" 2>/dev/null || true
     log "INFO" "✅ Kubectl context for '$AKS_NAME' removed"
@@ -879,7 +879,7 @@ if [[ "$SKIP_CONTAINERS" == false ]]; then
   for svc in "${SERVICES[@]}"; do
     TAG_VAR="${svc^^}_TAG"
     TAG_VALUE="${!TAG_VAR:-latest}"
-    IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
+    IMAGE="$ACR_LOGIN_SERVER/transio-$svc:$TAG_VALUE"
     log "INFO" "Building $svc image ($TAG_VALUE) - this may take several minutes..."
     docker build -t "$IMAGE" "../src/$svc" --progress=plain
     log "INFO" "Pushing $svc image to ACR..."
@@ -894,7 +894,7 @@ else
   for svc in "${SERVICES[@]}"; do
     TAG_VAR="${svc^^}_TAG"
     TAG_VALUE="${!TAG_VAR:-latest}"
-    IMAGE="$ACR_LOGIN_SERVER/secure-secret-sharer-$svc:$TAG_VALUE"
+    IMAGE="$ACR_LOGIN_SERVER/transio-$svc:$TAG_VALUE"
     IMAGES+=("$svc:$IMAGE")
   done
 fi

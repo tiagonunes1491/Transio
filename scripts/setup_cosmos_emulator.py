@@ -20,7 +20,7 @@ def setup_cosmos_emulator():
     # Cosmos DB emulator configuration
     endpoint = "https://localhost:8081"
     key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
-    database_name = "SecureSharer"
+    database_name = "Transio"
     container_name = "secrets"
     
     try:
@@ -74,7 +74,7 @@ def wait_for_emulator(max_attempts=30, delay=5):
     return False
 
 if __name__ == "__main__":
-    logger.info("🚀 Setting up Cosmos DB emulator for SecureSharer...")
+    logger.info("🚀 Setting up Cosmos DB emulator for Transio...")
     
     # Wait for emulator to be ready
     if not wait_for_emulator():

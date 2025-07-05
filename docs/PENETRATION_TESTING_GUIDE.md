@@ -1,6 +1,6 @@
 # Comprehensive Penetration Testing Guide
 
-Beyond OWASP Top 10, this guide outlines additional penetration testing methodologies applicable to SecureSharer.
+Beyond OWASP Top 10, this guide outlines additional penetration testing methodologies applicable to Transio.
 
 ## Current Security Testing Status
 
