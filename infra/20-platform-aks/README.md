@@ -1,10 +1,10 @@
-# Platform Infrastructure (AKS) - SecureSharer
+# Platform Infrastructure (AKS) - Transio
 
-This directory contains the Azure Kubernetes Service (AKS) platform infrastructure for the SecureSharer project. It provides a comprehensive, production-ready container orchestration platform with advanced security, networking, and monitoring capabilities.
+This directory contains the Azure Kubernetes Service (AKS) platform infrastructure for the Transio project. It provides a comprehensive, production-ready container orchestration platform with advanced security, networking, and monitoring capabilities.
 
 ## Overview
 
-This deployment creates a complete AKS platform infrastructure designed to host containerized workloads for the SecureSharer application with enterprise-grade security, networking, and operational features.
+This deployment creates a complete AKS platform infrastructure designed to host containerized workloads for the Transio application with enterprise-grade security, networking, and operational features.
 
 ## Architecture
 
@@ -44,12 +44,12 @@ The platform includes:
 
 ## Resource Naming
 
-All resources follow the SecureSharer naming convention:
-- Pattern: `ss-{env}-{service}-{resourceType}`
+All resources follow the Transio naming convention:
+- Pattern: `ts-{env}-{service}-{resourceType}`
 - Examples:
-  - `ss-d-aks-rg` (Development AKS Resource Group)
-  - `ss-p-aks-aks` (Production AKS Cluster)
-  - `ss-d-aks-kv` (Development Key Vault)
+  - `ts-d-aks-rg` (Development AKS Resource Group)
+  - `ts-p-aks-aks` (Production AKS Cluster)
+  - `ts-d-aks-kv` (Development Key Vault)
 
 ## Security Considerations
 
@@ -70,7 +70,7 @@ All resources follow the SecureSharer naming convention:
 ### Parameters
 
 Key parameters include:
-- `projectCode`: Set to `'ss'` for SecureSharer
+- `projectCode`: Set to `'ss'` for Transio
 - `serviceCode`: Set to `'aks'` for this platform
 - `environmentName`: Target environment (`dev` or `prod`)
 - `resourceLocation`: Azure region (default: `spaincentral`)
@@ -79,7 +79,7 @@ Key parameters include:
 
 ```bash
 az deployment group create \
-  --resource-group ss-dev-aks-rg \
+  --resource-group ts-dev-aks-rg \
   --template-file main.bicep \
   --parameters @main.bicepparam
 ```
@@ -87,7 +87,7 @@ az deployment group create \
 ## Integration Points
 
 This platform is designed to integrate with:
-- SecureSharer application workloads
+- Transio application workloads
 - Shared services (Container Registry, Key Vault)
 - Monitoring and logging infrastructure
 - CI/CD pipelines from GitHub Actions

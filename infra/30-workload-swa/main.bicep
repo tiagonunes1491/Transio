@@ -1,10 +1,10 @@
 /*
  * =============================================================================
- * SWA Application Deployment Infrastructure for Secure Secret Sharer
+ * SWA Application Deployment Infrastructure for Transio
  * =============================================================================
  * 
  * This Bicep template creates the actual application deployment infrastructure
- * for the Secure Secret Sharer project using Static Web Apps and Container Apps.
+ * for the Transio project using Static Web Apps and Container Apps.
  * It deploys the frontend and backend components onto the previously established
  * platform infrastructure with secure connectivity and proper configuration.
  * 
@@ -76,7 +76,7 @@ targetScope = 'resourceGroup'
 param resourceLocation string = 'spaincentral'
 
 @description('Short project identifier used in resource naming conventions')
-param projectCode string = 'ss'
+param projectCode string = 'ts'
 
 @description('Service identifier for this SWA application deployment')
 param serviceCode string = 'swa'

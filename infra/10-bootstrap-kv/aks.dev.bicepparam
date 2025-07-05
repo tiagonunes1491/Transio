@@ -1,7 +1,7 @@
 using 'main.bicep'
 
 param environmentName = 'dev'
-param projectCode = 'ss'
+param projectCode = 'ts'
 param serviceCode = 'aks'  // Platform-specific for AKS
 param resourceLocation = 'spaincentral'
 param kvSku = 'standard'
