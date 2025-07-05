@@ -16,11 +16,6 @@ on:
         type: number
         default: 90
         description: 'Minimum coverage percentage required'
-      upload-coverage:
-        required: false
-        type: boolean
-        default: true
-        description: 'Whether to upload coverage reports as artifacts'
 
 jobs:
   backend-tests:
@@ -43,7 +38,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('src/backend/requirements.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
@@ -51,27 +46,26 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          cd backend
+          cd src/backend
           pip install -r requirements.txt
 
       # 5. Generate encryption key for testing
       - name: Set up test environment
         run: |
-          cd backend
+          cd src/backend
           export MASTER_ENCRYPTION_KEY=$(python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
           echo "MASTER_ENCRYPTION_KEY=$MASTER_ENCRYPTION_KEY" >> $GITHUB_ENV
 
       # 6. Run tests with coverage
       - name: Run pytest with coverage
         run: |
-          cd backend
+          cd src/backend
           python -m pytest tests/ -v \
             --cov=app \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             --cov-report=html:htmlcov \
-            --cov-fail-under=${{ inputs.coverage-threshold }} \
-            --junitxml=test-results.xml
+            --cov-fail-under=${{ inputs.coverage-threshold }}
         env:
           MASTER_ENCRYPTION_KEY: ${{ env.MASTER_ENCRYPTION_KEY }}
 
@@ -81,37 +75,14 @@ jobs:
         if: always()
         with:
           name: test-results
-          path: backend/test-results.xml
+          path: src/backend/test-results.xml
           retention-days: 30
 
-      # 8. Upload coverage reports (if enabled)
-      - name: Upload coverage reports
-        uses: actions/upload-artifact@v4
-        if: ${{ inputs.upload-coverage && always() }}
-        with:
-          name: coverage-reports
-          path: |
-            backend/coverage.xml
-            backend/htmlcov/
-          retention-days: 30
-
-      # 9. Upload coverage to GitHub (for PR comments)
-      - name: Upload coverage to Codecov (optional)
-        uses: codecov/codecov-action@v4
-        if: ${{ inputs.upload-coverage }}
-        with:
-          file: backend/coverage.xml
-          directory: backend
-          flags: backend
-          name: backend-coverage
-          fail_ci_if_error: false
-        continue-on-error: true
-
-      # 10. Display coverage summary
+      # 8. Display coverage summary
       - name: Coverage Summary
         if: always()
         run: |
-          cd backend
+          cd src/backend
           echo "## Test Coverage Summary" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
           python -m coverage report --format=markdown >> $GITHUB_STEP_SUMMARY || echo "Coverage report generation failed" >> $GITHUB_STEP_SUMMARY
