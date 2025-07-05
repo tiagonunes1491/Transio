@@ -8,7 +8,7 @@ const {
   escapeHTML,
   truncateLink,
   formatDate
-} = require('./utils-testable');
+} = require('../utils-testable');
 
 describe('Utils Functions', () => {
   describe('escapeHTML', () => {
