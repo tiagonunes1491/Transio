@@ -13,8 +13,8 @@ from .storage import (
     delete_secret,
 )
 
-# Relative import for config from the parent directory ('backend')
-from ..config import Config
+# Import config from the app package
+from .config import Config
 
 # Initialize Flask App
 app = Flask(__name__)

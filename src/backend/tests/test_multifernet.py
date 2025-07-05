@@ -50,11 +50,10 @@ class TestMultiFernetRotation:
         }, clear=False):
             # Import after setting environment to get updated config
             import importlib
-            import backend.config
+            import backend.app.config
             import backend.app.encryption
-            
             # Reload modules to pick up new environment
-            importlib.reload(backend.config)
+            importlib.reload(backend.app.config)
             importlib.reload(backend.app.encryption)
             
             # Should be able to decrypt the old secret
@@ -75,10 +74,9 @@ class TestMultiFernetRotation:
                     
             # Reload config to pick up legacy key
             import importlib
-            import backend.config
+            import backend.app.config
             import backend.app.encryption
-            
-            importlib.reload(backend.config)
+            importlib.reload(backend.app.config)
             importlib.reload(backend.app.encryption)
             
             # Should work with legacy key

@@ -41,8 +41,6 @@ RUN apk update && apk upgrade
 
 # Copy the application code from your backend directory into the container
 COPY ./app ./app
-COPY config.py .
-COPY __init__.py /opt/app/
 
 # Install curl for healthcheck using Alpine's package manager
 RUN apk add --no-cache curl

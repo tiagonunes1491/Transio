@@ -1,7 +1,7 @@
 # backend/app/encryption.py
 import logging
 from cryptography.fernet import Fernet, MultiFernet, InvalidToken
-from config import Config
+from .config import Config
 
 # Initialize logger for this module
 logger = logging.getLogger(__name__)

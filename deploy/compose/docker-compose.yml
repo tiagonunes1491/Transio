@@ -2,7 +2,7 @@ services:
 # Database Service (Cosmos DB Emulator)
   cosmosdb:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
-    container_name: secure_secret_sharer_cosmosdb
+    container_name: transio_cosmosdb
     environment:
       AZURE_COSMOS_EMULATOR_PARTITION_COUNT: 2
       AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE: "true"
