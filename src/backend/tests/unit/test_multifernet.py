@@ -3,7 +3,7 @@ import pytest
 import os
 from unittest.mock import patch
 from cryptography.fernet import Fernet
-from backend.app.encryption import encrypt_secret, decrypt_secret
+from app.encryption import encrypt_secret, decrypt_secret
 
 
 class TestMultiFernetRotation:
@@ -50,14 +50,14 @@ class TestMultiFernetRotation:
         }, clear=False):
             # Import after setting environment to get updated config
             import importlib
-            import backend.app.config
-            import backend.app.encryption
+            import app.config
+            import app.encryption
             # Reload modules to pick up new environment
-            importlib.reload(backend.app.config)
-            importlib.reload(backend.app.encryption)
+            importlib.reload(app.config)
+            importlib.reload(app.encryption)
             
             # Should be able to decrypt the old secret
-            decrypted = backend.app.encryption.decrypt_secret(old_encrypted)
+            decrypted = app.encryption.decrypt_secret(old_encrypted)
             assert decrypted == secret
 
     def test_backward_compatibility_with_legacy_key(self):
@@ -74,13 +74,13 @@ class TestMultiFernetRotation:
                     
             # Reload config to pick up legacy key
             import importlib
-            import backend.app.config
-            import backend.app.encryption
-            importlib.reload(backend.app.config)
-            importlib.reload(backend.app.encryption)
+            import app.config
+            import app.encryption
+            importlib.reload(app.config)
+            importlib.reload(app.encryption)
             
             # Should work with legacy key
             secret = "Legacy key test"
-            encrypted = backend.app.encryption.encrypt_secret(secret)
-            decrypted = backend.app.encryption.decrypt_secret(encrypted)
+            encrypted = app.encryption.encrypt_secret(secret)
+            decrypted = app.encryption.decrypt_secret(encrypted)
             assert decrypted == secret

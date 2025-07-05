@@ -10,11 +10,10 @@ import pytest
 from unittest.mock import patch, MagicMock
 from cryptography.fernet import Fernet
 
-# Add the parent directory to the Python path so we can import backend as a package
+# Add the current directory to the Python path so we can import app modules
 backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-parent_dir = os.path.dirname(backend_dir)
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
 
 # Set up test environment variables before importing the app
 # Generate two keys for MultiFernet testing
@@ -71,96 +70,22 @@ def mock_cosmos_container():
 
 @pytest.fixture
 def app(mock_cosmos_container):
-    """Create a test Flask application."""
-    from flask import Flask
-    from flask_cors import CORS
-    
-    app = Flask(__name__)
-    CORS(app)
-    
-    # Configure for testing
-    app.config['TESTING'] = True
-    app.config['WTF_CSRF_ENABLED'] = False
-    app.config['MAX_SECRET_LENGTH_BYTES'] = 100 * 1024
-    app.config['COSMOS_ENDPOINT'] = 'https://localhost:8081'
-    app.config['COSMOS_KEY'] = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='
-    app.config['COSMOS_DATABASE_NAME'] = 'TestTransio'
-    app.config['COSMOS_CONTAINER_NAME'] = 'test_secrets'
-    
-    # Mock the Cosmos DB container
-    with patch('backend.app.container', mock_cosmos_container):
-        # Create a simple test route that mimics the main functionality
-        @app.route('/health', methods=['GET'])
-        def health_check():
-            """Basic health check endpoint for monitoring."""
-            from flask import jsonify
-            return jsonify({"status": "healthy", "message": "Backend is running."}), 200
+    """Create a test Flask application using the actual app structure."""
+    # Mock Cosmos DB functions before importing app modules
+    with patch('app.get_cosmos_container', return_value=mock_cosmos_container), \
+         patch('app.storage.get_container', return_value=mock_cosmos_container), \
+         patch('app.init_cosmos_db', return_value=True):
         
-        @app.route('/api/share', methods=['POST'])
-        def share_secret_api():
-            """API endpoint to share a new secret."""
-            from flask import request, jsonify, current_app
-            from backend.app.encryption import encrypt_secret
-            from backend.app.storage import store_encrypted_secret
-            
-            if not request.is_json:
-                return jsonify({"error": "Request must be JSON"}), 400
-
-            data = request.get_json()
-            secret_text = data.get("secret")
-
-            if not secret_text:
-                return jsonify({"error": "Missing 'secret' field in JSON payload"}), 400
-
-            if not isinstance(secret_text, str):
-                return jsonify({"error": "'secret' must be a string"}), 400
-
-            # Basic input validation: length check
-            if len(secret_text.encode('utf-8')) > current_app.config['MAX_SECRET_LENGTH_BYTES']:
-                return jsonify({"error": f"Secret exceeds maximum length of {current_app.config['MAX_SECRET_LENGTH_BYTES'] // 1024}KB"}), 413
-
-            try:
-                encrypted_data = encrypt_secret(secret_text)
-                link_id = store_encrypted_secret(encrypted_data)
-                current_app.logger.info(f"Secret stored successfully with link_id: {link_id}")
-                return jsonify({"link_id": link_id, "message": "Secret stored. Use this ID to create your access link."}), 201
-            except ValueError as ve:
-                 current_app.logger.warning(f"ValueError during secret sharing: {ve}")
-                 return jsonify({"error": "Invalid input provided."}), 400
-            except TypeError as te:
-                 current_app.logger.warning(f"TypeError during secret sharing: {te}")
-                 return jsonify({"error": "Invalid input type provided."}), 400
-            except Exception as e:
-                current_app.logger.error(f"Error sharing secret: {e}", exc_info=True)
-                return jsonify({"error": "Failed to store secret due to an internal server error."}), 500
+        # Import the actual main app
+        from app.main import app as flask_app
         
-        @app.route('/api/share/secret/<link_id>', methods=['GET'])
-        def retrieve_secret_api(link_id):
-            """API endpoint to retrieve (and delete) a secret."""
-            from flask import request, jsonify, current_app
-            from backend.app.storage import retrieve_and_delete_secret
-            from backend.app.encryption import decrypt_secret
-            
-            if not link_id:
-                current_app.logger.warning("Attempt to retrieve secret with empty link_id.")
-                return jsonify({"error": "Secret ID is required"}), 404
-
-            secret_obj = retrieve_and_delete_secret(link_id)
-
-            if secret_obj:
-                decrypted_secret = decrypt_secret(secret_obj.encrypted_secret)
-                if decrypted_secret is not None:
-                    current_app.logger.info(f"Secret {link_id} retrieved and returned as JSON.")
-                    return jsonify({"secret": decrypted_secret}), 200
-                else:
-                    current_app.logger.error(f"Failed to decrypt secret for link_id: {link_id}.")
-                    return jsonify({"error": "Could not decrypt the secret. It may be corrupted or the link is invalid."}), 500
-            else:
-                current_app.logger.info(f"Secret {link_id} not found for retrieval.")
-                return jsonify({"error": "Secret not found. It may have been already viewed, expired, or the link is invalid."}), 404
+        # Configure for testing
+        flask_app.config['TESTING'] = True
+        flask_app.config['WTF_CSRF_ENABLED'] = False
+        flask_app.config['MAX_SECRET_LENGTH_BYTES'] = 100 * 1024
         
-        with app.app_context():
-            yield app
+        with flask_app.app_context():
+            yield flask_app
 
 
 @pytest.fixture
@@ -172,18 +97,19 @@ def client(app):
 @pytest.fixture
 def app_context(mock_cosmos_container):
     """Provide application context for tests that need it."""
-    from flask import Flask
-    
-    app = Flask(__name__)
-    app.config['TESTING'] = True
-    app.config['COSMOS_ENDPOINT'] = 'https://localhost:8081'
-    app.config['COSMOS_KEY'] = 'C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=='
-    app.config['COSMOS_DATABASE_NAME'] = 'TestTransio'
-    app.config['COSMOS_CONTAINER_NAME'] = 'test_secrets'
-    
-    with patch('backend.app.container', mock_cosmos_container):
-        with app.app_context():
-            yield app
+    # Mock Cosmos DB functions before importing app modules
+    with patch('app.get_cosmos_container', return_value=mock_cosmos_container), \
+         patch('app.storage.get_container', return_value=mock_cosmos_container), \
+         patch('app.init_cosmos_db', return_value=True):
+        
+        # Import the actual main app
+        from app.main import app as flask_app
+        
+        # Configure for testing
+        flask_app.config['TESTING'] = True
+        
+        with flask_app.app_context():
+            yield flask_app
 
 
 @pytest.fixture
@@ -223,12 +149,12 @@ def key_rotation_environment():
 @pytest.fixture
 def encrypted_secret_bytes():
     """Provide sample encrypted secret bytes for testing."""
-    from backend.app.encryption import encrypt_secret
+    from app.encryption import encrypt_secret
     return encrypt_secret("This is a test secret")
 
 
 @pytest.fixture
 def mock_cosmos_session(mock_cosmos_container):
     """Mock Cosmos DB session for testing storage functions."""
-    with patch('backend.app.storage.container', mock_cosmos_container):
+    with patch('app.storage.get_container', return_value=mock_cosmos_container):
         yield mock_cosmos_container

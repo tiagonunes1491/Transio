@@ -31,18 +31,18 @@ class TestMainModuleImport:
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
         # Import the module - this will trigger module-level code execution
-        from backend.app import main
+        from app import main
 
         # Verify the app was created
         assert main.app is not None
-        assert main.app.name == "backend.app.main"
+        assert main.app.name == "app.main"
 
         # Verify CORS is enabled
         assert hasattr(main.app, "config")
 
     def test_main_module_routes_exist(self):
         """Test that all expected routes are registered."""
-        from backend.app import main
+        from app import main
 
         # Get all registered routes
         routes = [rule.rule for rule in main.app.url_map.iter_rules()]
@@ -68,14 +68,14 @@ class TestMainModuleRoutes:
     @pytest.fixture
     def main_app(self, setup_environment):
         """Create the actual main app for testing."""
-        from backend.app import main
+        from app import main
 
         main.app.config["TESTING"] = True
         main.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
         main.app.config["MAX_SECRET_LENGTH_BYTES"] = 100 * 1024
 
         with main.app.app_context():
-            from backend.app import db
+            # DB not directly exposed
 
             db.create_all()
             yield main.app
@@ -227,7 +227,7 @@ class TestMainModuleRoutes:
         with main_app.test_client():
             # This should be caught by Flask routing, but we test our defensive check
             # by accessing the route function directly if possible
-            from backend.app.main import retrieve_secret_api
+            from app.main import retrieve_secret_api
 
             with main_app.test_request_context("/api/share/secret/"):
                 # Simulate an empty link_id (though Flask normally prevents this)
@@ -252,20 +252,20 @@ class TestMainModuleErrorHandling:
     @pytest.fixture
     def main_app(self, setup_environment):
         """Create the actual main app for testing."""
-        from backend.app import main
+        from app import main
 
         main.app.config["TESTING"] = True
         main.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
         main.app.config["MAX_SECRET_LENGTH_BYTES"] = 100 * 1024
 
         with main.app.app_context():
-            from backend.app import db
+            # DB not directly exposed
 
             db.create_all()
             yield main.app
             db.drop_all()
 
-    @patch("backend.app.main.encrypt_secret")
+    @patch("app.main.encrypt_secret")
     def test_share_secret_encryption_error(self, mock_encrypt, main_app):
         """Test handling of encryption errors in main.py route."""
         with main_app.test_client() as client:
@@ -280,7 +280,7 @@ class TestMainModuleErrorHandling:
             data = json.loads(response.data)
             assert data["error"] == "Invalid input provided."
 
-    @patch("backend.app.main.encrypt_secret")
+    @patch("app.main.encrypt_secret")
     def test_share_secret_type_error(self, mock_encrypt, main_app):
         """Test handling of type errors in main.py route."""
         with main_app.test_client() as client:
@@ -298,7 +298,7 @@ class TestMainModuleErrorHandling:
             data = json.loads(response.data)
             assert data["error"] == "Invalid input provided."
 
-    @patch("backend.app.main.encrypt_secret")
+    @patch("app.main.encrypt_secret")
     def test_share_secret_general_error(self, mock_encrypt, main_app):
         """Test handling of general errors in main.py route."""
         with main_app.test_client() as client:
@@ -319,7 +319,7 @@ class TestMainModuleErrorHandling:
                 in data["error"]
             )
 
-    @patch("backend.app.main.decrypt_secret")
+    @patch("app.main.decrypt_secret")
     def test_retrieve_secret_decryption_failure(self, mock_decrypt, main_app):
         """Test handling of decryption failure in main.py route."""
         with main_app.test_client() as client:
@@ -351,11 +351,11 @@ class TestMainModuleInitializationCode:
         os.environ["MASTER_ENCRYPTION_KEY"] = Fernet.generate_key().decode()
 
         # Mock the Config class to test the main block
-        with patch("backend.app.main.Config") as mock_config:
+        with patch("app.main.Config") as mock_config:
             mock_config.MASTER_ENCRYPTION_KEY_BYTES = b"valid_key_for_testing"
 
             # Mock app.run to prevent actually starting the server
-            with patch("backend.app.main.app.run"):
+            with patch("app.main.app.run"):
                 # Execute the main block by importing with __name__ == '__main__'
                 # Since we can't easily change __name__, we'll test the logic directly
 
@@ -368,7 +368,7 @@ class TestMainModuleInitializationCode:
     def test_main_block_execution_without_key(self):
         """Test main block execution when key is not available."""
         # Mock the Config class to simulate missing key
-        with patch("backend.app.main.Config") as mock_config:
+        with patch("app.main.Config") as mock_config:
             mock_config.MASTER_ENCRYPTION_KEY_BYTES = None
 
             # Test the logic that would be in the main block
@@ -384,13 +384,13 @@ class TestMainModuleInitializationCode:
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 
         # This tests the app context and db.create_all() code at module level
-        from backend.app import main
+        from app import main
 
         # Verify that the app context worked and database was initialized
         assert main.app is not None
 
         # Test that we can create the database tables
         with main.app.app_context():
-            from backend.app import db
+            # DB not directly exposed
 
             db.create_all()  # This should work without errors

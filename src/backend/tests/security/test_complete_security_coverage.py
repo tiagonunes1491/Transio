@@ -165,7 +165,7 @@ class TestAdvancedCryptographicSecurity:
     
     def test_timing_attack_resistance_comprehensive(self, client, app_context):
         """Test comprehensive timing attack resistance."""
-        from backend.app.storage import retrieve_secret
+        from app.storage import retrieve_secret
         import time
         
         # Test timing differences between existing and non-existing secrets
@@ -207,7 +207,7 @@ class TestAdvancedCryptographicSecurity:
     
     def test_cryptographic_oracle_attacks(self, client, app_context):
         """Test resistance to cryptographic oracle attacks."""
-        from backend.app.encryption import encrypt_secret, decrypt_secret
+        from app.encryption import encrypt_secret, decrypt_secret
         
         # Test padding oracle-style attacks
         test_secret = "padding-oracle-test"
@@ -235,7 +235,7 @@ class TestAdvancedCryptographicSecurity:
     
     def test_key_derivation_security(self, client, app_context):
         """Test key derivation security."""
-        from backend.app.encryption import encrypt_secret
+        from app.encryption import encrypt_secret
         
         # Test that same plaintext produces different ciphertexts (proper nonce usage)
         same_plaintext = "same-content-test"
@@ -255,7 +255,7 @@ class TestAdvancedBusinessLogicSecurity:
     
     def test_secret_enumeration_comprehensive(self, client, app_context):
         """Test comprehensive secret enumeration prevention."""
-        from backend.app.storage import generate_unique_link_id
+        from app.storage import generate_unique_link_id
         
         # Generate multiple IDs to test for patterns
         ids = [generate_unique_link_id() for _ in range(100)]
@@ -289,8 +289,8 @@ class TestAdvancedBusinessLogicSecurity:
     def test_secret_collision_prevention(self, app):
         """Test secret collision prevention - realistic concurrent storage."""
         with app.app_context():
-            from backend.app.encryption import encrypt_secret
-            from backend.app.storage import store_encrypted_secret
+            from app.encryption import encrypt_secret
+            from app.storage import store_encrypted_secret
             import threading
             
             # Test concurrent storage of same plaintext secret (which will have different encrypted data)

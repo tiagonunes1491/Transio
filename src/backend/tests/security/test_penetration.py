@@ -9,14 +9,14 @@ import hashlib
 from unittest.mock import patch, Mock
 from cryptography.fernet import Fernet
 
-from backend.app.storage import (
+from app.storage import (
     store_encrypted_secret,
     retrieve_secret,
     delete_secret,
     retrieve_and_delete_secret
 )
-from backend.app.encryption import encrypt_secret, decrypt_secret
-from backend.app.models import Secret
+from app.encryption import encrypt_secret, decrypt_secret
+from app.models import Secret
 
 
 class TestDoSAndRateLimiting:
@@ -115,7 +115,7 @@ class TestCryptographicSecurity:
     
     def test_encryption_key_strength(self):
         """Test encryption key strength and format."""
-        from backend.app.config import Config
+        from app.config import Config
         
         # Verify key is proper length for Fernet (32 bytes base64 encoded)
         key_bytes = Config.MASTER_ENCRYPTION_KEYS[0]
@@ -477,7 +477,7 @@ class TestErrorHandlingSecurity:
     
     def test_encryption_error_information_disclosure(self, client):
         """Test that encryption errors don't leak sensitive information."""
-        with patch('backend.app.encryption.encrypt_secret') as mock_encrypt:
+        with patch('app.encryption.encrypt_secret') as mock_encrypt:
             # Simulate encryption error
             mock_encrypt.side_effect = Exception("Crypto library internal error")
             

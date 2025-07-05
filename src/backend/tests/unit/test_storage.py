@@ -4,14 +4,14 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-from backend.app.storage import (
+from app.storage import (
     generate_unique_link_id,
     store_encrypted_secret,
     retrieve_secret,
     delete_secret,
     retrieve_and_delete_secret
 )
-from backend.app.models import Secret
+from app.models import Secret
 
 
 class TestGenerateUniqueLinkId:
@@ -41,7 +41,7 @@ class TestStoreEncryptedSecret:
         """Test successful storage of encrypted secret."""
         encrypted_data = b"encrypted_test_data"
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = store_encrypted_secret(encrypted_data)
         
         assert result is not None
@@ -62,7 +62,7 @@ class TestStoreEncryptedSecret:
         """Test handling of database errors during storage."""
         mock_cosmos_container.create_item.side_effect = Exception("Cosmos DB error")
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = store_encrypted_secret(b"test_data")
         
         assert result is None
@@ -77,7 +77,7 @@ class TestRetrieveAndDeleteSecret:
         encrypted_data = b"test_encrypted_data"
         link_id = "test-link-id"
         
-        from backend.app.models import Secret
+        from app.models import Secret
         mock_secret = Secret(
             link_id=link_id,
             encrypted_secret=encrypted_data,
@@ -92,7 +92,7 @@ class TestRetrieveAndDeleteSecret:
         # Override delete_item side_effect 
         mock_cosmos_container.delete_item.side_effect = None
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_and_delete_secret(link_id)
         
         assert result is not None
@@ -108,14 +108,14 @@ class TestRetrieveAndDeleteSecret:
         
         mock_cosmos_container.read_item.side_effect = CosmosResourceNotFoundError()
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_and_delete_secret(non_existent_id)
         
         assert result is None
     
     def test_retrieve_and_delete_secret_invalid_input(self, mock_cosmos_container):
         """Test retrieval with invalid input returns None."""
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             assert retrieve_and_delete_secret("") is None
             assert retrieve_and_delete_secret(None) is None
             assert retrieve_and_delete_secret(123) is None
@@ -124,7 +124,7 @@ class TestRetrieveAndDeleteSecret:
         """Test handling of database errors during retrieval."""
         mock_cosmos_container.read_item.side_effect = Exception("Cosmos DB error")
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_and_delete_secret("test_id")
         
         assert result is None
@@ -139,7 +139,7 @@ class TestRetrieveSecret:
         link_id = "test-link-id"
         
         # Mock the return value for read_item
-        from backend.app.models import Secret
+        from app.models import Secret
         mock_secret = Secret(
             link_id=link_id,
             encrypted_secret=encrypted_data,
@@ -151,7 +151,7 @@ class TestRetrieveSecret:
         mock_cosmos_container.read_item.side_effect = None
         mock_cosmos_container.read_item.return_value = mock_secret.to_dict()
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_secret(link_id)
         
         assert result is not None
@@ -165,14 +165,14 @@ class TestRetrieveSecret:
         
         mock_cosmos_container.read_item.side_effect = CosmosResourceNotFoundError()
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_secret(non_existent_id)
         
         assert result is None
     
     def test_retrieve_secret_invalid_input(self, mock_cosmos_container):
         """Test retrieval with invalid input returns None."""
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             assert retrieve_secret("") is None
             assert retrieve_secret(None) is None
             assert retrieve_secret(123) is None
@@ -181,7 +181,7 @@ class TestRetrieveSecret:
         """Test handling of database errors during retrieval."""
         mock_cosmos_container.read_item.side_effect = Exception("Cosmos DB error")
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_secret("test_id")
         
         assert result is None
@@ -197,7 +197,7 @@ class TestDeleteSecret:
         # Override delete_item side_effect 
         mock_cosmos_container.delete_item.side_effect = None
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = delete_secret(test_id)
         
         assert result is True
@@ -210,14 +210,14 @@ class TestDeleteSecret:
         
         mock_cosmos_container.delete_item.side_effect = CosmosResourceNotFoundError()
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = delete_secret(non_existent_id)
         
         assert result is False
     
     def test_delete_secret_invalid_input(self, mock_cosmos_container):
         """Test deletion with invalid input returns False."""
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             assert delete_secret("") is False
             assert delete_secret(None) is False
             assert delete_secret(123) is False
@@ -226,7 +226,7 @@ class TestDeleteSecret:
         """Test handling of database errors during deletion."""
         mock_cosmos_container.delete_item.side_effect = Exception("Cosmos DB error")
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = delete_secret("test_id")
         
         assert result is False
@@ -242,13 +242,13 @@ class TestStorageIntegration:
         # Override create_item side_effect 
         mock_cosmos_container.create_item.side_effect = None
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             # Store
             link_id = store_encrypted_secret(encrypted_data)
             assert link_id is not None
             
             # Mock retrieve response
-            from backend.app.models import Secret
+            from app.models import Secret
             mock_secret = Secret(
                 link_id=link_id,
                 encrypted_secret=encrypted_data,
@@ -287,7 +287,7 @@ class TestStorageIntegration:
         # Override create_item side_effect 
         mock_cosmos_container.create_item.side_effect = None
         
-        with patch('backend.app.storage.get_container', return_value=mock_cosmos_container):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             # Store all secrets
             link_ids = []
             for data in secrets_data:
@@ -295,7 +295,7 @@ class TestStorageIntegration:
                 link_ids.append(link_id)
             
             # Mock retrieve responses
-            from backend.app.models import Secret
+            from app.models import Secret
             mock_secrets = []
             for i, (link_id, data) in enumerate(zip(link_ids, secrets_data)):
                 mock_secret = Secret(

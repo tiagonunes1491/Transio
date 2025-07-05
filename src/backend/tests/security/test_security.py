@@ -4,13 +4,13 @@ import json
 import uuid
 from unittest.mock import patch
 
-from backend.app.storage import (
+from app.storage import (
     store_encrypted_secret,
     retrieve_secret,
     delete_secret,
     retrieve_and_delete_secret
 )
-from backend.app.models import Secret
+from app.models import Secret
 
 
 class TestSQLInjectionResistance:

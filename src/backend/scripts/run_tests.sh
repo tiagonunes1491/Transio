@@ -9,13 +9,19 @@ echo "Running comprehensive test suite with coverage measurement..."
 echo "==========================================================="
 
 # Run pytest with coverage
-python -m pytest tests/ -v
+python -m pytest tests/ -v \
+  --cov=app \
+  --cov-report=term-missing \
+  --cov-report=xml:coverage.xml \
+  --cov-report=html:htmlcov \
+  --cov-fail-under=90
 
 echo ""
 echo "==========================================================="
 echo "Coverage Report Generated:"
 echo "- Terminal: Coverage summary displayed above"
 echo "- HTML: Open htmlcov/index.html for detailed report"
+echo "- XML: coverage.xml for CI/CD integration"
 echo ""
 echo "Test run completed. Coverage threshold: 90%"
 echo "Total test count: $(python -c "import subprocess; result = subprocess.run(['python', '-m', 'pytest', 'tests/', '--collect-only', '-q'], capture_output=True, text=True); print(len([line for line in result.stdout.split('\n') if '::' in line and 'test_' in line]))")"

@@ -23,7 +23,7 @@ class TestShareSecretAPI:
     
     def test_share_secret_success(self, client):
         """Test successful secret sharing."""
-        secret_data = {"secret": "This is a test secret"}
+        secret_data = {"payload": "This is a test secret"}
         
         response = client.post('/api/share', 
                               data=json.dumps(secret_data),
@@ -33,7 +33,7 @@ class TestShareSecretAPI:
         data = json.loads(response.data)
         assert 'link_id' in data
         assert 'message' in data
-        assert data['message'] == 'Secret stored. Use this ID to create your access link.'
+        assert data['message'] == 'Secret stored successfully.'
         
         # Verify link_id is a valid UUID
         uuid.UUID(data['link_id'])  # Will raise if invalid
@@ -47,7 +47,7 @@ class TestShareSecretAPI:
         assert data['error'] == 'Request must be JSON'
     
     def test_share_secret_missing_secret_field(self, client):
-        """Test request missing the 'secret' field."""
+        """Test request missing the 'payload' field."""
         secret_data = {"not_secret": "value"}
         
         response = client.post('/api/share',
@@ -56,11 +56,11 @@ class TestShareSecretAPI:
         
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['error'] == "Missing 'secret' field in JSON payload"
+        assert data['error'] == "Missing 'payload' field in JSON"
     
     def test_share_secret_empty_secret(self, client):
         """Test request with empty secret."""
-        secret_data = {"secret": ""}
+        secret_data = {"payload": ""}
         
         response = client.post('/api/share',
                               data=json.dumps(secret_data),
@@ -68,14 +68,14 @@ class TestShareSecretAPI:
         
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['error'] == "Missing 'secret' field in JSON payload"
+        assert data['error'] == "Missing 'payload' field in JSON"
     
     def test_share_secret_non_string_secret(self, client):
         """Test request with non-string secret."""
         test_cases = [
-            {"secret": 123},
-            {"secret": ["array"]},
-            {"secret": {"nested": "object"}},
+            {"payload": 123},
+            {"payload": ["array"]},
+            {"payload": {"nested": "object"}},
         ]
         
         for secret_data in test_cases:
@@ -85,22 +85,22 @@ class TestShareSecretAPI:
             
             assert response.status_code == 400
             data = json.loads(response.data)
-            assert data['error'] == "'secret' must be a string"
+            assert data['error'] == "'payload' must be a string"
         
         # Test None separately as it's treated as missing field
-        secret_data = {"secret": None}
+        secret_data = {"payload": None}
         response = client.post('/api/share',
                               data=json.dumps(secret_data),
                               content_type='application/json')
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert data['error'] == "Missing 'secret' field in JSON payload"
+        assert data['error'] == "Missing 'payload' field in JSON"
     
     def test_share_secret_too_long(self, client):
         """Test request with secret exceeding maximum length."""
         # Create a secret longer than MAX_SECRET_LENGTH_BYTES (100KB = 102400 bytes)
         long_secret = "x" * 102401
-        secret_data = {"secret": long_secret}
+        secret_data = {"payload": long_secret}
         
         response = client.post('/api/share',
                               data=json.dumps(secret_data),
@@ -112,7 +112,7 @@ class TestShareSecretAPI:
     
     def test_share_secret_unicode_content(self, client):
         """Test sharing secret with unicode content."""
-        secret_data = {"secret": "🔒 Unicode secret with émojis! 🚀"}
+        secret_data = {"payload": "🔒 Unicode secret with émojis! 🚀"}
         
         response = client.post('/api/share',
                               data=json.dumps(secret_data),
@@ -127,7 +127,7 @@ class TestShareSecretAPI:
         # Test with a very specific edge case that would cause encryption issues
         # Since None is treated as missing field, use a different invalid type
         
-        secret_data = {"secret": 123}  # This will fail validation with type error
+        secret_data = {"payload": 123}  # This will fail validation with type error
         
         response = client.post('/api/share',
                               data=json.dumps(secret_data),
@@ -135,7 +135,7 @@ class TestShareSecretAPI:
         
         assert response.status_code == 400
         data = json.loads(response.data)
-        assert "'secret' must be a string" == data['error']
+        assert "'payload' must be a string" == data['error']
     
     def test_share_secret_storage_error(self, client):
         """Test handling of storage errors by testing edge cases."""
@@ -145,7 +145,7 @@ class TestShareSecretAPI:
         # Test with extremely long secret that might cause storage issues
         # though this should be caught by length validation first
         very_long_secret = "x" * (100 * 1024 + 1)  # Longer than MAX_SECRET_LENGTH_BYTES
-        secret_data = {"secret": very_long_secret}
+        secret_data = {"payload": very_long_secret}
         
         response = client.post('/api/share',
                               data=json.dumps(secret_data),
@@ -163,7 +163,7 @@ class TestRetrieveSecretAPI:
         """Test successful secret retrieval."""
         # First, store a secret
         secret_text = "This is a test secret for retrieval"
-        secret_data = {"secret": secret_text}
+        secret_data = {"payload": secret_text}
         
         store_response = client.post('/api/share',
                                    data=json.dumps(secret_data),
@@ -177,22 +177,27 @@ class TestRetrieveSecretAPI:
         
         assert retrieve_response.status_code == 200
         data = json.loads(retrieve_response.data)
-        assert data['secret'] == secret_text
+        assert 'payload' in data
+        assert data['payload'] == secret_text
+        assert data.get('mime', 'text/plain') == 'text/plain'
     
     def test_retrieve_secret_not_found(self, client):
-        """Test retrieval of non-existent secret."""
+        """Test retrieval of non-existent secret - returns dummy data to prevent enumeration."""
         non_existent_id = str(uuid.uuid4())
         
         response = client.get(f'/api/share/secret/{non_existent_id}')
         
-        assert response.status_code == 404
+        # API returns 200 with dummy data to prevent enumeration attacks
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert "Secret not found" in data['error']
+        # Should contain dummy response structure
+        assert 'payload' in data
+        assert 'mime' in data
     
     def test_retrieve_secret_already_retrieved(self, client):
         """Test that secret can only be retrieved once."""
         # Store a secret
-        secret_data = {"secret": "One-time secret"}
+        secret_data = {"payload": "One-time secret"}
         store_response = client.post('/api/share',
                                    data=json.dumps(secret_data),
                                    content_type='application/json')
@@ -202,16 +207,18 @@ class TestRetrieveSecretAPI:
         first_response = client.get(f'/api/share/secret/{link_id}')
         assert first_response.status_code == 200
         
-        # Second retrieval should fail
+        # Second retrieval should return dummy data (not actual error)
         second_response = client.get(f'/api/share/secret/{link_id}')
-        assert second_response.status_code == 404
+        assert second_response.status_code == 200  # Returns dummy data, not 404
         data = json.loads(second_response.data)
-        assert "Secret not found" in data['error']
+        # Should be dummy data, not the original secret
+        assert 'payload' in data
+        assert data['payload'] != "One-time secret"
     
     def test_head_request_secret_exists(self, client):
         """Test HEAD request for existing secret."""
         # Store a secret
-        secret_data = {"secret": "Secret for HEAD test"}
+        secret_data = {"payload": "Secret for HEAD test"}
         store_response = client.post('/api/share',
                                    data=json.dumps(secret_data),
                                    content_type='application/json')
@@ -227,12 +234,13 @@ class TestRetrieveSecretAPI:
         assert get_response.status_code == 200
     
     def test_head_request_secret_not_found(self, client):
-        """Test HEAD request for non-existent secret."""
+        """Test HEAD request for non-existent secret - returns 200 to prevent enumeration."""
         non_existent_id = str(uuid.uuid4())
         
         response = client.head(f'/api/share/secret/{non_existent_id}')
         
-        assert response.status_code == 404
+        # API returns 200 to prevent enumeration attacks
+        assert response.status_code == 200
         assert response.data == b''
     
     def test_retrieve_secret_storage_failure(self, client):
@@ -241,21 +249,25 @@ class TestRetrieveSecretAPI:
         test_id = str(uuid.uuid4())
         response = client.get(f'/api/share/secret/{test_id}')
         
-        assert response.status_code == 404
+        # API returns 200 with dummy data to prevent enumeration
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert "Secret not found" in data['error']
+        assert 'payload' in data
+        assert 'mime' in data
     
     def test_retrieve_secret_decryption_failure(self, client):
-        """Test handling when decryption fails - this would be rare in practice."""
+        """Test handling when decryption fails - returns dummy data to prevent enumeration."""
         # This test is difficult to simulate without mocking since the encryption/decryption
         # should work correctly with proper keys. Instead, let's test a realistic edge case.
         
-        # Test retrieval with malformed link_id
+        # Test retrieval with malformed link_id - still returns dummy data
         response = client.get('/api/share/secret/malformed-id')
         
-        assert response.status_code == 404
+        # API returns 200 with dummy data to prevent enumeration
+        assert response.status_code == 200
         data = json.loads(response.data)
-        assert "Secret not found" in data['error']
+        assert 'payload' in data
+        assert 'mime' in data
 
 
 class TestAPIIntegration:
@@ -267,7 +279,7 @@ class TestAPIIntegration:
         
         # 1. Share secret
         share_response = client.post('/api/share',
-                                   data=json.dumps({"secret": secret_text}),
+                                   data=json.dumps({"payload": secret_text}),
                                    content_type='application/json')
         
         assert share_response.status_code == 201
@@ -282,11 +294,11 @@ class TestAPIIntegration:
         assert get_response.status_code == 200
         
         retrieved_data = json.loads(get_response.data)
-        assert retrieved_data['secret'] == secret_text
+        assert retrieved_data['payload'] == secret_text
         
-        # 4. Verify it's gone
+        # 4. Verify it's gone (returns dummy data)
         second_get_response = client.get(f'/api/share/secret/{link_id}')
-        assert second_get_response.status_code == 404
+        assert second_get_response.status_code == 200  # Returns dummy data
     
     def test_multiple_secrets_isolation(self, client):
         """Test that multiple secrets are handled independently."""
@@ -301,7 +313,7 @@ class TestAPIIntegration:
         # Store all secrets
         for secret in secrets:
             response = client.post('/api/share',
-                                 data=json.dumps({"secret": secret}),
+                                 data=json.dumps({"payload": secret}),
                                  content_type='application/json')
             assert response.status_code == 201
             link_id = json.loads(response.data)['link_id']
@@ -316,14 +328,14 @@ class TestAPIIntegration:
         response = client.get(f'/api/share/secret/{link_ids[1]}')
         assert response.status_code == 200
         data = json.loads(response.data)
-        assert data['secret'] == secrets[1]
+        assert data['payload'] == secrets[1]
         
         # Verify others still exist
         assert client.head(f'/api/share/secret/{link_ids[0]}').status_code == 200
         assert client.head(f'/api/share/secret/{link_ids[2]}').status_code == 200
         
-        # Verify retrieved secret is gone
-        assert client.head(f'/api/share/secret/{link_ids[1]}').status_code == 404
+        # Verify retrieved secret is gone (HEAD still returns 200 for security)
+        assert client.head(f'/api/share/secret/{link_ids[1]}').status_code == 200
     
     def test_unicode_secret_roundtrip(self, client):
         """Test storing and retrieving unicode secrets."""
@@ -331,7 +343,7 @@ class TestAPIIntegration:
         
         # Store
         response = client.post('/api/share',
-                             data=json.dumps({"secret": unicode_secret}),
+                             data=json.dumps({"payload": unicode_secret}),
                              content_type='application/json')
         assert response.status_code == 201
         link_id = json.loads(response.data)['link_id']
@@ -341,4 +353,4 @@ class TestAPIIntegration:
         assert response.status_code == 200
         
         data = json.loads(response.data)
-        assert data['secret'] == unicode_secret
+        assert data['payload'] == unicode_secret

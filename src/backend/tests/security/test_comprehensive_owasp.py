@@ -65,7 +65,7 @@ class TestOWASPA02CryptographicFailures:
     
     def test_weak_random_number_generation(self, client, app_context):
         """Test for weak random number generation patterns."""
-        from backend.app.storage import generate_unique_link_id
+        from app.storage import generate_unique_link_id
         
         # Generate multiple IDs to check for patterns
         ids = [generate_unique_link_id() for _ in range(100)]

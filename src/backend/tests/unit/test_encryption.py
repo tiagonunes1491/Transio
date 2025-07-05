@@ -4,7 +4,7 @@ import sys
 from unittest.mock import patch
 from cryptography.fernet import InvalidToken
 
-from backend.app.encryption import encrypt_secret, decrypt_secret
+from app.encryption import encrypt_secret, decrypt_secret
 
 
 class TestEncryptSecret:
@@ -41,7 +41,7 @@ class TestEncryptSecret:
         assert isinstance(result, bytes)
         assert len(result) > 0
 
-    @patch("backend.app.encryption.cipher_suite", None)
+    @patch("app.encryption.cipher_suite", None)
     def test_encrypt_secret_no_cipher_suite(self, sample_secret):
         """Test encryption failure when cipher_suite is not initialized."""
         with pytest.raises(Exception, match="Encryption suite not initialized"):
@@ -81,14 +81,14 @@ class TestDecryptSecret:
 
         assert result == unicode_secret
 
-    @patch("backend.app.encryption.cipher_suite", None)
+    @patch("app.encryption.cipher_suite", None)
     def test_decrypt_secret_no_cipher_suite(self, encrypted_secret_bytes):
         """Test decryption failure when cipher_suite is not initialized."""
         result = decrypt_secret(encrypted_secret_bytes)
 
         assert result is None
 
-    @patch("backend.app.encryption.cipher_suite")
+    @patch("app.encryption.cipher_suite")
     def test_decrypt_secret_invalid_token_exception(self, mock_cipher):
         """Test handling of InvalidToken exception."""
         mock_cipher.decrypt.side_effect = InvalidToken()
@@ -97,7 +97,7 @@ class TestDecryptSecret:
 
         assert result is None
 
-    @patch("backend.app.encryption.cipher_suite")
+    @patch("app.encryption.cipher_suite")
     def test_decrypt_secret_unexpected_exception(self, mock_cipher):
         """Test handling of unexpected exceptions during decryption."""
         mock_cipher.decrypt.side_effect = Exception("Unexpected error")
