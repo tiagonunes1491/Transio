@@ -1,3 +1,4 @@
+#To do : This is overengineered, going to drop a publish as tag or ACR for now.
 # .github/workflows/ci-publish-bicep.yml
 name: 'CI - Publish Bicep Artifacts'
 

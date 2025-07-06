@@ -1,4 +1,4 @@
-name: 'CI - Publish frontend container to ACR'
+#To do : This is overengineered, going to drop a publish as tag or ACR for now.name: 'CI - Publish frontend container to ACR'
 on:
     push:
         branches: [development]

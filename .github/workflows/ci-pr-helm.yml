@@ -104,6 +104,8 @@ jobs:
       - name: Validate manifests with kubeconform
         run: |
           find rendered -name "*.yaml" -type f | xargs kubeconform -ignore-missing-schemas -summary -verbose
+
+  # To do - What is the purpose of this step?
   # Job 5: Security policy validation
   checkov:
     name: Security policy validation
@@ -134,6 +136,8 @@ jobs:
         with:
           sarif_file: checkov-results.sarif
           category: 'checkov-kubernetes-security'
+  #To do - Why this? There's no external images in this repo, so no need to scan images
+
   # Job 6: Image vulnerability scanning
   scan-images:
     name: Image vulnerability scanning
@@ -167,6 +171,7 @@ jobs:
         if: always()  # Run even if SARIF scan failed
         with:
           scan-type: 'image'
+
           image-ref: ${{ matrix.image }}
           ignore-unfixed: false
           format: 'table'

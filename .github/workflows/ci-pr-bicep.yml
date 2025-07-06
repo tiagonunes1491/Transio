@@ -305,7 +305,8 @@ jobs:
         with:
           category: bicep-lint-analysis
           sarif_file: bicep-validation-results.sarif
-          
+
+#To do : remove this step, security scan is not needed for the bicep files in this way.          
   security-scan:
     needs: check_changes
     name: 'Security Scan Bicep Files'

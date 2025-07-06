@@ -52,7 +52,8 @@ jobs:
     uses: ./.github/workflows/reusable-sast-scan.yml
     with:
       language: 'javascript'
-  
+
+  # To do do: remove this step, SCA is not needed for the frontend
   sca_analysis:
     needs: check_changes
     name: 'SCA Analysis (Dependencies & Vulnerabilities)'
