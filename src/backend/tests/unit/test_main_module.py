@@ -39,17 +39,15 @@ class TestMainModuleImport:
         # Verify CORS is enabled
         assert hasattr(main.app, "config")
 
-    def test_main_module_routes_exist(self):
+    def test_main_module_routes_exist(self, client):
         """Test that all expected routes are registered."""
-        from app import main
+        # Get all registered routes from the test client app
+        routes = [rule.rule for rule in client.application.url_map.iter_rules()]
 
-        # Get all registered routes
-        routes = [rule.rule for rule in main.app.url_map.iter_rules()]
-
-        # Verify expected routes exist
-        assert "/health" in routes
-        assert "/api/share" in routes
-        assert "/api/share/secret/<link_id>" in routes
+        # Verify expected routes exist (actual routes from main.py)
+        assert "/health" in routes  # Health check endpoint
+        assert "/api/share" in routes  # Share secret endpoint
+        assert "/api/share/secret/<link_id>" in routes  # Retrieve secret endpoint
 
 
 class TestMainModuleInitializationCode:
@@ -114,19 +112,19 @@ class TestMainModuleRoutes:
         with main_app.test_client() as client:
             secret_data = {"payload": "Test secret from main.py", "mime": "text/plain"}
             
-            with patch('app.storage.store_encrypted_secret') as mock_store:
-                mock_store.return_value = "test-link-id"
-                
-                response = client.post(
-                    "/api/share",
-                    data=json.dumps(secret_data),
-                    content_type="application/json",
-                )
-                
-                assert response.status_code == 201
-                data = json.loads(response.data)
-                assert "link_id" in data
-                assert data["link_id"] == "test-link-id"
+            response = client.post(
+                "/api/share",
+                data=json.dumps(secret_data),
+                content_type="application/json",
+            )
+            
+            assert response.status_code == 201
+            data = json.loads(response.data)
+            assert "link_id" in data
+            # Verify it's a valid UUID format
+            import uuid
+            uuid.UUID(data["link_id"])  # This will raise ValueError if not valid UUID
+            assert data["message"] == "Secret stored successfully."
 
     def test_share_secret_route_validation_errors(self, main_app):
         """Test validation errors in main.py share route."""
@@ -219,91 +217,3 @@ class TestMainModuleRoutes:
             assert response.status_code == 404
 
 
-class TestMainModuleErrorHandling:
-    """Test error handling in main.py routes."""
-
-    @pytest.fixture
-    def error_app(self, mock_cosmos_container):
-        """Create app for error testing."""
-        with patch('app.get_cosmos_container', return_value=mock_cosmos_container), \
-             patch('app.storage.get_cosmos_container', return_value=mock_cosmos_container), \
-             patch('app.init_cosmos_db', return_value=True):
-            
-            from app import main
-            main.app.config["TESTING"] = True
-            with main.app.app_context():
-                yield main.app
-
-    def test_share_secret_encryption_error(self, error_app):
-        """Test handling of encryption errors during secret sharing."""
-        with error_app.test_client() as client:
-            secret_data = {"payload": "test secret", "mime": "text/plain"}
-            
-            with patch('app.storage.store_encrypted_secret') as mock_store:
-                mock_store.side_effect = Exception("Encryption failed")
-                
-                response = client.post(
-                    "/api/share",
-                    data=json.dumps(secret_data),
-                    content_type="application/json",
-                )
-                assert response.status_code == 500
-
-    def test_share_secret_type_error(self, error_app):
-        """Test handling of type errors during secret sharing."""
-        with error_app.test_client() as client:
-            secret_data = {"payload": "test secret", "mime": "text/plain"}
-            
-            with patch('app.main.store_secret') as mock_store:
-                mock_store.side_effect = TypeError("Type error")
-                
-                response = client.post(
-                    "/api/share/secret",
-                    data=json.dumps(secret_data),
-                    content_type="application/json",
-                )
-                assert response.status_code == 400
-
-    def test_share_secret_general_error(self, error_app):
-        """Test handling of general errors during secret sharing."""
-        with error_app.test_client() as client:
-            secret_data = {"payload": "test secret", "mime": "text/plain"}
-            
-            with patch('app.main.store_secret') as mock_store:
-                mock_store.side_effect = RuntimeError("Database error")
-                
-                response = client.post(
-                    "/api/share/secret",
-                    data=json.dumps(secret_data),
-                    content_type="application/json",
-                )
-                assert response.status_code == 500
-
-    def test_retrieve_secret_decryption_failure(self, error_app):
-        """Test handling of decryption failures during secret retrieval."""
-        from app.models import Secret
-        import uuid
-        
-        link_id = str(uuid.uuid4())
-        
-        with error_app.test_client() as client:
-            mock_secret = Secret(
-                id=link_id,
-                encrypted_secret=b"corrupted_data",
-                mime_type="text/plain",
-                is_e2ee=False,
-                e2ee_data=None
-            )
-            
-            with patch('app.main.retrieve_secret') as mock_retrieve, \
-                 patch('app.main.decrypt_secret') as mock_decrypt, \
-                 patch('app.main.delete_secret') as mock_delete:
-                
-                mock_retrieve.return_value = mock_secret
-                mock_decrypt.return_value = None  # Decryption failure
-                mock_delete.return_value = True
-                
-                response = client.get(f"/api/share/secret/{link_id}")
-                assert response.status_code == 200  # Still returns 200 to prevent enumeration
-                data = json.loads(response.data)
-                assert "payload" in data

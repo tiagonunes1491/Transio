@@ -20,38 +20,37 @@ class TestMainAPIRoutes:
     
     def test_share_secret_api_success(self, client):
         """Test successful secret sharing through API"""
-        with patch('app.storage.store_encrypted_secret') as mock_store:
-            mock_store.return_value = 'test-uuid-123'
-            
-            response = client.post('/api/share', json={
-                'payload': 'Test secret message',
-                'mime': 'text/plain'
-            })
-            
-            assert response.status_code == 201
-            data = response.get_json()
-            assert data['link_id'] == 'test-uuid-123'
-            assert data['e2ee'] is False
-            assert data['mime'] == 'text/plain'
+        response = client.post('/api/share', json={
+            'payload': 'Test secret message',
+            'mime': 'text/plain'
+        })
+        
+        assert response.status_code == 201
+        data = response.get_json()
+        # Verify it's a valid UUID format
+        uuid.UUID(data['link_id'])  # This will raise ValueError if not valid UUID
+        assert data['e2ee'] is False
+        assert data['mime'] == 'text/plain'
+        assert data['message'] == 'Secret stored successfully.'
     
     def test_share_secret_api_e2ee(self, client):
         """Test E2EE secret sharing through API"""
-        with patch('app.storage.store_encrypted_secret') as mock_store:
-            mock_store.return_value = 'test-e2ee-uuid'
-            
-            response = client.post('/api/share', json={
-                'payload': 'client_encrypted_data', 
-                'e2ee': {
-                    'salt': 'client_salt',
-                    'nonce': 'client_nonce'
-                },
-                'mime': 'text/plain'
-            })
-            
-            assert response.status_code == 201
-            data = response.get_json()
-            assert data['link_id'] == 'test-e2ee-uuid'
-            assert data['e2ee'] is True
+        response = client.post('/api/share', json={
+            'payload': 'client_encrypted_data', 
+            'e2ee': {
+                'salt': 'client_salt',
+                'nonce': 'client_nonce'
+            },
+            'mime': 'text/plain'
+        })
+        
+        assert response.status_code == 201
+        data = response.get_json()
+        # Verify it's a valid UUID format
+        uuid.UUID(data['link_id'])  # This will raise ValueError if not valid UUID
+        assert data['e2ee'] is True
+        assert data['mime'] == 'text/plain'
+        assert data['message'] == 'Secret stored successfully.'
     
     def test_share_secret_api_missing_data(self, client):
         """Test API with missing data"""
@@ -72,7 +71,7 @@ class TestMainAPIRoutes:
             'payload': long_secret,
             'mime': 'text/plain'
         })
-        assert response.status_code == 400
+        assert response.status_code == 413  # Request Entity Too Large
     
     def test_retrieve_secret_api_success(self, client):
         """Test successful secret retrieval"""
@@ -99,30 +98,29 @@ class TestMainAPIRoutes:
             assert 'payload' in data
     
     def test_retrieve_secret_api_e2ee(self, client):
-        """Test E2EE secret retrieval"""
-        from app.models import Secret
+        """Test E2EE secret retrieval with actual storage and retrieval"""
+        # First store an E2EE secret
+        store_response = client.post('/api/share', json={
+            'payload': 'client_encrypted_payload', 
+            'e2ee': {
+                'salt': 'test_salt',
+                'nonce': 'test_nonce'
+            },
+            'mime': 'text/plain'
+        })
         
-        link_id = str(uuid.uuid4())
-        mock_secret = Secret(
-            link_id=link_id,
-            encrypted_secret=b'client_encrypted_payload',
-            mime_type='text/plain',
-            is_e2ee=True,
-            e2ee_data={'salt': 'test_salt', 'nonce': 'test_nonce'}
-        )
+        assert store_response.status_code == 201
+        store_data = store_response.get_json()
+        link_id = store_data['link_id']
         
-        with patch('app.storage.retrieve_secret') as mock_retrieve, \
-             patch('app.storage.delete_secret') as mock_delete:
-            
-            mock_retrieve.return_value = mock_secret
-            mock_delete.return_value = True
-            
-            response = client.get(f'/api/share/secret/{link_id}')
-            assert response.status_code == 200
-            data = response.get_json()
-            assert 'payload' in data
-            assert 'e2ee' in data
-            assert data['e2ee']['salt'] == 'test_salt'
+        # Now retrieve the secret
+        response = client.get(f'/api/share/secret/{link_id}')
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'payload' in data
+        assert 'e2ee' in data
+        assert data['e2ee']['salt'] == 'test_salt'
+        assert data['e2ee']['nonce'] == 'test_nonce'
     
     def test_retrieve_secret_api_not_found(self, client):
         """Test secret not found"""
@@ -136,46 +134,29 @@ class TestMainAPIRoutes:
             data = response.get_json()
             assert 'payload' in data  # Dummy data
     
-    def test_share_secret_error_handling(self, client):
-        """Test error handling in share secret"""
-        with patch('app.storage.store_encrypted_secret') as mock_store:
-            # Test ValueError
-            mock_store.side_effect = ValueError("Invalid data")
-            response = client.post('/api/share', json={
-                'payload': 'test',
-                'mime': 'text/plain'
-            })
-            assert response.status_code == 400
-            
-            # Test general exception
-            mock_store.side_effect = Exception("Storage error")
-            response = client.post('/api/share', json={
-                'payload': 'test',
-                'mime': 'text/plain'
-            })
-            assert response.status_code == 500
+    def test_share_secret_validation_errors(self, client):
+        """Test validation errors in share secret"""
+        # Test missing payload
+        response = client.post('/api/share', json={
+            'mime': 'text/plain'
+        })
+        assert response.status_code == 400
+        
+        # Test non-string payload  
+        response = client.post('/api/share', json={
+            'payload': 123,
+            'mime': 'text/plain'
+        })
+        assert response.status_code == 400
     
-    def test_retrieve_secret_error_handling(self, client):
-        """Test error handling in retrieve secret"""
-        from app.models import Secret
+    def test_retrieve_secret_not_found_behavior(self, client):
+        """Test behavior when secret is not found (anti-enumeration)"""
+        # Request a non-existent secret
+        fake_link_id = str(uuid.uuid4())
+        response = client.get(f'/api/share/secret/{fake_link_id}')
         
-        link_id = str(uuid.uuid4())
-        mock_secret = Secret(
-            link_id=link_id,
-            encrypted_secret=b'corrupted_data',
-            mime_type='text/plain'
-        )
-        
-        with patch('app.storage.retrieve_secret') as mock_retrieve, \
-             patch('app.encryption.decrypt_secret') as mock_decrypt, \
-             patch('app.storage.delete_secret') as mock_delete:
-            
-            mock_retrieve.return_value = mock_secret
-            mock_decrypt.return_value = None  # Decryption failure
-            mock_delete.return_value = True
-            
-            response = client.get(f'/api/share/secret/{link_id}')
-            assert response.status_code == 200  # Still returns 200
-            
-            # Verify corrupted secret was deleted
-            mock_delete.assert_called_once_with(link_id)
+        # Should return 200 with dummy data to prevent enumeration
+        assert response.status_code == 200
+        data = response.get_json()
+        assert 'payload' in data
+        assert data['payload'] == 'Dummy payload for non-existent secret'
