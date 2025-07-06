@@ -306,48 +306,14 @@ jobs:
           category: bicep-lint-analysis
           sarif_file: bicep-validation-results.sarif
 
-#To do : remove this step, security scan is not needed for the bicep files in this way.          
-  security-scan:
-    needs: check_changes
-    name: 'Security Scan Bicep Files'
-    runs-on: ubuntu-latest
-    steps:
-      - name: 'Checkout Code'
-        uses: actions/checkout@v4
-
-      - name: 'Run Security Scan with Checkov'
-        if: needs.check_changes.outputs.bicep_required == 'true'
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          file: ${{ needs.check_changes.outputs.changed_files }}
-          framework: bicep
-          output_format: sarif
-          output_file_path: checkov-results.sarif
-          quiet: true
-          soft_fail: false
-          check: CKV_AZURE_*
-
-      - name: 'Upload Checkov SARIF'
-        if: always() && needs.check_changes.outputs.bicep_required == 'true'
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          category: checkov-bicep-security
-          sarif_file: checkov-results.sarif
-
-      - name: 'No Bicep Changes - Security Scan Skipped'
-        if: needs.check_changes.outputs.bicep_required != 'true'
-        run: |
-          echo "ℹ️ No Bicep files changed - security scan skipped"
-          echo "If you expected security scanning to run, check that changes are in infra/ directory with .bicep or .bicepparam extensions"
-
   post-comment:
     name: 'Post Validation Results Comment'
-    needs: [check_changes, validate-bicep, security-scan]
+    needs: [check_changes, validate-bicep]
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: 'Post Success Comment'
-        if: needs.check_changes.outputs.bicep_required == 'true' && needs.validate-bicep.result == 'success' && needs.security-scan.result == 'success'
+        if: needs.check_changes.outputs.bicep_required == 'true' && needs.validate-bicep.result == 'success'
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -360,18 +326,16 @@ jobs:
 
             **Validation Results:**
             - 📦 Bicep compilation: ✅ Passed
-            - 🛡️ Security scanning: ✅ Passed
 
             **What was validated:**
             - 📦 Bicep compilation (syntax validation)
-            - 🔍 Bicep linting (best practices)  
-            - 🛡️ Security scanning with Checkov
+            - 🔍 Bicep linting (best practices)
 
             Great work! Your infrastructure code looks good.
           edit-mode: replace
 
       - name: 'Post Failure Comment'
-        if: needs.check_changes.outputs.bicep_required == 'true' && (needs.validate-bicep.result != 'success' || needs.security-scan.result != 'success')
+        if: needs.check_changes.outputs.bicep_required == 'true' && needs.validate-bicep.result != 'success'
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -385,12 +349,10 @@ jobs:
 
             **Validation Results:**
             - 📦 Bicep compilation: ${{ needs.validate-bicep.result == 'success' && '✅ Passed' || needs.validate-bicep.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }}
-            - 🛡️ Security scanning: ${{ needs.security-scan.result == 'success' && '✅ Passed' || needs.security-scan.result == 'failure' && '❌ Failed' || '⏭️ Skipped' }}
 
             **What was checked:**
             - 📦 Bicep compilation (syntax validation)
             - 🔍 Bicep linting (best practices)
-            - 🛡️ Security scanning with Checkov
 
             Please fix the issues and push your changes.
           edit-mode: replace
