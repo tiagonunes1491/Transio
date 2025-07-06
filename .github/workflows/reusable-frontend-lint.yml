@@ -38,13 +38,13 @@ jobs:
           npm install --no-save eslint prettier eslint-config-standard eslint-plugin-promise eslint-plugin-import eslint-plugin-node html-validate
 
       - name: Validate HTML files
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           echo "Validating HTML files in static directory..."
           npm run validate:html
 
       - name: Check JavaScript syntax
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           echo "Checking JavaScript syntax for production files..."
           
@@ -52,7 +52,7 @@ jobs:
           find static -name "*.js" -exec echo "Checking syntax: {}" \; -exec node -c {} \;
 
       - name: Run ESLint
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           # Convert comma-separated paths to space-separated for ESLint
           FILES="${{ inputs.paths }}"
@@ -76,7 +76,7 @@ jobs:
           done
 
       - name: Run Prettier check
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           # Convert comma-separated paths to space-separated for Prettier
           FILES="${{ inputs.paths }}"
@@ -100,7 +100,7 @@ jobs:
           done
 
       - name: Validate static assets
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           echo "Validating static assets..."
           
@@ -129,7 +129,7 @@ jobs:
 
       - name: Suggest fixes
         if: failure()
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           echo "❌ Linting, formatting, or validation issues found!"
           echo ""
