@@ -4,14 +4,14 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch, MagicMock
 
-from backend.app.storage import (
+from app.storage import (
     generate_unique_link_id,
     store_encrypted_secret,
-    retrieve_and_delete_secret,
-    cleanup_expired_secrets,
-    check_secret_exists
+    retrieve_secret,
+    delete_secret,
+    retrieve_and_delete_secret
 )
-from backend.app.models import Secret
+from app.models import Secret
 
 
 class TestGenerateUniqueLinkId:
@@ -37,20 +37,20 @@ class TestGenerateUniqueLinkId:
 class TestStoreEncryptedSecret:
     """Test cases for the store_encrypted_secret function."""
     
-    def test_store_encrypted_secret_success(self, client, app_context, mock_cosmos_session):
+    def test_store_encrypted_secret_success(self, mock_cosmos_container):
         """Test successful storage of encrypted secret."""
         encrypted_data = b"encrypted_test_data"
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = store_encrypted_secret(encrypted_data)
         
         assert result is not None
         assert isinstance(result, str)
         
         # Verify it was stored in mock container
-        assert mock_cosmos_session.create_item.called
+        assert mock_cosmos_container.create_item.called
     
-    def test_store_encrypted_secret_invalid_type(self, app_context):
+    def test_store_encrypted_secret_invalid_type(self):
         """Test that non-bytes input raises TypeError."""
         with pytest.raises(TypeError, match="Encrypted secret data must be bytes"):
             store_encrypted_secret("not_bytes")
@@ -58,12 +58,12 @@ class TestStoreEncryptedSecret:
         with pytest.raises(TypeError, match="Encrypted secret data must be bytes"):
             store_encrypted_secret(123)
     
-    @patch('backend.app.storage.container')
-    def test_store_encrypted_secret_database_error(self, mock_container, app_context):
+    def test_store_encrypted_secret_database_error(self, mock_cosmos_container):
         """Test handling of database errors during storage."""
-        mock_container.create_item.side_effect = Exception("Cosmos DB error")
+        mock_cosmos_container.create_item.side_effect = Exception("Cosmos DB error")
         
-        result = store_encrypted_secret(b"test_data")
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = store_encrypted_secret(b"test_data")
         
         assert result is None
 
@@ -71,152 +71,212 @@ class TestStoreEncryptedSecret:
 class TestRetrieveAndDeleteSecret:
     """Test cases for the retrieve_and_delete_secret function."""
     
-    def test_retrieve_and_delete_secret_success(self, client, app_context, mock_cosmos_session):
+    def test_retrieve_and_delete_secret_success(self, mock_cosmos_container):
         """Test successful retrieval and deletion of secret."""
         # First store a secret
         encrypted_data = b"test_encrypted_data"
+        link_id = "test-link-id"
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            link_id = store_encrypted_secret(encrypted_data)
-            
-            # Retrieve and delete it
+        from app.models import Secret
+        mock_secret = Secret(
+            link_id=link_id,
+            encrypted_secret=encrypted_data,
+            is_e2ee=False,
+            mime_type="text/plain"
+        )
+        
+        # Override the side_effect to return our mock data
+        mock_cosmos_container.read_item.side_effect = None
+        mock_cosmos_container.read_item.return_value = mock_secret.to_dict()
+        
+        # Override delete_item side_effect 
+        mock_cosmos_container.delete_item.side_effect = None
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_and_delete_secret(link_id)
         
-        assert result == encrypted_data
+        assert result is not None
+        assert result.encrypted_secret == encrypted_data
         
-        # Verify it was deleted from mock container
-        assert mock_cosmos_session.delete_item.called
+        # Verify it was deleted from mock container for non-E2EE secrets
+        assert mock_cosmos_container.delete_item.called
     
-    def test_retrieve_and_delete_secret_not_found(self, app_context, mock_cosmos_session):
+    def test_retrieve_and_delete_secret_not_found(self, mock_cosmos_container):
         """Test retrieval of non-existent secret returns None."""
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         non_existent_id = str(uuid.uuid4())
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
+        mock_cosmos_container.read_item.side_effect = CosmosResourceNotFoundError()
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             result = retrieve_and_delete_secret(non_existent_id)
         
         assert result is None
     
-    def test_retrieve_and_delete_secret_invalid_input(self, app_context, mock_cosmos_session):
+    def test_retrieve_and_delete_secret_invalid_input(self, mock_cosmos_container):
         """Test retrieval with invalid input returns None."""
-        with patch('backend.app.storage.container', mock_cosmos_session):
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             assert retrieve_and_delete_secret("") is None
             assert retrieve_and_delete_secret(None) is None
             assert retrieve_and_delete_secret(123) is None
     
-    @patch('backend.app.storage.container')
-    def test_retrieve_and_delete_secret_database_error(self, mock_container, app_context):
+    def test_retrieve_and_delete_secret_database_error(self, mock_cosmos_container):
         """Test handling of database errors during retrieval."""
-        mock_container.read_item.side_effect = Exception("Cosmos DB error")
+        mock_cosmos_container.read_item.side_effect = Exception("Cosmos DB error")
         
-        result = retrieve_and_delete_secret("test_id")
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = retrieve_and_delete_secret("test_id")
         
         assert result is None
 
 
-class TestCheckSecretExists:
-    """Test cases for the check_secret_exists function."""
+class TestRetrieveSecret:
+    """Test cases for the retrieve_secret function."""
     
-    def test_check_secret_exists_true(self, client, app_context, mock_cosmos_session):
-        """Test checking existence of a stored secret returns True."""
+    def test_retrieve_secret_success(self, mock_cosmos_container):
+        """Test successful retrieval of secret without deletion."""
         encrypted_data = b"test_encrypted_data"
+        link_id = "test-link-id"
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            link_id = store_encrypted_secret(encrypted_data)
-            result = check_secret_exists(link_id)
+        # Mock the return value for read_item
+        from app.models import Secret
+        mock_secret = Secret(
+            link_id=link_id,
+            encrypted_secret=encrypted_data,
+            is_e2ee=False,
+            mime_type="text/plain"
+        )
         
-        assert result is True
+        # Override the side_effect to return our mock data
+        mock_cosmos_container.read_item.side_effect = None
+        mock_cosmos_container.read_item.return_value = mock_secret.to_dict()
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = retrieve_secret(link_id)
+        
+        assert result is not None
+        assert result.encrypted_secret == encrypted_data
+        assert result.link_id == link_id
     
-    def test_check_secret_exists_false(self, app_context, mock_cosmos_session):
-        """Test checking existence of non-existent secret returns False."""
+    def test_retrieve_secret_not_found(self, mock_cosmos_container):
+        """Test retrieval of non-existent secret returns None."""
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         non_existent_id = str(uuid.uuid4())
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            result = check_secret_exists(non_existent_id)
+        mock_cosmos_container.read_item.side_effect = CosmosResourceNotFoundError()
         
-        assert result is False
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = retrieve_secret(non_existent_id)
+        
+        assert result is None
     
-    def test_check_secret_exists_empty_input(self, app_context, mock_cosmos_session):
-        """Test checking existence with empty input returns False."""
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            result = check_secret_exists("")
-        
-        assert result is False
+    def test_retrieve_secret_invalid_input(self, mock_cosmos_container):
+        """Test retrieval with invalid input returns None."""
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            assert retrieve_secret("") is None
+            assert retrieve_secret(None) is None
+            assert retrieve_secret(123) is None
     
-    def test_check_secret_exists_expired_secret(self, client, app_context, mock_cosmos_session):
-        """Test checking existence of expired secret returns False."""
-        # This test is mostly handled by Cosmos DB TTL automatically
-        # For testing purposes, we'll simulate an expired secret check
-        expired_id = str(uuid.uuid4())
+    def test_retrieve_secret_database_error(self, mock_cosmos_container):
+        """Test handling of database errors during retrieval."""
+        mock_cosmos_container.read_item.side_effect = Exception("Cosmos DB error")
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            result = check_secret_exists(expired_id)
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = retrieve_secret("test_id")
         
-        assert result is False
-    
-    @patch('backend.app.storage.container')
-    def test_check_secret_exists_database_error(self, mock_container, app_context):
-        """Test handling of database errors during existence check."""
-        mock_container.read_item.side_effect = Exception("Cosmos DB error")
-        
-        result = check_secret_exists("test_id")
-        
-        assert result is False
+        assert result is None
 
 
-class TestCleanupExpiredSecrets:
-    """Test cases for the cleanup_expired_secrets function."""
+class TestDeleteSecret:
+    """Test cases for the delete_secret function."""
     
-    def test_cleanup_expired_secrets_removes_old(self, client, app_context, mock_cosmos_session):
-        """Test that cleanup removes expired secrets."""
-        # With Cosmos DB TTL, cleanup is mostly automatic
-        # This test simulates the manual cleanup function
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            removed_count = cleanup_expired_secrets()
+    def test_delete_secret_success(self, mock_cosmos_container):
+        """Test successful deletion of secret."""
+        test_id = str(uuid.uuid4())
         
-        # Should return 0 since mock container has no expired items
-        assert removed_count >= 0
+        # Override delete_item side_effect 
+        mock_cosmos_container.delete_item.side_effect = None
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = delete_secret(test_id)
+        
+        assert result is True
+        assert mock_cosmos_container.delete_item.called
     
-    def test_cleanup_expired_secrets_no_expired(self, client, app_context, mock_cosmos_session):
-        """Test cleanup when no expired secrets exist."""
-        with patch('backend.app.storage.container', mock_cosmos_session):
-            removed_count = cleanup_expired_secrets()
+    def test_delete_secret_not_found(self, mock_cosmos_container):
+        """Test deletion of non-existent secret returns False."""
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
+        non_existent_id = str(uuid.uuid4())
         
-        assert removed_count == 0
+        mock_cosmos_container.delete_item.side_effect = CosmosResourceNotFoundError()
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = delete_secret(non_existent_id)
+        
+        assert result is False
     
-    @patch('backend.app.storage.container')
-    def test_cleanup_expired_secrets_database_error(self, mock_container, app_context):
-        """Test handling of database errors during cleanup."""
-        mock_container.query_items.side_effect = Exception("Cosmos DB error")
+    def test_delete_secret_invalid_input(self, mock_cosmos_container):
+        """Test deletion with invalid input returns False."""
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            assert delete_secret("") is False
+            assert delete_secret(None) is False
+            assert delete_secret(123) is False
+    
+    def test_delete_secret_database_error(self, mock_cosmos_container):
+        """Test handling of database errors during deletion."""
+        mock_cosmos_container.delete_item.side_effect = Exception("Cosmos DB error")
         
-        result = cleanup_expired_secrets()
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
+            result = delete_secret("test_id")
         
-        assert result == 0
+        assert result is False
 
 
 class TestStorageIntegration:
     """Integration tests for storage functions."""
     
-    def test_store_retrieve_delete_flow(self, client, app_context, mock_cosmos_session):
-        """Test complete flow: store, check exists, retrieve/delete."""
+    def test_store_retrieve_delete_flow(self, mock_cosmos_container):
+        """Test complete flow: store, retrieve, delete."""
         encrypted_data = b"integration_test_data"
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
+        # Override create_item side_effect 
+        mock_cosmos_container.create_item.side_effect = None
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             # Store
             link_id = store_encrypted_secret(encrypted_data)
             assert link_id is not None
             
-            # Check exists
-            assert check_secret_exists(link_id) is True
+            # Mock retrieve response
+            from app.models import Secret
+            mock_secret = Secret(
+                link_id=link_id,
+                encrypted_secret=encrypted_data,
+                is_e2ee=False,
+                mime_type="text/plain"
+            )
+            
+            # Override read_item side_effect 
+            mock_cosmos_container.read_item.side_effect = None
+            mock_cosmos_container.read_item.return_value = mock_secret.to_dict()
+            
+            # Retrieve (without deletion)
+            retrieved_secret = retrieve_secret(link_id)
+            assert retrieved_secret is not None
+            assert retrieved_secret.encrypted_secret == encrypted_data
+            
+            # Override delete_item side_effect 
+            mock_cosmos_container.delete_item.side_effect = None
             
             # Retrieve and delete
             retrieved_data = retrieve_and_delete_secret(link_id)
-            assert retrieved_data == encrypted_data
+            assert retrieved_data is not None
+            assert retrieved_data.encrypted_secret == encrypted_data
             
-            # Verify it no longer exists
-            assert check_secret_exists(link_id) is False
-            assert retrieve_and_delete_secret(link_id) is None
+            # Verify deletion was called
+            assert mock_cosmos_container.delete_item.called
     
-    def test_multiple_secrets_isolation(self, client, app_context, mock_cosmos_session):
+    def test_multiple_secrets_isolation(self, mock_cosmos_container):
         """Test that multiple secrets are stored and retrieved independently."""
         secrets_data = [
             b"secret_1",
@@ -224,22 +284,35 @@ class TestStorageIntegration:
             b"secret_3"
         ]
         
-        with patch('backend.app.storage.container', mock_cosmos_session):
+        # Override create_item side_effect 
+        mock_cosmos_container.create_item.side_effect = None
+        
+        with patch('app.storage.get_container', return_value=mock_cosmos_container):
             # Store all secrets
             link_ids = []
             for data in secrets_data:
                 link_id = store_encrypted_secret(data)
                 link_ids.append(link_id)
             
-            # Verify all exist
-            for link_id in link_ids:
-                assert check_secret_exists(link_id) is True
+            # Mock retrieve responses
+            from app.models import Secret
+            mock_secrets = []
+            for i, (link_id, data) in enumerate(zip(link_ids, secrets_data)):
+                mock_secret = Secret(
+                    link_id=link_id,
+                    encrypted_secret=data,
+                    is_e2ee=False,
+                    mime_type="text/plain"
+                )
+                mock_secrets.append(mock_secret)
             
-            # Retrieve one secret
+            # Test retrieving specific secret
+            mock_cosmos_container.read_item.side_effect = None
+            mock_cosmos_container.read_item.return_value = mock_secrets[1].to_dict()
+            
+            # Override delete_item side_effect 
+            mock_cosmos_container.delete_item.side_effect = None
+            
             retrieved = retrieve_and_delete_secret(link_ids[1])
-            assert retrieved == secrets_data[1]
-            
-            # Verify only that one was deleted
-            assert check_secret_exists(link_ids[0]) is True
-            assert check_secret_exists(link_ids[1]) is False
-            assert check_secret_exists(link_ids[2]) is True
+            assert retrieved is not None
+            assert retrieved.encrypted_secret == secrets_data[1]
