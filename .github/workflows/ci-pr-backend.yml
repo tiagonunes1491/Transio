@@ -4,7 +4,8 @@ on:
     branches:
       - 'development'
     paths:
-      - 'src/backend/**'
+      - 'src/backend/Dockerfile'
+      - 'src/backend/app/**'
 jobs:
   check_changes:
     name: 'Check for file changes'
