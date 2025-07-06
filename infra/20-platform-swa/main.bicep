@@ -91,11 +91,10 @@ param costCenter string = '1000'
 param createdBy string = 'bicep-deployment'
 
 @description('Resource owner identifier for accountability and governance')
-param owner string = 'tiago-nunes'
+param owner string 
 
 @description('Resource owner email for notifications and governance contacts')
-param ownerEmail string = 'tiago.nunes@example.com'
-
+param ownerEmail string 
 
 // ========== AZURE CONTAINER REGISTRY PARAMETERS ==========
 
