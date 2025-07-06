@@ -7,9 +7,7 @@ from cryptography.fernet import Fernet
 # Configure basic logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
-# Load environment variables from .env file in the current directory (backend/)
-# This should be called as early as possible,
-# and before importing any module that depends on environment variables
+# Load environment variables from .env file in the current directory (backend/app)
 dotenv_path = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(dotenv_path):
     load_dotenv(dotenv_path)
