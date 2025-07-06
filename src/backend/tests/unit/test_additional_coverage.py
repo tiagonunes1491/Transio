@@ -166,7 +166,7 @@ class TestStorageEdgeCases:
     
     def test_storage_cosmos_exceptions(self, mock_cosmos_container):
         """Test storage functions with Cosmos DB exceptions"""
-        from azure_mocks import CosmosResourceNotFoundError, CosmosHttpResponseError
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError, CosmosHttpResponseError
         
         # Test store_secret with Cosmos exception
         mock_cosmos_container.create_item.side_effect = CosmosHttpResponseError("Service unavailable", 503)
@@ -185,7 +185,7 @@ class TestStorageEdgeCases:
     
     def test_storage_retrieve_with_cosmos_error(self, mock_cosmos_container):
         """Test retrieve_secret with Cosmos DB errors"""
-        from azure_mocks import CosmosHttpResponseError
+        from azure.cosmos.exceptions import CosmosHttpResponseError
         
         # Mock Cosmos error during retrieval
         mock_cosmos_container.read_item.side_effect = CosmosHttpResponseError("Service error", 500)
@@ -199,7 +199,7 @@ class TestStorageEdgeCases:
     
     def test_storage_delete_with_cosmos_error(self, mock_cosmos_container):
         """Test delete_secret with Cosmos DB errors"""
-        from azure_mocks import CosmosHttpResponseError
+        from azure.cosmos.exceptions import CosmosHttpResponseError
         
         # Mock Cosmos error during deletion
         mock_cosmos_container.delete_item.side_effect = CosmosHttpResponseError("Service error", 500)

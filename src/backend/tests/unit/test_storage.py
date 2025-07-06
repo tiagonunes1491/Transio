@@ -103,7 +103,7 @@ class TestRetrieveAndDeleteSecret:
     
     def test_retrieve_and_delete_secret_not_found(self, mock_cosmos_container):
         """Test retrieval of non-existent secret returns None."""
-        from azure_mocks import CosmosResourceNotFoundError
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         non_existent_id = str(uuid.uuid4())
         
         mock_cosmos_container.read_item.side_effect = CosmosResourceNotFoundError()
@@ -160,7 +160,7 @@ class TestRetrieveSecret:
     
     def test_retrieve_secret_not_found(self, mock_cosmos_container):
         """Test retrieval of non-existent secret returns None."""
-        from azure_mocks import CosmosResourceNotFoundError
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         non_existent_id = str(uuid.uuid4())
         
         mock_cosmos_container.read_item.side_effect = CosmosResourceNotFoundError()
@@ -205,7 +205,7 @@ class TestDeleteSecret:
     
     def test_delete_secret_not_found(self, mock_cosmos_container):
         """Test deletion of non-existent secret returns False."""
-        from azure_mocks import CosmosResourceNotFoundError
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         non_existent_id = str(uuid.uuid4())
         
         mock_cosmos_container.delete_item.side_effect = CosmosResourceNotFoundError()

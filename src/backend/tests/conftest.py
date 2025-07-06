@@ -2,10 +2,6 @@
 import sys
 import os
 
-# Mock Azure dependencies before any other imports
-sys.path.insert(0, '/tmp')
-import azure_mocks
-
 import pytest
 from unittest.mock import patch, MagicMock
 from cryptography.fernet import Fernet
@@ -46,14 +42,14 @@ def mock_cosmos_container():
     def mock_read_item(item, partition_key):
         if item in _storage:
             return _storage[item]
-        from azure_mocks import CosmosResourceNotFoundError
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         raise CosmosResourceNotFoundError(message=f"Item {item} not found")
     
     def mock_delete_item(item, partition_key):
         if item in _storage:
             del _storage[item]
         else:
-            from azure_mocks import CosmosResourceNotFoundError
+            from azure.cosmos.exceptions import CosmosResourceNotFoundError
             raise CosmosResourceNotFoundError(message=f"Item {item} not found")
     
     def mock_query_items(query, enable_cross_partition_query=False):

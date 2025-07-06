@@ -112,7 +112,7 @@ class TestStorageEdgeCases:
     def test_storage_exception_handling(self, mock_container):
         """Test storage functions with various exception scenarios"""
         from app.storage import retrieve_secret, delete_secret
-        from azure_mocks import CosmosResourceNotFoundError
+        from azure.cosmos.exceptions import CosmosResourceNotFoundError
         
         # Test retrieve_secret with CosmosResourceNotFoundError
         with patch('app.storage.get_container', return_value=mock_container):
@@ -124,7 +124,7 @@ class TestStorageEdgeCases:
     def test_storage_cosmos_errors(self, mock_container):
         """Test handling of various Cosmos DB errors"""
         from app.storage import store_encrypted_secret, delete_secret
-        from azure_mocks import CosmosHttpResponseError
+        from azure.cosmos.exceptions import CosmosHttpResponseError
         
         # Test store_encrypted_secret with HTTP error
         with patch('app.storage.get_container', return_value=mock_container):
