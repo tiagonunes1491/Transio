@@ -47,8 +47,8 @@ class TestMainModuleImport:
         routes = [rule.rule for rule in main.app.url_map.iter_rules()]
 
         # Verify expected routes exist
-        assert "/api/health" in routes
-        assert "/api/share/secret" in routes
+        assert "/health" in routes
+        assert "/api/share" in routes
         assert "/api/share/secret/<link_id>" in routes
 
 
@@ -104,7 +104,7 @@ class TestMainModuleRoutes:
     def test_health_check_route(self, main_app):
         """Test the health check route from main.py."""
         with main_app.test_client() as client:
-            response = client.get("/api/health")
+            response = client.get("/health")
             assert response.status_code == 200
             data = json.loads(response.data)
             assert data["status"] == "healthy"
@@ -114,11 +114,11 @@ class TestMainModuleRoutes:
         with main_app.test_client() as client:
             secret_data = {"payload": "Test secret from main.py", "mime": "text/plain"}
             
-            with patch('app.main.store_secret') as mock_store:
+            with patch('app.storage.store_encrypted_secret') as mock_store:
                 mock_store.return_value = "test-link-id"
                 
                 response = client.post(
-                    "/api/share/secret",
+                    "/api/share",
                     data=json.dumps(secret_data),
                     content_type="application/json",
                 )
@@ -132,12 +132,12 @@ class TestMainModuleRoutes:
         """Test validation errors in main.py share route."""
         with main_app.test_client() as client:
             # Test missing JSON data
-            response = client.post("/api/share/secret", data="not json")
+            response = client.post("/api/share", data="not json")
             assert response.status_code == 400
 
             # Test missing payload field
             response = client.post(
-                "/api/share/secret",
+                "/api/share",
                 data=json.dumps({"mime": "text/plain"}),
                 content_type="application/json",
             )
@@ -151,11 +151,11 @@ class TestMainModuleRoutes:
             secret_data = {"payload": long_secret, "mime": "text/plain"}
             
             response = client.post(
-                "/api/share/secret",
+                "/api/share",
                 data=json.dumps(secret_data),
                 content_type="application/json",
             )
-            assert response.status_code == 400
+            assert response.status_code == 413  # Request Entity Too Large
 
     def test_retrieve_secret_route_success(self, main_app):
         """Test successful secret retrieval via main.py route."""
@@ -166,16 +166,16 @@ class TestMainModuleRoutes:
         
         with main_app.test_client() as client:
             mock_secret = Secret(
-                id=link_id,
+                link_id=link_id,
                 encrypted_secret=b"encrypted_data",
                 mime_type="text/plain",
                 is_e2ee=False,
                 e2ee_data=None
             )
             
-            with patch('app.main.retrieve_secret') as mock_retrieve, \
-                 patch('app.main.decrypt_secret') as mock_decrypt, \
-                 patch('app.main.delete_secret') as mock_delete:
+            with patch('app.storage.retrieve_secret') as mock_retrieve, \
+                 patch('app.encryption.decrypt_secret') as mock_decrypt, \
+                 patch('app.storage.delete_secret') as mock_delete:
                 
                 mock_retrieve.return_value = mock_secret
                 mock_decrypt.return_value = "decrypted secret"
@@ -192,7 +192,7 @@ class TestMainModuleRoutes:
         link_id = str(uuid.uuid4())
         
         with main_app.test_client() as client:
-            with patch('app.main.retrieve_secret') as mock_retrieve:
+            with patch('app.storage.retrieve_secret') as mock_retrieve:
                 mock_retrieve.return_value = None
                 
                 response = client.get(f"/api/share/secret/{link_id}")
@@ -239,11 +239,11 @@ class TestMainModuleErrorHandling:
         with error_app.test_client() as client:
             secret_data = {"payload": "test secret", "mime": "text/plain"}
             
-            with patch('app.main.store_secret') as mock_store:
+            with patch('app.storage.store_encrypted_secret') as mock_store:
                 mock_store.side_effect = Exception("Encryption failed")
                 
                 response = client.post(
-                    "/api/share/secret",
+                    "/api/share",
                     data=json.dumps(secret_data),
                     content_type="application/json",
                 )

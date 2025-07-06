@@ -20,8 +20,8 @@ class TestMainDirectExecution:
              patch('app.main.Config') as mock_config, \
              patch('builtins.print') as mock_print:
             
-            # Set up valid config
-            mock_config.MASTER_ENCRYPTION_KEY_BYTES = b'valid_key_bytes_32_characters_long'
+            # Set up valid config - use the actual attribute name
+            mock_config.MASTER_ENCRYPTION_KEYS = [b'valid_key_bytes_32_characters_long']
             
             # Mock __name__ to trigger the main execution block
             original_name = getattr(sys.modules.get('app.main'), '__name__', None)
@@ -75,12 +75,12 @@ class TestMainDirectExecution:
              patch('builtins.print') as mock_print:
             
             # Set up invalid config (no encryption key)
-            mock_config.MASTER_ENCRYPTION_KEY_BYTES = None
+            mock_config.MASTER_ENCRYPTION_KEYS = None
             
             # Simulate the main execution logic with invalid config
             print("Attempting to start Flask development server...")
             
-            if not mock_config.MASTER_ENCRYPTION_KEY_BYTES:
+            if not mock_config.MASTER_ENCRYPTION_KEYS:
                 print("CRITICAL: Master encryption key bytes are not available in Config. The application will not function correctly.")
                 print("Please check .env file and ensure MASTER_ENCRYPTION_KEY is set and valid.")
             
@@ -123,8 +123,8 @@ class TestMainEdgeCases:
             "mime": "text/plain"
         }
         
-        with patch('app.main.encrypt_secret') as mock_encrypt, \
-             patch('app.main.store_encrypted_secret') as mock_store:
+        with patch('app.encryption.encrypt_secret') as mock_encrypt, \
+             patch('app.storage.store_encrypted_secret') as mock_store:
             
             mock_encrypt.return_value = b'encrypted_data'
             mock_store.return_value = 'test_link_id'
@@ -133,19 +133,19 @@ class TestMainEdgeCases:
                                  data=json.dumps(data),
                                  content_type='application/json')
             
-            assert response.status_code == 200
+            assert response.status_code == 201
     
     def test_config_key_validation_edge_cases(self):
         """Test configuration validation edge cases"""
         from app.config import Config
         
         # Test various config attributes
-        assert hasattr(Config, 'MASTER_ENCRYPTION_KEY_BYTES')
+        assert hasattr(Config, 'MASTER_ENCRYPTION_KEYS')
         
         # Test that config can be accessed
-        key_bytes = getattr(Config, 'MASTER_ENCRYPTION_KEY_BYTES', None)
-        # Key bytes should either be None or bytes
-        assert key_bytes is None or isinstance(key_bytes, bytes)
+        key_list = getattr(Config, 'MASTER_ENCRYPTION_KEYS', None)
+        # Key list should either be None or a list
+        assert key_list is None or isinstance(key_list, list)
     
     def test_secret_retrieval_timing_simulation(self, client):
         """Test the timing delay simulation in secret not found scenario"""

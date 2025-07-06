@@ -16,8 +16,11 @@ class TestEncryptionEdgeCases:
     
     def test_encryption_key_rotation_missing_previous(self):
         """Test encryption when previous key is not available"""
+        from cryptography.fernet import Fernet
+        valid_key = Fernet.generate_key().decode()
+        
         with patch.dict(os.environ, {
-            'MASTER_ENCRYPTION_KEY': 'dGVzdGtleWZvcnRlc3RpbmdwdXJwb3Nlc29ubHkxMjM0NTY=',
+            'MASTER_ENCRYPTION_KEY': valid_key,
             # No MASTER_ENCRYPTION_KEY_PREVIOUS
         }, clear=True):
             # Force reload of encryption module
@@ -45,9 +48,9 @@ class TestEncryptionEdgeCases:
             import app.encryption
             importlib.reload(app.encryption)
             
-            # Verify MultiFernet is initialized
-            assert hasattr(app.encryption, 'multifernet')
-            assert app.encryption.multifernet is not None
+            # Verify cipher_suite is initialized (actual implementation uses cipher_suite, not multifernet)
+            assert hasattr(app.encryption, 'cipher_suite')
+            assert app.encryption.cipher_suite is not None
     
     def test_encryption_module_key_validation(self):
         """Test encryption module key validation paths"""
@@ -73,17 +76,20 @@ class TestConfigMissingCoverage:
     
     def test_config_environment_detection(self):
         """Test config environment detection logic"""
+        from cryptography.fernet import Fernet
+        valid_key = Fernet.generate_key().decode()
+        
         # Test development environment detection
         with patch.dict(os.environ, {
             'FLASK_DEBUG': 'True',
-            'MASTER_ENCRYPTION_KEY': 'dGVzdGtleWZvcnRlc3RpbmdwdXJwb3Nlc29ubHkxMjM0NTY=',
+            'MASTER_ENCRYPTION_KEY': valid_key,
         }):
             import importlib
             import app.config
             importlib.reload(app.config)
             
             # Should detect debug mode
-            assert app.config.Config.DEBUG is True
+            assert app.config.Config.FLASK_DEBUG is True
     
     def test_config_missing_environment_variables(self):
         """Test config behavior with missing environment variables"""
@@ -97,7 +103,7 @@ class TestConfigMissingCoverage:
                 # Should use default values where available
                 assert hasattr(app.config.Config, 'MAX_SECRET_LENGTH_BYTES')
                 
-            except (SystemExit, KeyError):
+            except (ValueError, SystemExit, KeyError):
                 # Expected if required env vars are missing
                 pass
     
@@ -121,13 +127,16 @@ class TestConfigMissingCoverage:
     
     def test_config_azure_cosmos_settings(self):
         """Test Azure Cosmos DB configuration settings"""
+        from cryptography.fernet import Fernet
+        valid_key = Fernet.generate_key().decode()
+        
         with patch.dict(os.environ, {
             'COSMOS_ENDPOINT': 'https://test.documents.azure.com:443/',
             'COSMOS_KEY': 'test_cosmos_key',
             'COSMOS_DATABASE_NAME': 'TestDB',
             'COSMOS_CONTAINER_NAME': 'test_container',
             'USE_MANAGED_IDENTITY': 'True',
-            'MASTER_ENCRYPTION_KEY': 'dGVzdGtleWZvcnRlc3RpbmdwdXJwb3Nlc29ubHkxMjM0NTY=',
+            'MASTER_ENCRYPTION_KEY': valid_key,
         }):
             import importlib
             import app.config
@@ -145,12 +154,12 @@ class TestStorageEdgeCases:
     def test_storage_cosmos_container_not_available(self):
         """Test storage functions when Cosmos container is not available"""
         with patch('app.storage.get_cosmos_container', return_value=None):
-            from app.storage import store_secret, retrieve_secret, delete_secret
+            from app.storage import store_encrypted_secret, retrieve_secret, delete_secret
             from app.models import Secret
             
             # These should handle gracefully when container is None
             try:
-                store_secret(Secret(id="test", encrypted_secret=b"test", mime_type="text/plain"))
+                store_encrypted_secret(b"test", is_e2ee=False, mime_type="text/plain")
             except Exception:
                 pass  # Expected to fail gracefully
             
@@ -168,15 +177,15 @@ class TestStorageEdgeCases:
         """Test storage functions with Cosmos DB exceptions"""
         from azure.cosmos.exceptions import CosmosResourceNotFoundError, CosmosHttpResponseError
         
-        # Test store_secret with Cosmos exception
-        mock_cosmos_container.create_item.side_effect = CosmosHttpResponseError("Service unavailable", 503)
+        # Test store_encrypted_secret with Cosmos exception
+        mock_cosmos_container.create_item.side_effect = CosmosHttpResponseError(status_code=503, message="Service unavailable")
         
-        from app.storage import store_secret
+        from app.storage import store_encrypted_secret
         from app.models import Secret
         
         with patch('app.storage.get_cosmos_container', return_value=mock_cosmos_container):
             try:
-                result = store_secret(Secret(id="test", encrypted_secret=b"test", mime_type="text/plain"))
+                result = store_encrypted_secret(b"test", is_e2ee=False, mime_type="text/plain")
                 # Should return None or handle error gracefully
                 assert result is None or isinstance(result, str)
             except Exception:
@@ -188,7 +197,7 @@ class TestStorageEdgeCases:
         from azure.cosmos.exceptions import CosmosHttpResponseError
         
         # Mock Cosmos error during retrieval
-        mock_cosmos_container.read_item.side_effect = CosmosHttpResponseError("Service error", 500)
+        mock_cosmos_container.read_item.side_effect = CosmosHttpResponseError(status_code=500, message="Service error")
         
         from app.storage import retrieve_secret
         
@@ -202,7 +211,7 @@ class TestStorageEdgeCases:
         from azure.cosmos.exceptions import CosmosHttpResponseError
         
         # Mock Cosmos error during deletion
-        mock_cosmos_container.delete_item.side_effect = CosmosHttpResponseError("Service error", 500)
+        mock_cosmos_container.delete_item.side_effect = CosmosHttpResponseError(status_code=500, message="Service error")
         
         from app.storage import delete_secret
         
@@ -214,23 +223,20 @@ class TestStorageEdgeCases:
     def test_storage_secret_serialization_edge_cases(self):
         """Test secret serialization with edge cases"""
         from app.models import Secret
-        from app.storage import store_secret
+        from app.storage import store_encrypted_secret
         
         # Test with None values in e2ee_data
-        secret = Secret(
-            id="test-id",
-            encrypted_secret=b"encrypted_data",
-            mime_type="text/plain",
-            is_e2ee=True,
-            e2ee_data=None  # Edge case: e2ee=True but no e2ee_data
-        )
-        
         with patch('app.storage.get_cosmos_container') as mock_get_container:
             mock_container = MagicMock()
             mock_container.create_item.return_value = {"id": "test-id"}
             mock_get_container.return_value = mock_container
             
-            result = store_secret(secret)
+            result = store_encrypted_secret(
+                b"encrypted_data",
+                is_e2ee=True,
+                mime_type="text/plain",
+                e2ee_data=None  # Edge case: e2ee=True but no e2ee_data
+            )
             # Should handle None e2ee_data gracefully
             assert result is not None or mock_container.create_item.called
 
@@ -240,7 +246,7 @@ class TestHealthCheckCoverage:
     
     def test_health_check_endpoint(self, client):
         """Test the health check endpoint"""
-        response = client.get('/api/health')
+        response = client.get('/health')
         assert response.status_code == 200
         data = response.get_json()
         assert 'status' in data
@@ -264,7 +270,7 @@ class TestCORSAndMiddleware:
     
     def test_cors_headers_present(self, client):
         """Test that CORS headers are present in responses"""
-        response = client.get('/api/health')
+        response = client.get('/health')
         
         # Should have CORS headers due to flask-cors
         assert response.status_code == 200
@@ -273,7 +279,7 @@ class TestCORSAndMiddleware:
     
     def test_options_request_handling(self, client):
         """Test OPTIONS request handling (CORS preflight)"""
-        response = client.options('/api/share/secret')
+        response = client.options('/api/share')
         
         # Should handle OPTIONS for CORS preflight
         # Status can vary based on flask-cors setup

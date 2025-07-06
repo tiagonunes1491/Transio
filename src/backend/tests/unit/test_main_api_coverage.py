@@ -20,7 +20,7 @@ class TestMainAPIRoutes:
     
     def test_share_secret_api_success(self, client):
         """Test successful secret sharing through API"""
-        with patch('app.main.store_encrypted_secret') as mock_store:
+        with patch('app.storage.store_encrypted_secret') as mock_store:
             mock_store.return_value = 'test-uuid-123'
             
             response = client.post('/api/share', json={
@@ -36,7 +36,7 @@ class TestMainAPIRoutes:
     
     def test_share_secret_api_e2ee(self, client):
         """Test E2EE secret sharing through API"""
-        with patch('app.main.store_encrypted_secret') as mock_store:
+        with patch('app.storage.store_encrypted_secret') as mock_store:
             mock_store.return_value = 'test-e2ee-uuid'
             
             response = client.post('/api/share', json={
@@ -85,15 +85,15 @@ class TestMainAPIRoutes:
             mime_type='text/plain'
         )
         
-        with patch('app.main.retrieve_secret') as mock_retrieve, \
-             patch('app.main.decrypt_secret') as mock_decrypt, \
-             patch('app.main.delete_secret') as mock_delete:
+        with patch('app.storage.retrieve_secret') as mock_retrieve, \
+             patch('app.encryption.decrypt_secret') as mock_decrypt, \
+             patch('app.storage.delete_secret') as mock_delete:
             
             mock_retrieve.return_value = mock_secret
             mock_decrypt.return_value = 'Test secret'
             mock_delete.return_value = True
             
-            response = client.get(f'/api/share/{link_id}')
+            response = client.get(f'/api/share/secret/{link_id}')
             assert response.status_code == 200
             data = response.get_json()
             assert 'payload' in data
@@ -111,13 +111,13 @@ class TestMainAPIRoutes:
             e2ee_data={'salt': 'test_salt', 'nonce': 'test_nonce'}
         )
         
-        with patch('app.main.retrieve_secret') as mock_retrieve, \
-             patch('app.main.delete_secret') as mock_delete:
+        with patch('app.storage.retrieve_secret') as mock_retrieve, \
+             patch('app.storage.delete_secret') as mock_delete:
             
             mock_retrieve.return_value = mock_secret
             mock_delete.return_value = True
             
-            response = client.get(f'/api/share/{link_id}')
+            response = client.get(f'/api/share/secret/{link_id}')
             assert response.status_code == 200
             data = response.get_json()
             assert 'payload' in data
@@ -128,17 +128,17 @@ class TestMainAPIRoutes:
         """Test secret not found"""
         link_id = str(uuid.uuid4())
         
-        with patch('app.main.retrieve_secret') as mock_retrieve:
+        with patch('app.storage.retrieve_secret') as mock_retrieve:
             mock_retrieve.return_value = None
             
-            response = client.get(f'/api/share/{link_id}')
+            response = client.get(f'/api/share/secret/{link_id}')
             assert response.status_code == 200  # Returns 200 to prevent enumeration
             data = response.get_json()
             assert 'payload' in data  # Dummy data
     
     def test_share_secret_error_handling(self, client):
         """Test error handling in share secret"""
-        with patch('app.main.store_encrypted_secret') as mock_store:
+        with patch('app.storage.store_encrypted_secret') as mock_store:
             # Test ValueError
             mock_store.side_effect = ValueError("Invalid data")
             response = client.post('/api/share', json={
@@ -166,15 +166,15 @@ class TestMainAPIRoutes:
             mime_type='text/plain'
         )
         
-        with patch('app.main.retrieve_secret') as mock_retrieve, \
-             patch('app.main.decrypt_secret') as mock_decrypt, \
-             patch('app.main.delete_secret') as mock_delete:
+        with patch('app.storage.retrieve_secret') as mock_retrieve, \
+             patch('app.encryption.decrypt_secret') as mock_decrypt, \
+             patch('app.storage.delete_secret') as mock_delete:
             
             mock_retrieve.return_value = mock_secret
             mock_decrypt.return_value = None  # Decryption failure
             mock_delete.return_value = True
             
-            response = client.get(f'/api/share/{link_id}')
+            response = client.get(f'/api/share/secret/{link_id}')
             assert response.status_code == 200  # Still returns 200
             
             # Verify corrupted secret was deleted

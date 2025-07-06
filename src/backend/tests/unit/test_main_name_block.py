@@ -40,7 +40,7 @@ class TestMainNameBlock:
                     print(f"Debug mode is: {app.main.app.debug}")
                     print(f"Flask app name: {app.main.app.name}")
                     
-                    if Config.MASTER_ENCRYPTION_KEY_BYTES:
+                    if Config.MASTER_ENCRYPTION_KEYS:
                         print(f"Master key loaded and Fernet initialized: Yes (assuming no SystemExit from encryption.py)")
                         # This is the line that would call app.run() in production
                         app.main.app.run(host="0.0.0.0", port=5000)
