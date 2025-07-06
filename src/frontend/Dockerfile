@@ -4,7 +4,7 @@ FROM nginx:1.28-alpine
 # Update the local installed packages to the latest versions.
 RUN apk update && apk upgrade
 
-# Install curl for health checks (replacing nc which isn't available)
+# Install curl for health checks
 RUN apk add --no-cache curl
 
 # Remove any existing pid directive from the main config file
@@ -15,7 +15,7 @@ RUN sed -i '/^pid /d' /etc/nginx/nginx.conf
 # Explicitly set the PID file path in the main config by echoing it
 RUN echo "pid /tmp/nginx.pid;" >> /etc/nginx/nginx.conf
 
-# The Nginx configuration file we created...
+# Copy the Nginx configuration file we created...
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Our static frontend files...

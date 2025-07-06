@@ -129,7 +129,7 @@ jobs:
 
       - name: Suggest fixes
         if: failure()
-        working-directory: frontend
+        working-directory: src/frontend
         run: |
           echo "❌ Linting, formatting, or validation issues found!"
           echo ""
