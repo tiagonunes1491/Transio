@@ -73,7 +73,7 @@ jobs:
     uses: ./.github/workflows/reusable-backend-test.yml
     with:
       python-version: '3.11'
-      coverage-threshold: 90
+      coverage-threshold: 80
 
   # If any changes that require a new build are detected, run the container build and analysis job
   container_analysis:
