@@ -24,9 +24,9 @@ jobs:
           cache-dependency-path: 'src/frontend/package.json'
 
       - name: Install dependencies
-        working-directory: frontend
+        working-directory: src/frontend
         run: npm ci
 
       - name: Run tests
-        working-directory: frontend
+        working-directory: src/frontend
         run: npm test
