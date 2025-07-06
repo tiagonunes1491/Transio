@@ -349,8 +349,7 @@ class TestMainModuleIfNameMain:
                 assert len(Config.MASTER_ENCRYPTION_KEYS) > 0
                 
                 # The main execution would print debug info
-                # This test validates the environment is set up correctly 
-                         {'__name__': '__main__'})
+                # This test validates the environment is set up correctly
                 
                 # Verify debug output was printed
                 print_calls = [call.args[0] for call in mock_print.call_args_list]
