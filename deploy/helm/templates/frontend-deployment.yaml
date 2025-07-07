@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-frontend
+  name: {{ include "ts-app.fullname" . }}-frontend
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount | default 1 }}
   selector:
     matchLabels:
-      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      {{- include "ts-app.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend
   template:
     metadata:
       labels:
-        {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
+        {{- include "ts-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
       containers:

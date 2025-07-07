@@ -1,4 +1,5 @@
-#To do : This is overengineered, going to drop a publish as tag or ACR for now.name: 'CI - Publish frontend container to ACR'
+# CI workflow for Dev SWA environment
+name: 'CI - Publish frontend container to Dev SWA ACR'
 on:
     push:
         branches: [development]
@@ -17,7 +18,7 @@ on:
     workflow_dispatch:
 jobs:
   build_and_push_image:
-    name: Build and Push Image to ACR
+    name: Build and Push Image to Dev SWA ACR
     permissions:
       id-token: write   # Required to get the OIDC token for Azure login
       contents: read    # Required by actions/checkout to read the repo
@@ -27,8 +28,8 @@ jobs:
       image-name: 'frontend-app'
       build-context: './src/frontend'
       acr-name: ${{ vars.ACR_NAME }}
-      environment: shared
+      environment: dev-swa
     secrets:
-      CLIENTID: ${{ secrets.CLIENTID_ART_PUSH }}
-      TENANTID: ${{ secrets.AZURE_TENANT_ID }}
+      CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}
+      TENANTID: ${{ vars.AZURE_TENANT_ID }}
       SUBSCRIPTIONID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

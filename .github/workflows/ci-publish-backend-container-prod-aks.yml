@@ -1,0 +1,31 @@
+# CI workflow for Prod AKS environment
+name: 'CI - Publish backend container to Prod AKS ACR'
+on:
+    push:
+        branches: [production]
+        paths:
+        # --- TRIGGER on changes to these files ---
+        - 'src/backend/**/*.py'
+        - 'src/backend/requirements.txt'
+        - 'src/backend/Dockerfile'
+
+        # --- IGNORE changes in this subdirectory ---
+        - '!src/backend/tests/**'
+    workflow_dispatch:
+jobs:
+  build_and_push_image:
+    name: Build and Push Image to ACR
+    permissions:
+      id-token: write   # Required to get the OIDC token for Azure login
+      contents: read    # Required by actions/checkout to read the repo
+    uses: ./.github/workflows/reusable-build-push.yml
+    with:
+      dockerfile-path: 'src/backend/Dockerfile'
+      image-name: 'backend-app'
+      build-context: './src/backend'
+      acr-name: ${{ vars.ACR_NAME }}
+      environment: prod-aks
+    secrets:
+      CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}
+      TENANTID: ${{ vars.AZURE_TENANT_ID }}
+      SUBSCRIPTIONID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}

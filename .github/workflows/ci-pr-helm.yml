@@ -23,7 +23,7 @@ jobs:
       - name: Render charts
         run: |
           mkdir -p rendered
-          helm template secret-sharer-app deploy/helm \
+          helm template ts-app deploy/helm \
             --output-dir rendered \
             --set acrLoginServer=${{ vars.ACR_NAME }}.azurecr.io
 

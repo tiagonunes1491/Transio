@@ -4,10 +4,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}
+  name: {{ include "ts-app.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.ingress.tls }}
     # Example AGIC annotation if TLS is used and SSL redirect is desired.
@@ -39,7 +39,7 @@ spec:
             pathType: {{ .paths.frontend.pathType | default "Prefix" }}
             backend:
               service:
-                name: {{ include "secret-sharer-app.fullname" $ }}-frontend
+                name: {{ include "ts-app.fullname" $ }}-frontend
                 port:
                   number: {{ $.Values.frontend.service.port }}
           # --- Backend API Path ---
@@ -48,7 +48,7 @@ spec:
             pathType: {{ .paths.backend.pathType | default "Prefix" }}
             backend:
               service:
-                name: {{ include "secret-sharer-app.fullname" $ }}-backend
+                name: {{ include "ts-app.fullname" $ }}-backend
                 port:
                   number: {{ $.Values.backend.service.port }}
   {{- end }} # End of outer loop

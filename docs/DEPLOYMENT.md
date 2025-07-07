@@ -43,7 +43,7 @@ The script performs the following actions:
 3.  **Retrieve Bicep Outputs**: Fetches necessary output values from the Bicep deployment (e.g., ACR login server, Key Vault name, UAMI client IDs).
 4.  **(Optional) Build & Push Container Images**: Builds Docker images for the frontend and backend services and pushes them to the newly created Azure Container Registry (ACR).
 5.  **Connect to AKS**: Configures `kubectl` to connect to the deployed AKS cluster.
-6.  **Deploy Application**: Deploys the Secure Secret Sharer application to AKS using the Helm chart located in `k8s/secret-sharer-app/`. It dynamically sets values in the Helm chart based on the Bicep deployment outputs.
+6.  **Deploy Application**: Deploys the Transio Secrets application to AKS using the Helm chart located in `deploy/helm/`. It dynamically sets values in the Helm chart based on the Bicep deployment outputs.
 
 ### 2.2. Configuration
 
