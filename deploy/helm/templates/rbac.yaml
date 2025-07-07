@@ -3,10 +3,10 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-backend-role
+  name: {{ include "ts-app.fullname" . }}-backend-role
   namespace: {{ .Release.Namespace }} # Role is namespaced
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 rules:
   # Permissions for the backend pod to read the Kubernetes Secret
@@ -14,16 +14,16 @@ rules:
   - apiGroups: [""] # Core API group for Secrets
     resources: ["secrets"]
     # Restrict to the specific secret name used by the backend deployment
-    resourceNames: ["{{ include "secret-sharer-app.fullname" . }}-backend-secrets"]
+    resourceNames: ["{{ include "ts-app.fullname" . }}-backend-secrets"]
     verbs: ["get", "watch"] # "watch" allows updates if the secret content changes
 --- # Separator for the next resource in the same file
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-backend-rolebinding
+  name: {{ include "ts-app.fullname" . }}-backend-rolebinding
   namespace: {{ .Release.Namespace }} # RoleBinding is also namespaced
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 subjects:
   - kind: ServiceAccount
@@ -32,6 +32,6 @@ subjects:
     # namespace: {{ .Release.Namespace }} # Not needed if SA is in the same namespace as RoleBinding
 roleRef:
   kind: Role # Must be Role (not ClusterRole) for a namespaced RoleBinding
-  name: {{ include "secret-sharer-app.fullname" . }}-backend-role # Name of the Role created above
+  name: {{ include "ts-app.fullname" . }}-backend-role # Name of the Role created above
   apiGroup: rbac.authorization.k8s.io
 {{- end }}

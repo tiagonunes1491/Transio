@@ -3,10 +3,10 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-default-deny-all
+  name: {{ include "ts-app.fullname" . }}-default-deny-all
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
 spec:
   # Apply this policy to all pods in the namespace
   # by selecting no specific pods (empty podSelector).
@@ -25,15 +25,15 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-allow-ingress-to-frontend
+  name: {{ include "ts-app.fullname" . }}-allow-ingress-to-frontend
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
 spec:
   # This policy applies to Frontend pods
   podSelector:
     matchLabels:
-      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      {{- include "ts-app.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: frontend 
   policyTypes:
     - Ingress # This policy is about allowing INCOMING traffic to the frontend
@@ -52,15 +52,15 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-allow-agic-to-backend
+  name: {{ include "ts-app.fullname" . }}-allow-agic-to-backend
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
 spec:
   # This policy applies to Backend pods
   podSelector:
     matchLabels:
-      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      {{- include "ts-app.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend # Selects the backend pods
   policyTypes:
     - Ingress # This policy is about allowing INCOMING traffic to the backend
@@ -79,10 +79,10 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-allow-dns
+  name: {{ include "ts-app.fullname" . }}-allow-dns
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
 spec:
   podSelector: {}
   policyTypes:
@@ -107,15 +107,15 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-allow-backend-egress-to-cosmosdb
+  name: {{ include "ts-app.fullname" . }}-allow-backend-egress-to-cosmosdb
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
 spec:
   # This policy applies to Backend pods
   podSelector:
     matchLabels:
-      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      {{- include "ts-app.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend # Selects the backend pods
   policyTypes:
     - Egress # This policy is about allowing OUTGOING traffic from the backend

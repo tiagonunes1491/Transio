@@ -5,7 +5,7 @@ acrLoginServer : "PLACEHOLDER_ACR_LOGIN_SERVER" # Replace with your Azure Contai
 backend:
   replicaCount: 1
   image:
-    name: "secure-secret-sharer-backend"
+    name: "ts-backend"
     pullPolicy: Always
     tag: "0.3.0"
 
@@ -18,7 +18,7 @@ backend:
   serviceAccount:
     create: true # Set to false if you are managing the SA outside this chart
     # This name 'secret-sharer-backend-sa' is used by templates/serviceaccount.yaml
-    name: "secret-sharer-backend-sa"
+    name: "ts-backend-sa"
     annotations: {} # Default annotations from template will use backend.keyVault.userAssignedIdentityClientID
   rbac:
     create: true
@@ -61,7 +61,7 @@ cosmosdb:
   # Cosmos DB will be provisioned externally via Azure infrastructure
   # These values are used to configure the connection from the backend
   endpoint: "PLACEHOLDER_COSMOS_DB_ENDPOINT"
-  databaseName: "ssdb"
+  databaseName: "tsdb"
   containerName: "secrets"
   # Use managed identity for authentication (set to true for AKS with Workload Identity)
   useManagedIdentity: true
@@ -70,7 +70,7 @@ cosmosdb:
 frontend:
   replicaCount: 1
   image:
-    name: "secure-secret-sharer-frontend"
+    name: "ts-frontend"
     pullPolicy: Always
     tag: "0.3.0"
 
@@ -105,7 +105,7 @@ ingress:
     # AGIC path rewrite annotation removed to preserve original path to backend
     # appgw.ingress.kubernetes.io/backend-path-prefix: 
   hosts:
-    - host: "secretsharer.local" 
+    - host: "transio.local" 
       paths:
         frontend: # Configures the first path rule in ingress.yaml
           path: "/"

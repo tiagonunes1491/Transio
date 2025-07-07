@@ -2,20 +2,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "secret-sharer-app.fullname" . }}-backend
+  name: {{ include "ts-app.fullname" . }}-backend
   labels:
-    {{- include "secret-sharer-app.labels" . | nindent 4 }}
+    {{- include "ts-app.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
 spec:
   replicas: {{ .Values.backend.replicaCount | default 1 }}
   selector:
     matchLabels:
-      {{- include "secret-sharer-app.selectorLabels" . | nindent 6 }}
+      {{- include "ts-app.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: backend
   template:
     metadata:
       labels:
-        {{- include "secret-sharer-app.selectorLabels" . | nindent 8 }}
+        {{- include "ts-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: backend
         azure.workload.identity/use: "true" 
     spec:
@@ -66,13 +66,13 @@ spec:
             - name: MASTER_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
+                  name: {{ include "ts-app.fullname" . }}-backend-secrets
                   key: appMasterEncryptionKey # Key name within the K8s Secret
             {{- if not .Values.cosmosdb.useManagedIdentity }}
             - name: COSMOS_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "secret-sharer-app.fullname" . }}-backend-secrets
+                  name: {{ include "ts-app.fullname" . }}-backend-secrets
                   key: cosmosDbKey # Key name within the K8s Secret
             {{- end }}
             - name: COSMOS_ENDPOINT
@@ -122,6 +122,6 @@ spec:
             driver: secrets-store.csi.k8s.io
             readOnly: true
             volumeAttributes:
-              secretProviderClass: {{ include "secret-sharer-app.fullname" . }}-backend-spc
+              secretProviderClass: {{ include "ts-app.fullname" . }}-backend-spc
             # nodePublishSecretRef: # Only needed if Azure Key Vault firewall is enabled for specific service endpoints
             #   name: ""
