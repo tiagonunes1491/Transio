@@ -146,9 +146,9 @@ if [[ "$TEARDOWN_ONLY" == true ]]; then
   
   # Step 1: Uninstall Helm deployments first
   log "INFO" "Step 1: Checking for existing Helm deployment..."
-  if command -v helm >/dev/null && helm list --namespace default 2>/dev/null | grep -q "secret-sharer"; then
-    log "INFO" "Uninstalling Helm chart 'secret-sharer'..."
-    helm uninstall secret-sharer --namespace default
+  if command -v helm >/dev/null && helm list --namespace default 2>/dev/null | grep -q "ts-app"; then
+    log "INFO" "Uninstalling Helm chart 'ts-app'..."
+    helm uninstall ts-app --namespace default
     log "INFO" "✅ Helm chart uninstalled"
   else
     log "INFO" "No Helm deployment found or helm not available, skipping..."
@@ -255,9 +255,9 @@ if [[ "$FULL_REBUILD" == true ]]; then
   
   # Step 1: Uninstall Helm deployments first
   log "INFO" "Step 1: Checking for existing Helm deployment..."
-  if command -v helm >/dev/null && helm list --namespace default 2>/dev/null | grep -q "secret-sharer"; then
-    log "INFO" "Uninstalling Helm chart 'secret-sharer'..."
-    helm uninstall secret-sharer --namespace default
+  if command -v helm >/dev/null && helm list --namespace default 2>/dev/null | grep -q "ts-app"; then
+    log "INFO" "Uninstalling Helm chart 'ts-app'..."
+    helm uninstall ts-app --namespace default
     log "INFO" "✅ Helm chart uninstalled"
   else
     log "INFO" "No Helm deployment found or helm not available, skipping..."
@@ -953,7 +953,7 @@ log "INFO" "- AZURE_LOG_LEVEL: INFO"
 log "INFO" "- PYTHONUNBUFFERED: 1"
 log "INFO" "=============================================="
 log "INFO" "COPY-PASTE COMMAND (with actual values):"
-echo "helm upgrade --install secret-sharer ../deploy/helm \\"
+echo "helm upgrade --install ts-app ../deploy/helm \\"
 echo "  --namespace default --create-namespace \\"
 echo "  --set backend.serviceAccount.name=\"$BACKEND_SERVICE_ACCOUNT_NAME\" \\"
 echo "  --set backend.image.tag=\"$BACKEND_TAG\" \\"
@@ -972,7 +972,7 @@ echo "  --timeout=15m \\"
 echo "  --wait \\"
 echo "  --debug"
 log "INFO" "=============================================="
-helm upgrade --install secret-sharer ../deploy/helm \
+helm upgrade --install ts-app ../deploy/helm \
   --namespace default --create-namespace \
   --set backend.serviceAccount.name="$BACKEND_SERVICE_ACCOUNT_NAME" \
   --set backend.image.tag="$BACKEND_TAG" \
