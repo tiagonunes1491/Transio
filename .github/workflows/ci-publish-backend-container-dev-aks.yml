@@ -1,5 +1,5 @@
-# To do : Needs to be rethinked; this was working when there was a shared ACR.
-name: 'CI - Publish backend container to Dev SWA ACR'
+# CI workflow for Dev AKS environment
+name: 'CI - Publish backend container to Dev AKS ACR'
 on:
     push:
         branches: [development]
@@ -24,7 +24,7 @@ jobs:
       image-name: 'backend-app'
       build-context: './src/backend'
       acr-name: ${{ vars.ACR_NAME }}
-      environment: dev-swa
+      environment: dev-aks
     secrets:
       CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}
       TENANTID: ${{ vars.AZURE_TENANT_ID }}
