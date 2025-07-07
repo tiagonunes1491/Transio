@@ -31,12 +31,12 @@ param gitHubRepositoryName = ''
 param workloadIdentities = {
   // Main PaaS workload identity with Contributor access to PaaS spoke RG
   contributor: {
-    ENV: 'swa-dev-protected'
+    ENV: 'dev-swa-protected'
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
   acrPush: {
-        ENV: 'swa-dev'
+        ENV: 'dev-swa'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }

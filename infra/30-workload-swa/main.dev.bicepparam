@@ -16,10 +16,10 @@ param ownerEmail = ''
 // Existing infrastructure references
 param acrName = 'ssdswaacr'
 param cosmosDbAccountName = 'ss-d-swa-cosmos'
-param keyVaultName = 'ssdswakv' // Note: In future deployments, this should be renamed to 'ssdswakv' to remove 'akv' reference
+param keyVaultName = 'tsdswakv' // Note: In future deployments, this should be renamed to 'tsdswakv' to remove 'akv' reference
 
 // Database configuration
-param cosmosDatabaseName = 'swa-dev'
+param cosmosDatabaseName = 'dev-swa'
 param cosmosContainerName = 'secrets'
 
 
@@ -29,8 +29,8 @@ param acaEnvironmentName = 'ss-d-swa-cae'
 param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
 
 // Key Vault secrets configuration (simplified approach with direct secret URIs)
-param encryptionKeyUri = 'https://ssdswakv.vault.azure.net/secrets/encryption-key'
-param encryptionKeyPreviousUri = 'https://ssdswakv.vault.azure.net/secrets/encryption-key' // Note: Update with specific version when using previous revision
+param encryptionKeyUri = 'https://tsdswakv.vault.azure.net/secrets/encryption-key'
+param encryptionKeyPreviousUri = 'https://tsdswakv.vault.azure.net/secrets/encryption-key' // Note: Update with specific version when using previous revision
 
 // Environment variables (including non-sensitive configuration)
 param environmentVariables = [  
@@ -56,7 +56,7 @@ param environmentVariables = [
   }
   {
     name: 'COSMOS_DATABASE_NAME'
-    value: 'swa-dev'
+    value: 'dev-swa'
   }
   {
     name: 'COSMOS_CONTAINER_NAME'

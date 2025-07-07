@@ -63,6 +63,9 @@ SKIP_FRONTEND=false
 FULL_REBUILD=false
 TEARDOWN_ONLY=false
 
+# New: Skip workload deployment (Static Web App + Container App)
+SKIP_WORKLOAD=false
+
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -74,6 +77,7 @@ while [[ $# -gt 0 ]]; do
     --skip-frontend) SKIP_FRONTEND=true; shift ;;
     --full-rebuild) FULL_REBUILD=true; shift ;;
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
+    --skip-workload) SKIP_WORKLOAD=true; shift ;;
     -h|--help)
       echo "Usage: $0 [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;
     *)
@@ -366,7 +370,7 @@ if [[ "$SKIP_BOOTSTRAP_KV" == false ]]; then
   
   # First, we need to determine what the Key Vault name will be based on the bicep parameters
   # Read the expected Key Vault name from the naming convention
-  EXPECTED_KV_NAME="ssdswakv"  # Based on actual Key Vault naming: ssdswakv
+  EXPECTED_KV_NAME="tsdswakv"  # Based on actual Key Vault naming: tsdswakv
   
   # Check if a Key Vault with this name exists in soft-deleted state
   log "INFO" "Checking for soft-deleted Key Vault: $EXPECTED_KV_NAME"
@@ -821,153 +825,161 @@ fi
 # =====================
 # 6. Deploy Workload (Applications)
 # =====================
-log "INFO" "Deploying Workload infrastructure (Static Web App and Container App)..."
-log "INFO" "This deploys the actual applications on the platform infrastructure..."
 
 # =====================
-# 6.1. Retrieve Latest Encryption Key Versions from Bootstrap Key Vault
+# 6. Deploy Workload (Applications)
 # =====================
-log "INFO" "Retrieving latest encryption key versions from Bootstrap Key Vault..."
-
-# Validate that we have the Bootstrap Key Vault name
-if [[ -z "$BOOTSTRAP_KV_NAME" || "$BOOTSTRAP_KV_NAME" == "null" ]]; then
-  log "ERROR" "Bootstrap Key Vault name not available"
-  log "ERROR" "Cannot retrieve encryption key versions without Key Vault name"
-  log "ERROR" "Ensure Bootstrap Key Vault deployment was successful or provide --skip-bootstrap-kv with existing vault"
-  exit 1
-fi
-
-log "INFO" "Bootstrap Key Vault: $BOOTSTRAP_KV_NAME"
-
-# Fetch all versions of the encryption key and sort newest→oldest
-SECRET_NAME="encryption-key"
-log "INFO" "Fetching versions for secret: $SECRET_NAME"
-
-mapfile -t versions < <(
-  az keyvault secret list-versions \
-    --vault-name "$BOOTSTRAP_KV_NAME" \
-    --name "$SECRET_NAME" \
-    --query "sort_by([], &attributes.created) | reverse(@) | [].id" \
-    -o tsv
-)
-
-# Validate that we have at least one version
-if (( ${#versions[@]} == 0 )); then
-  log "ERROR" "No versions found for $SECRET_NAME in $BOOTSTRAP_KV_NAME"
-  log "ERROR" "This should not happen as the key seeding step should have completed successfully"
-  log "ERROR" "Please check the previous deployment steps for any errors"
-  exit 1
-fi
-
-# Pick latest and previous versions
-latest_key_version="${versions[0]}"
-if (( ${#versions[@]} > 1 )); then
-  previous_key_version="${versions[1]}"
-  log "INFO" "Found multiple key versions - using latest and previous for rotation support"
+if [[ "$SKIP_WORKLOAD" == true ]]; then
+  log "INFO" "Skipping workload (Static Web App and Container App) deployment as requested (--skip-workload)"
 else
-  previous_key_version="$latest_key_version"
-  log "WARNING" "Only one secret version found; using same version for both current and previous"
-  log "WARNING" "Key rotation will not be possible until a second version is created"
+  log "INFO" "Deploying Workload infrastructure (Static Web App and Container App)..."
+  log "INFO" "This deploys the actual applications on the platform infrastructure..."
+
+  # =====================
+  # 6.1. Retrieve Latest Encryption Key Versions from Bootstrap Key Vault
+  # =====================
+  log "INFO" "Retrieving latest encryption key versions from Bootstrap Key Vault..."
+
+  # Validate that we have the Bootstrap Key Vault name
+  if [[ -z "$BOOTSTRAP_KV_NAME" || "$BOOTSTRAP_KV_NAME" == "null" ]]; then
+    log "ERROR" "Bootstrap Key Vault name not available"
+    log "ERROR" "Cannot retrieve encryption key versions without Key Vault name"
+    log "ERROR" "Ensure Bootstrap Key Vault deployment was successful or provide --skip-bootstrap-kv with existing vault"
+    exit 1
+  fi
+
+  log "INFO" "Bootstrap Key Vault: $BOOTSTRAP_KV_NAME"
+
+  # Fetch all versions of the encryption key and sort newest→oldest
+  SECRET_NAME="encryption-key"
+  log "INFO" "Fetching versions for secret: $SECRET_NAME"
+
+  mapfile -t versions < <(
+    az keyvault secret list-versions \
+      --vault-name "$BOOTSTRAP_KV_NAME" \
+      --name "$SECRET_NAME" \
+      --query "sort_by([], &attributes.created) | reverse(@) | [].id" \
+      -o tsv
+  )
+
+  # Validate that we have at least one version
+  if (( ${#versions[@]} == 0 )); then
+    log "ERROR" "No versions found for $SECRET_NAME in $BOOTSTRAP_KV_NAME"
+    log "ERROR" "This should not happen as the key seeding step should have completed successfully"
+    log "ERROR" "Please check the previous deployment steps for any errors"
+    exit 1
+  fi
+
+  # Pick latest and previous versions
+  latest_key_version="${versions[0]}"
+  if (( ${#versions[@]} > 1 )); then
+    previous_key_version="${versions[1]}"
+    log "INFO" "Found multiple key versions - using latest and previous for rotation support"
+  else
+    previous_key_version="$latest_key_version"
+    log "WARNING" "Only one secret version found; using same version for both current and previous"
+    log "WARNING" "Key rotation will not be possible until a second version is created"
+  fi
+
+  log "INFO" "Latest encryption key version:   $latest_key_version"
+  log "INFO" "Previous encryption key version: $previous_key_version"
+
+  # Deploy workload using Bicep with dynamic key version parameters
+  log "INFO" "Deploying workload with latest encryption key versions..."
+  log "INFO" "Container Image: transio-backend:$BACKEND_TAG"
+  log "INFO" "Encryption Key (Current): $latest_key_version"
+  log "INFO" "Encryption Key (Previous): $previous_key_version"
+
+  # Extract the ACR name correctly from the login server
+  ACR_NAME_FOR_WORKLOAD=$(echo "$ACR_LOGIN_SERVER" | cut -d'.' -f1)
+
+  # Extract Cosmos DB account name correctly from the endpoint
+  COSMOS_ACCOUNT_NAME_FOR_WORKLOAD=$(echo "$COSMOS_DB_ENDPOINT" | sed 's|https://||' | cut -d'.' -f1)
+
+  # Get the Container Apps Environment name from the full ID
+  ACA_ENV_NAME_FOR_WORKLOAD=$(echo "$ACA_ENVIRONMENT_ID" | sed 's|.*/||')
+
+  log "INFO" "Raw platform outputs before extraction:"
+  log "INFO" "  Raw ACA_ENVIRONMENT_ID: '$ACA_ENVIRONMENT_ID'"
+  log "INFO" "  Raw ACR_LOGIN_SERVER: '$ACR_LOGIN_SERVER'"
+  log "INFO" "  Raw COSMOS_DB_ENDPOINT: '$COSMOS_DB_ENDPOINT'"
+
+  log "INFO" "Extracted deployment parameters:"
+  log "INFO" "  ACR Name: '$ACR_NAME_FOR_WORKLOAD'"
+  log "INFO" "  ACA Environment Name: '$ACA_ENV_NAME_FOR_WORKLOAD'"
+  log "INFO" "  Cosmos Account Name: '$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD'"
+  log "INFO" "  Container Image: '$ACR_LOGIN_SERVER/transio-backend:$BACKEND_TAG'"
+
+  # Additional validation for extracted values
+  if [[ -z "$ACA_ENV_NAME_FOR_WORKLOAD" || "$ACA_ENV_NAME_FOR_WORKLOAD" == "null" ]]; then
+    log "ERROR" "Failed to extract Container Apps Environment name from: '$ACA_ENVIRONMENT_ID'"
+    log "ERROR" "The environment ID appears to be incomplete or malformed"
+    exit 1
+  fi
+
+  if [[ -z "$ACR_NAME_FOR_WORKLOAD" || "$ACR_NAME_FOR_WORKLOAD" == "null" ]]; then
+    log "ERROR" "Failed to extract ACR name from: '$ACR_LOGIN_SERVER'"
+    exit 1
+  fi
+
+  if [[ -z "$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD" || "$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD" == "null" ]]; then
+    log "ERROR" "Failed to extract Cosmos DB account name from: '$COSMOS_DB_ENDPOINT'"
+    exit 1
+  fi
+
+  if ! az deployment group create \
+    --resource-group "$RESOURCE_GROUP" \
+    --template-file "$WORKLOAD_BICEP_FILE" \
+    --parameters "$WORKLOAD_PARAMS_FILE" \
+    --name "$WORKLOAD_DEPLOYMENT_NAME" \
+    --no-prompt \
+    --parameters \
+      containerImage="$ACR_LOGIN_SERVER/transio-backend:$BACKEND_TAG" \
+      acaEnvironmentName="$ACA_ENV_NAME_FOR_WORKLOAD" \
+      acaEnvironmentResourceGroupName="$LANDING_ZONE_RESOURCE_GROUP" \
+      acrName="$ACR_NAME_FOR_WORKLOAD" \
+      keyVaultName="$KEY_VAULT_NAME" \
+      cosmosDbAccountName="$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD" \
+      cosmosDatabaseName="$COSMOS_DB_DATABASE_NAME" \
+      cosmosContainerName="$COSMOS_DB_CONTAINER_NAME" \
+      encryptionKeyUri="$latest_key_version" \
+      encryptionKeyPreviousUri="$previous_key_version" \
+    --verbose; then
+    log "ERROR" "Workload deployment failed"
+    log "DEBUG" "Resource group for error reporting: '$RESOURCE_GROUP'"
+    get_deployment_errors "$WORKLOAD_DEPLOYMENT_NAME" "$RESOURCE_GROUP"
+    exit 1
+  fi
+
+  # Retrieve workload deployment outputs
+  log "INFO" "Retrieving workload deployment outputs..."
+  STATIC_WEB_APP_URL=$(az deployment group show \
+    --name "$WORKLOAD_DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.staticWebAppUrl.value -o tsv)
+  STATIC_WEB_APP_NAME=$(az deployment group show \
+    --name "$WORKLOAD_DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.staticWebAppName.value -o tsv)
+  BACKEND_FQDN=$(az deployment group show \
+    --name "$WORKLOAD_DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.backendFqdn.value -o tsv)
+  BACKEND_RESOURCE_ID=$(az deployment group show \
+    --name "$WORKLOAD_DEPLOYMENT_NAME" \
+    --resource-group "$RESOURCE_GROUP" \
+    --query properties.outputs.backendResourceId.value -o tsv)
+
+  log "INFO" "Workload deployment completed successfully"
+  log "INFO" "Static Web App URL: $STATIC_WEB_APP_URL"
+  log "INFO" "Static Web App Name: $STATIC_WEB_APP_NAME"
+  log "INFO" "Backend FQDN: $BACKEND_FQDN"
+  log "INFO" "Backend Resource ID: $BACKEND_RESOURCE_ID"
+
+  # Set export variables for summary
+  export BACKEND_URL="$BACKEND_FQDN"
+  export STATIC_WEB_APP_URL STATIC_WEB_APP_NAME
 fi
-
-log "INFO" "Latest encryption key version:   $latest_key_version"
-log "INFO" "Previous encryption key version: $previous_key_version"
-
-# Deploy workload using Bicep with dynamic key version parameters
-log "INFO" "Deploying workload with latest encryption key versions..."
-log "INFO" "Container Image: transio-backend:$BACKEND_TAG"
-log "INFO" "Encryption Key (Current): $latest_key_version"
-log "INFO" "Encryption Key (Previous): $previous_key_version"
-
-# Extract the ACR name correctly from the login server
-ACR_NAME_FOR_WORKLOAD=$(echo "$ACR_LOGIN_SERVER" | cut -d'.' -f1)
-
-# Extract Cosmos DB account name correctly from the endpoint
-COSMOS_ACCOUNT_NAME_FOR_WORKLOAD=$(echo "$COSMOS_DB_ENDPOINT" | sed 's|https://||' | cut -d'.' -f1)
-
-# Get the Container Apps Environment name from the full ID
-ACA_ENV_NAME_FOR_WORKLOAD=$(echo "$ACA_ENVIRONMENT_ID" | sed 's|.*/||')
-
-log "INFO" "Raw platform outputs before extraction:"
-log "INFO" "  Raw ACA_ENVIRONMENT_ID: '$ACA_ENVIRONMENT_ID'"
-log "INFO" "  Raw ACR_LOGIN_SERVER: '$ACR_LOGIN_SERVER'"
-log "INFO" "  Raw COSMOS_DB_ENDPOINT: '$COSMOS_DB_ENDPOINT'"
-
-log "INFO" "Extracted deployment parameters:"
-log "INFO" "  ACR Name: '$ACR_NAME_FOR_WORKLOAD'"
-log "INFO" "  ACA Environment Name: '$ACA_ENV_NAME_FOR_WORKLOAD'"
-log "INFO" "  Cosmos Account Name: '$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD'"
-log "INFO" "  Container Image: '$ACR_LOGIN_SERVER/transio-backend:$BACKEND_TAG'"
-
-# Additional validation for extracted values
-if [[ -z "$ACA_ENV_NAME_FOR_WORKLOAD" || "$ACA_ENV_NAME_FOR_WORKLOAD" == "null" ]]; then
-  log "ERROR" "Failed to extract Container Apps Environment name from: '$ACA_ENVIRONMENT_ID'"
-  log "ERROR" "The environment ID appears to be incomplete or malformed"
-  exit 1
-fi
-
-if [[ -z "$ACR_NAME_FOR_WORKLOAD" || "$ACR_NAME_FOR_WORKLOAD" == "null" ]]; then
-  log "ERROR" "Failed to extract ACR name from: '$ACR_LOGIN_SERVER'"
-  exit 1
-fi
-
-if [[ -z "$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD" || "$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD" == "null" ]]; then
-  log "ERROR" "Failed to extract Cosmos DB account name from: '$COSMOS_DB_ENDPOINT'"
-  exit 1
-fi
-
-if ! az deployment group create \
-  --resource-group "$RESOURCE_GROUP" \
-  --template-file "$WORKLOAD_BICEP_FILE" \
-  --parameters "$WORKLOAD_PARAMS_FILE" \
-  --name "$WORKLOAD_DEPLOYMENT_NAME" \
-  --no-prompt \
-  --parameters \
-    containerImage="$ACR_LOGIN_SERVER/transio-backend:$BACKEND_TAG" \
-    acaEnvironmentName="$ACA_ENV_NAME_FOR_WORKLOAD" \
-    acaEnvironmentResourceGroupName="$LANDING_ZONE_RESOURCE_GROUP" \
-    acrName="$ACR_NAME_FOR_WORKLOAD" \
-    keyVaultName="$KEY_VAULT_NAME" \
-    cosmosDbAccountName="$COSMOS_ACCOUNT_NAME_FOR_WORKLOAD" \
-    cosmosDatabaseName="$COSMOS_DB_DATABASE_NAME" \
-    cosmosContainerName="$COSMOS_DB_CONTAINER_NAME" \
-    encryptionKeyUri="$latest_key_version" \
-    encryptionKeyPreviousUri="$previous_key_version" \
-  --verbose; then
-  log "ERROR" "Workload deployment failed"
-  log "DEBUG" "Resource group for error reporting: '$RESOURCE_GROUP'"
-  get_deployment_errors "$WORKLOAD_DEPLOYMENT_NAME" "$RESOURCE_GROUP"
-  exit 1
-fi
-
-# Retrieve workload deployment outputs
-log "INFO" "Retrieving workload deployment outputs..."
-STATIC_WEB_APP_URL=$(az deployment group show \
-  --name "$WORKLOAD_DEPLOYMENT_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query properties.outputs.staticWebAppUrl.value -o tsv)
-STATIC_WEB_APP_NAME=$(az deployment group show \
-  --name "$WORKLOAD_DEPLOYMENT_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query properties.outputs.staticWebAppName.value -o tsv)
-BACKEND_FQDN=$(az deployment group show \
-  --name "$WORKLOAD_DEPLOYMENT_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query properties.outputs.backendFqdn.value -o tsv)
-BACKEND_RESOURCE_ID=$(az deployment group show \
-  --name "$WORKLOAD_DEPLOYMENT_NAME" \
-  --resource-group "$RESOURCE_GROUP" \
-  --query properties.outputs.backendResourceId.value -o tsv)
-
-log "INFO" "Workload deployment completed successfully"
-log "INFO" "Static Web App URL: $STATIC_WEB_APP_URL"
-log "INFO" "Static Web App Name: $STATIC_WEB_APP_NAME"
-log "INFO" "Backend FQDN: $BACKEND_FQDN"
-log "INFO" "Backend Resource ID: $BACKEND_RESOURCE_ID"
-
-# Set export variables for summary
-export BACKEND_URL="$BACKEND_FQDN"
-export STATIC_WEB_APP_URL STATIC_WEB_APP_NAME
 
 # =====================
 # 7) Summary

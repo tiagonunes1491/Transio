@@ -123,7 +123,7 @@ param cosmosDbAccountName string
 param keyVaultName string
 
 @description('Cosmos DB database name for scoped RBAC assignment')
-param cosmosDatabaseName string = 'swa-dev'
+param cosmosDatabaseName string = 'dev-swa'
 
 @description('Cosmos DB container name for application configuration')
 param cosmosContainerName string = 'secrets'
