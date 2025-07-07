@@ -28,4 +28,4 @@ jobs:
     secrets:
       CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}
       TENANTID: ${{ vars.AZURE_TENANT_ID }}
-      SUBSCRIPTIONID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      SUBSCRIPTIONID: ${{ vars.AZURE_SUBSCRIPTION_ID }}

@@ -24,7 +24,7 @@ jobs:
         with:
           client-id: ${{ secrets.CLIENTID_ART_CONT }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
 
       - name: Generate Fernet Key
