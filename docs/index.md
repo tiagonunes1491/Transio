@@ -1,136 +1,127 @@
-# Transio: Cloud-Native Security Showcase
+# Transio: Cloud‑Native Security Showcase
 
-**Secure secret sharing with end-to-end encryption and self-destructing links**
+**End‑to‑end encrypted secrets with one‑time, self‑destructing links**
 
-Transio is a production-grade application designed for sharing sensitive text-based information securely. Users can create self-destructing, encrypted notes that are accessible via a unique one-time link. Once viewed, the secret is permanently deleted.
+Transio is a production‑grade app for sharing sensitive text without leaving a forensic trail. Users create encrypted notes, get a single‑use URL, and—boom—once it’s viewed, the secret is wiped forever.
 
-This project serves as a comprehensive demonstration of **cloud-native security best practices** and **defense-in-depth strategies** deployed on **Azure Kubernetes Service (AKS)**.
+This project is a live demo of **cloud‑native security best practices** and **defense‑in‑depth** on **Azure Kubernetes Service (AKS)**.
 
 ## ✨ Key Features
 
-<div class="feature-grid">
-<div class="feature-card">
-<h3>🔐 End-to-End Encryption</h3>
-<p>Secrets are encrypted at rest (in the database) and in transit (via HTTPS). Uses master encryption key (Fernet) stored in Azure Key Vault for cryptographic operations.</p>
+<div class='feature-grid'>
+
+<div class='feature-card'>
+<h3>🔐 End‑to‑End Encryption</h3>
+<p><strong>True E2EE</strong>: secrets are encrypted <em>in the browser</em> with a key derived from the user’s passphrase. No passphrase? Data still rests under a Fernet key stored in Azure Key Vault—never in code.</p>
 </div>
 
-<div class="feature-card">
-<h3>🔗 One-Time Access Links</h3>
-<p>Generated links are valid for a single view only. Once a secret is retrieved, it's permanently deleted from the database.</p>
+<div class='feature-card'>
+<h3>🔗 One‑Time Links</h3>
+<p>Each link works exactly once. After retrieval, the record is securely deleted.</p>
 </div>
 
-<div class="feature-card">
-<h3>💥 Self-Destructing Secrets</h3>
-<p>Secrets are automatically purged after being viewed or after an expiry period if unaccessed.</p>
+<div class='feature-card'>
+<h3>💥 Auto‑Destruct</h3>
+<p>Unopened secrets expire after a TTL you set; opened secrets vanish instantly.</p>
 </div>
 
-<div class="feature-card">
-<h3>🛡️ Secure Infrastructure</h3>
-<p>Deployed on Azure Kubernetes Service with security best practices, RBAC, network policies, and workload identity.</p>
+<div class='feature-card'>
+<h3>🛡️ Hardened Infrastructure</h3>
+<p>AKS with RBAC, network policies, workload identity, and locked‑down pipelines.</p>
 </div>
 
-<div class="feature-card">
+<div class='feature-card'>
 <h3>🔍 Health Monitoring</h3>
-<p>Comprehensive health check endpoints for monitoring application status and availability.</p>
+<p>Ready / live probes and a <code>/healthz</code> endpoint for zero‑downtime rollouts.</p>
 </div>
 
-<div class="feature-card">
-<h3>🧪 Thoroughly Tested</h3>
-<p>85% test coverage with 99 passing tests, comprehensive security validation, and OWASP Top 10 compliance.</p>
+<div class='feature-card'>
+<h3>🧪 Battle‑Tested</h3>
+<p>85 % code coverage, 99 green tests, OWASP Top 10 checks baked in.</p>
 </div>
+
 </div>
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Azure subscription with appropriate permissions
-- Docker and Kubernetes tools
-- Helm 3.x
 
-### Deploy with Scripts
+* Azure subscription (Owner / Contributor on target RG)
+* Docker + kubectl + Helm 3
+* Azure CLI & Bicep
+
+### 1. AKS Deployment
 
 ```bash
-# Clone the repository
+# Prereqs: Azure CLI, kubectl, Helm
 git clone https://github.com/tiagonunes1491/Transio.git
 cd Transio
-
-# Deploy Azure infrastructure and application
-./scripts/deploy-landing-zone.sh
-./build_dev.sh
+./scripts/build_k8s.sh   # Provision infra & deploy to AKS
 ```
 
-### Manual Deployment
+### 2. Serverless Deployment (SWA + Container Apps)
 
 ```bash
-# Build and push container images
-docker build -t your-registry/transio-frontend:latest ./src/frontend
-docker build -t your-registry/transio-backend:latest ./src/backend
-docker push your-registry/transio-frontend:latest
-docker push your-registry/transio-backend:latest
-
-# Deploy with Helm
-helm upgrade --install transio ./deploy/helm-chart \
-  --set frontend.image.repository=your-registry/transio-frontend \
-  --set backend.image.repository=your-registry/transio-backend
+# Prereq: Azure CLI
+git clone https://github.com/tiagonunes1491/Transio.git
+cd Transio
+./scripts/build_swa-aca.sh   # Deploy front‑end to SWA, back‑end to Container Apps
 ```
 
 ### Local Development
 
 ```bash
-# Start backend services
-cd src/backend
-pip install -r requirements.txt
-python app.py
+# Start all services with Docker Compose
+cd deploy/compose
+docker-compose up -d
 
-# Serve frontend (in another terminal)
-cd src/frontend/static
-python -m http.server 8080
+# View logs (optional)
+docker-compose logs -f
+
+# Stop services when done
+docker-compose down
 ```
 
-!!! tip "Development Environment"
-    For detailed technical instructions on setting up the Azure environment, building images, and deploying the application using Helm, refer to the `DEPLOYMENT.md` guide.
+!!! tip 'Dev Environment'
+Full Azure setup, image build, and Helm instructions live in **DEPLOYMENT.md**.
 
-## 🎬 Demo
+## 🎬 Demo Workflow
 
-The application flow includes:
+1. **Create Secret** – write your message (optional passphrase).
+2. **Generate Link** – get a unique one‑time URL.
+3. **Share** – send it via your weapon of choice (Slack, smoke signal, etc.).
+4. **View & Vaporise** – recipient reads it; Transio erases it.
 
-1. **Create Secret**: User composes a sensitive message with optional passphrase protection
-2. **Generate Link**: System creates a unique, one-time access URL
-3. **Share Securely**: Link can be shared via any communication channel
-4. **View Once**: Secret is displayed and immediately deleted from the system
-
-*Demo GIF coming soon - showing the complete workflow of creating, sharing, and viewing self-destructing secrets.*
+*Demo GIF coming soon—watch this space.*
 
 ## 🎯 Project Goals
 
-The primary objectives of this project are:
+* **Prove Security Chops** – real‑world cloud security in a live AKS cluster.
+* **Production‑Ready** – multi‑container app with enterprise controls.
+* **Best Practices** – defense‑in‑depth, IaC, and identity‑first design.
+* **Portfolio Magnet** – show why I’m the Cloud Security Engineer you need.
 
-- **Demonstrate Security Expertise**: Showcase practical application of cloud security principles in a Kubernetes environment
-- **Production-Ready Implementation**: Deploy secure multi-container applications with enterprise-grade security controls
-- **Best Practices**: Implement defense-in-depth strategies, secure infrastructure provisioning, and identity management
-- **Portfolio Showcase**: Highlight skills relevant to Cloud Security Engineer roles
+## 🛠️ Tech Stack
 
-## 🛠️ Technology Stack
+| Layer             | Technology               | Why                              |
+| ----------------- | ------------------------ | -------------------------------- |
+| **Frontend**      | HTML / JS / CSS + Nginx  | Lightweight, hardened container  |
+| **Backend**       | Python (Flask)           | Encryption API & secret logic    |
+| **DB**            | Cosmos DB                | NoSQL with TTL + global replicas |
+| **Orchestration** | AKS                      | Secure, scalable containers      |
+| **Secrets**       | Azure Key Vault          | HSM‑backed key storage           |
+| **Registry**      | Azure Container Registry | Image scanning & CI/CD hooks     |
+| **Ingress**       | App Gateway + AGIC       | L7 WAF & TLS termination         |
+| **Identity**      | Azure Workload Identity  | Pod‑managed, key‑less auth       |
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Frontend** | HTML/JavaScript/CSS + Nginx | Static web interface with hardened container |
-| **Backend** | Python (Flask) | API for encryption, decryption, and secret management |
-| **Database** | Cosmos DB | NoSQL document storage with automatic TTL and global distribution |
-| **Orchestration** | Azure Kubernetes Service (AKS) or Static Web Apps (SWA) + Container Apps | Container hosting with security best practices |
-| **Secrets Management** | Azure Key Vault | Secure storage for encryption keys and credentials |
-| **Registry** | Azure Container Registry (ACR) | Vulnerability-scanned container images |
-| **Ingress** | Azure Application Gateway + AGIC | L7 load balancing and secure ingress |
-| **Identity** | Azure Workload Identity | Credential-less access to Azure resources |
+## 🚀 Next Steps
 
-## 🚀 Get Started
-
-<div class="cta-buttons">
-<a href="problem_solution/" class="cta-button primary">Learn More</a>
-<a href="https://github.com/tiagonunes1491/Transio" class="cta-button secondary">View on GitHub</a>
-<a href="https://www.linkedin.com/in/tiago-nunes1491/" class="cta-button secondary">Contact Author</a>
+<div class='cta-buttons'>
+<a href='problem_solution/' class='cta-button primary'>Learn More</a>
+<a href='https://github.com/tiagonunes1491/Transio' class='cta-button secondary'>GitHub Repo</a>
+<a href='https://www.linkedin.com/in/tiago-nunes1491/' class='cta-button secondary'>Connect on LinkedIn</a>
 </div>
 
 ---
 
-*Built by [Tiago Nunes](https://www.linkedin.com/in/tiago-nunes1491/) - Cloud Security Engineer*
+*Built by [Tiago Nunes](https://www.linkedin.com/in/tiago-nunes1491/) – Cloud Security Engineer*
