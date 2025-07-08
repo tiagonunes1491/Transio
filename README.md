@@ -91,7 +91,3 @@ Dive deeper:
 > *Designed Transio to eradicate secret‑sharing risk and demonstrate scalable zero‑trust patterns.*
 
 Connect on [LinkedIn](https://www.linkedin.com/in/tiago-nunes1491/) • Explore code on [GitHub](https://github.com/tiagonunes1491)
-
----
-
-*For architecture diagrams, threat models, and step‑by‑step deployment guides, use the sidebar or links above.*
