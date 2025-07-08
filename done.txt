@@ -1,0 +1,24 @@
+ci-pr-backend.yml x
+ci-pr-bicep.yml x 
+ci-pr-frontend.yml x
+ci-pr-helm.yml x 
+ci-publish-backend-container.yml
+ci-publish-frontend-container.yml
+
+reusable-backend-test.yml x
+reusable-build-push.yml
+reusable-container-scan.yml x
+reusable-frontend-lint.yml x
+reusable-frontend-test.yml x [Lacks E2EE testing].
+reusable-python-check.yml x
+reusable-sast-scan.yml x
+reusable-sca-scan.yml x
+
+
+Deprecated:
+ci-publish-bicep.yml
+ci-publish-helm.yml
+Checkov checks on CI for bicep
+
+For 0.6.0 
+cd-*
