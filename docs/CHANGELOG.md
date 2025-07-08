@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Core Application**
   - Flask backend API for secret management
   - Static frontend with HTML/JavaScript/CSS
-  - PostgreSQL database with encrypted storage
+  - Cosmos DB NoSQL database with automatic TTL and encrypted storage
   - End-to-end encryption using Fernet algorithm
   
 - **Security Features**
@@ -36,10 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Secure error handling
 
 - **Infrastructure**
-  - Azure Kubernetes Service (AKS) deployment
-  - Azure Application Gateway with AGIC
+  - Dual deployment options: Azure Kubernetes Service (AKS) or Static Web Apps (SWA) + Container Apps
+  - Azure Application Gateway with AGIC (AKS) or built-in CDN (SWA)
   - Workload Identity for credential-less access
-  - CSI Secret Store driver for Key Vault integration
+  - CSI Secret Store driver for Key Vault integration (AKS)
   - Network policies and RBAC implementation
 
 - **DevOps & CI/CD**

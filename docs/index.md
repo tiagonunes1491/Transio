@@ -116,8 +116,8 @@ The primary objectives of this project are:
 |-----------|------------|---------|
 | **Frontend** | HTML/JavaScript/CSS + Nginx | Static web interface with hardened container |
 | **Backend** | Python (Flask) | API for encryption, decryption, and secret management |
-| **Database** | PostgreSQL | Encrypted secret storage with role-based access |
-| **Orchestration** | Azure Kubernetes Service (AKS) | Container hosting with security best practices |
+| **Database** | Cosmos DB | NoSQL document storage with automatic TTL and global distribution |
+| **Orchestration** | Azure Kubernetes Service (AKS) or Static Web Apps (SWA) + Container Apps | Container hosting with security best practices |
 | **Secrets Management** | Azure Key Vault | Secure storage for encryption keys and credentials |
 | **Registry** | Azure Container Registry (ACR) | Vulnerability-scanned container images |
 | **Ingress** | Azure Application Gateway + AGIC | L7 load balancing and secure ingress |

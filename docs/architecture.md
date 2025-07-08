@@ -2,7 +2,10 @@
 
 ## System Architecture
 
-Transio follows a **tiered, cloud-native architecture** designed for security, scalability, and operational excellence on Azure Kubernetes Service.
+Transio follows a **tiered, cloud-native architecture** designed for security, scalability, and operational excellence. Available in two deployment patterns:
+
+- **Azure Kubernetes Service (AKS)**: Full containerized deployment with Application Gateway for enterprise scenarios
+- **Static Web Apps (SWA) + Container Apps**: Serverless frontend with containerized backend for cost-effective 24x7 operations
 
 ```mermaid
 graph TB
@@ -25,7 +28,7 @@ graph TB
         end
         
         subgraph "Data Layer"
-            DB[(PostgreSQL<br/>Encrypted Storage)]
+            DB[(Cosmos DB<br/>NoSQL with TTL)]
         end
         
         subgraph "Security"
@@ -60,6 +63,48 @@ graph TB
     style KV fill:#e8f5e8
     style DB fill:#fff3e0
     style WI fill:#f3e5f5
+```
+
+### Static Web Apps (SWA) Architecture
+
+For the SWA deployment pattern, the architecture leverages Azure's serverless offerings:
+
+```mermaid
+graph TB
+    subgraph "Internet"
+        U[Users]
+    end
+    
+    subgraph "Azure Static Web Apps"
+        SWA[Static Web App<br/>Global CDN + Frontend]
+    end
+    
+    subgraph "Azure Container Apps"
+        CA[Container App<br/>Backend API]
+    end
+    
+    subgraph "Azure Services"
+        COSMOS[(Cosmos DB<br/>NoSQL with TTL)]
+        KV[Azure Key Vault<br/>Master Encryption Keys]
+        ACR[Azure Container Registry]
+        UAMI[User-Assigned<br/>Managed Identity]
+    end
+    
+    U --> SWA
+    SWA --> CA
+    CA --> COSMOS
+    CA --> KV
+    
+    UAMI --> KV
+    UAMI --> COSMOS
+    CA -.-> UAMI
+    
+    CA -.-> ACR
+    
+    style SWA fill:#e3f2fd
+    style KV fill:#e8f5e8
+    style COSMOS fill:#fff3e0
+    style UAMI fill:#f3e5f5
 ```
 
 ## Component Details
@@ -98,22 +143,25 @@ securityContext:
 | `/api/ready` | GET | Readiness probe for Kubernetes |
 
 ### Database Layer
-**Technology**: PostgreSQL 15 with encrypted storage
+**Technology**: Azure Cosmos DB (NoSQL) with automatic TTL
 
-- **Schema Design**: Optimized for secret storage and automatic cleanup
-- **Encryption at Rest**: Azure disk encryption + application-level encryption
-- **Access Control**: Dedicated service accounts with minimal privileges
-- **Backup Strategy**: Point-in-time recovery with encrypted backups
+- **Document Model**: JSON documents optimized for secret storage with automatic cleanup
+- **Global Distribution**: Multi-region support with configurable consistency levels
+- **Automatic TTL**: Built-in time-to-live for self-destructing secrets
+- **Encryption**: Automatic encryption at rest and in transit
+- **Partition Strategy**: Optimized partitioning by link_id for performance
 
-```sql
--- Core secret storage schema
-CREATE TABLE secrets (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    encrypted_content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW(),
-    expires_at TIMESTAMP NOT NULL,
-    viewed BOOLEAN DEFAULT FALSE
-);
+```json
+// Core secret document schema
+{
+  "id": "unique-link-id",
+  "link_id": "unique-link-id", 
+  "encrypted_secret": "base64-encoded-encrypted-data",
+  "is_e2ee": false,
+  "mime_type": "text/plain",
+  "created_at": "2024-01-01T00:00:00Z",
+  "ttl": 86400
+}
 ```
 
 ## Cryptographic Flow
@@ -126,7 +174,7 @@ sequenceDiagram
     participant F as Frontend
     participant B as Backend
     participant KV as Key Vault
-    participant DB as Database
+    participant DB as Cosmos DB
 
     Note over U,DB: Secret Creation Flow
     U->>F: Submit secret text
@@ -134,20 +182,20 @@ sequenceDiagram
     B->>KV: Retrieve master key
     KV-->>B: Return encryption key
     B->>B: Encrypt with Fernet
-    B->>DB: Store encrypted secret
-    DB-->>B: Return secret ID
+    B->>DB: Store encrypted document
+    DB-->>B: Return document ID
     B-->>F: Return access link
     F-->>U: Display sharing link
 
     Note over U,DB: Secret Retrieval Flow
     U->>F: Access secret link
     F->>B: GET /api/secrets/{id}
-    B->>DB: Query secret
-    DB-->>B: Return encrypted data
+    B->>DB: Query document by ID
+    DB-->>B: Return encrypted document
     B->>KV: Retrieve master key
     KV-->>B: Return decryption key
     B->>B: Decrypt content
-    B->>DB: DELETE secret
+    B->>DB: DELETE document (or TTL cleanup)
     B-->>F: Return plaintext
     F-->>U: Display secret
 ```
@@ -220,9 +268,14 @@ spec:
 infra/
 ├── 0-landing-zone/     # Foundational identities and RBAC
 ├── 10-bootstrap-kv/    # Key Vault and secrets
-├── 20-platform-aks/   # AKS cluster configuration
-└── 30-workload-swa/   # Alternative SWA deployment
+├── 20-platform-aks/   # AKS cluster configuration (Enterprise deployment)
+├── 20-platform-swa/   # SWA platform infrastructure (24x7 cost-effective)
+└── 30-workload-swa/   # SWA application deployment
 ```
+
+**Deployment Options**:
+- **AKS Platform**: Full Kubernetes deployment with Application Gateway for enterprise scenarios
+- **SWA Platform**: Static Web Apps + Container Apps for cost-effective 24x7 demonstrations and serverless workloads
 
 ### CI/CD Pipeline
 
@@ -246,7 +299,9 @@ infra/
 
 ## Performance & Scalability
 
-### Horizontal Pod Autoscaling
+### Horizontal Scaling
+
+**AKS Deployment** - Kubernetes-native autoscaling:
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -269,13 +324,24 @@ spec:
         averageUtilization: 70
 ```
 
+**SWA Deployment** - Serverless scaling:
+- **Frontend**: Global CDN with automatic edge caching
+- **Backend**: Container Apps with scale-to-zero capabilities
+- **Database**: Cosmos DB with automatic scaling based on throughput
+
 ### Resource Management
+
+**AKS Deployment** - Kubernetes resource allocation:
 
 | Component | CPU Request | Memory Request | CPU Limit | Memory Limit |
 |-----------|-------------|----------------|-----------|--------------|
 | Frontend | 100m | 128Mi | 200m | 256Mi |
 | Backend | 200m | 256Mi | 500m | 512Mi |
-| Database | 500m | 1Gi | 1000m | 2Gi |
+
+**SWA Deployment** - Serverless resource management:
+- **Frontend**: Automatically managed by Azure Static Web Apps CDN
+- **Backend**: Container Apps with dynamic resource allocation based on demand
+- **Database**: Cosmos DB with Request Unit (RU) based consumption pricing
 
 ## Disaster Recovery
 
@@ -286,9 +352,9 @@ spec:
 - **Container Images**: ACR geo-replication
 
 ### High Availability
-- **Multi-AZ Deployment**: Pods distributed across availability zones
-- **Database Clustering**: PostgreSQL with read replicas
-- **Load Balancing**: Azure Application Gateway with health probes
+- **Multi-AZ Deployment**: Pods distributed across availability zones (AKS) or global distribution (SWA)
+- **Database Clustering**: Cosmos DB with multi-region writes and automatic failover
+- **Load Balancing**: Azure Application Gateway with health probes (AKS) or global CDN (SWA)
 - **Circuit Breakers**: Resilient API communication patterns
 
 ---
