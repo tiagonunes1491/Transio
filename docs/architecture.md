@@ -96,7 +96,8 @@ graph TB
     BE --> CSI
     CSI --> KV
     WI --> KV
-    {FE,BE} --> ACR
+    FE --> ACR
+    BE --> ACR
 ```
 
 **Why choose it?** Azure CNI for integrated VNet networking and pod‑level isolation.

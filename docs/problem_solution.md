@@ -1,6 +1,20 @@
 # Problem & Solution
 
-## The Challenge — Secure, Ephemeral Information‑Sharing at Enterprise Scale
+## The Challenge — Secure, Ephemeral Information## Azure Reference Architecture
+
+```mermaid
+graph TD
+    GA[GitHub Actions] --> ACR[Azure Container Registry]
+    ACR --> AKS[AKS Cluster]
+    AKS --> AGW[App Gateway + WAF]
+
+    KV[Azure Key Vault] -->|Managed Id| AKS
+    COSMOS[Cosmos DB (TTL)] -->|Private Endpoint| AKS
+
+    LOG[Azure Monitor] --> AKS
+```
+
+---rise Scale
 
 Even in zero‑trust enterprises, sensitive data still bounces around email servers, chat tools, and cloud drives.  Those artefacts linger, magnifying the blast radius of any breach and bloating compliance scope.
 
