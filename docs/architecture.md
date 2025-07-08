@@ -5,7 +5,7 @@
 Transio follows a **tiered, cloud-native architecture** designed for security, scalability, and operational excellence. Available in two deployment patterns:
 
 - **Azure Kubernetes Service (AKS)**: Full containerized deployment with Application Gateway for enterprise scenarios
-- **Static Web Apps (SWA) + Container Apps**: Serverless frontend with containerized backend for cost-effective 24x7 operations
+- **Static Web Apps (SWA) + Container Apps**: Serverless frontend with containerized backend for cost-effective solution
 
 ```mermaid
 graph TB
