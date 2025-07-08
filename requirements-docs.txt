@@ -1,0 +1,4 @@
+# MkDocs dependencies for documentation site
+mkdocs>=1.6.0
+mkdocs-material>=9.6.0
+mkdocs-mermaid2-plugin>=1.2.0

@@ -39,3 +39,6 @@ infra/swa-aca-main.dev.bicepparam
 infra/swa-aca-platform.dev.bicepparam
 infra/swa-aca-app.dev.bicepparam
 .github/workflows/done.txt
+
+# MkDocs
+site/
