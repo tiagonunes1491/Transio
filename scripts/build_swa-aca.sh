@@ -709,7 +709,7 @@ log "DEBUG" "Raw RESOURCE_GROUP value: '$RESOURCE_GROUP'"
 log "INFO" "RESOURCE_GROUP=$RESOURCE_GROUP"
 
 # Now retrieve other outputs (these may be empty if platform deployment was skipped)
-ACA_ENVIRONMENT_ID=$(az deployment group show --name "$PLATFORM_DEPLOYMENT_NAME" --resource-group "$LANDING_ZONE_RESOURCE_GROUP" --query properties.outputs.acaEnvironmentId.value -o tsv 2>/dev/null || echo "")
+ACA_ENVIRONMENT_ID=$(az deployment group show --name "$PLATFORM_DEPLOYMENT_NAME" --resource-group "$LANDING_ZONE_RESOURCE_GROUP" --query properties.outputs.caeEnvironmentId.value -o tsv 2>/dev/null || echo "")
 UAMI_ID=$(az deployment group show --name "$PLATFORM_DEPLOYMENT_NAME" --resource-group "$LANDING_ZONE_RESOURCE_GROUP" --query properties.outputs.uamiId.value -o tsv 2>/dev/null || echo "")
 ACR_LOGIN_SERVER=$(az deployment group show --name "$PLATFORM_DEPLOYMENT_NAME" --resource-group "$LANDING_ZONE_RESOURCE_GROUP" --query properties.outputs.acrLoginServer.value -o tsv 2>/dev/null || echo "")
 KEY_VAULT_URI=$(az deployment group show --name "$PLATFORM_DEPLOYMENT_NAME" --resource-group "$LANDING_ZONE_RESOURCE_GROUP" --query properties.outputs.keyVaultUri.value -o tsv 2>/dev/null || echo "")
@@ -984,6 +984,14 @@ fi
 # =====================
 # 7) Summary
 # =====================
+
+# Initialize variables for summary if they weren't set during deployment
+STATIC_WEB_APP_URL="${STATIC_WEB_APP_URL:-N/A (workload deployment skipped)}"
+STATIC_WEB_APP_NAME="${STATIC_WEB_APP_NAME:-N/A (workload deployment skipped)}"
+BACKEND_URL="${BACKEND_URL:-N/A (workload deployment skipped)}"
+BACKEND_FQDN="${BACKEND_FQDN:-N/A (workload deployment skipped)}"
+BACKEND_RESOURCE_ID="${BACKEND_RESOURCE_ID:-N/A (workload deployment skipped)}"
+
 echo ""
 echo "=============================================="
 echo "DEPLOYMENT SUMMARY"
@@ -1016,7 +1024,7 @@ echo "✅ API requests to /api/* will route to your Container App"
 echo "=============================================="
 
 # 8) Deploy frontend static files to Static Web App production environment
-if [[ "$SKIP_FRONTEND" == false ]]; then
+if [[ "$SKIP_FRONTEND" == false && "$SKIP_WORKLOAD" == false ]]; then
   echo ""
   log "INFO" "Deploying frontend static files to Static Web App production environment..."
   
@@ -1042,8 +1050,10 @@ if [[ "$SKIP_FRONTEND" == false ]]; then
     --env "production"
   
   log "INFO" "✅ Static files deployed successfully to production environment"
+elif [[ "$SKIP_FRONTEND" == true ]]; then
+  log "INFO" "Skipping frontend static files deployment (--skip-frontend flag provided)"
 else
-  log "INFO" "Skipping frontend static files deployment (frontend deployment was skipped)"
+  log "INFO" "Skipping frontend static files deployment (workload deployment was skipped)"
 fi
 
 echo ""
@@ -1054,9 +1064,17 @@ echo "✅ Landing Zone: Deployed"
 echo "✅ Bootstrap Key Vault: Deployed"
 echo "✅ Encryption Keys: Generated and seeded"
 echo "✅ Platform Infrastructure: Deployed"
-echo "✅ Container Images: Built and pushed"
-echo "✅ Backend Container App: Deployed and running"
-if [[ "$SKIP_FRONTEND" == false ]]; then
+if [[ "$SKIP_CONTAINERS" == false ]]; then
+  echo "✅ Container Images: Built and pushed"
+else
+  echo "⏭️  Container Images: Skipped"
+fi
+if [[ "$SKIP_WORKLOAD" == false ]]; then
+  echo "✅ Backend Container App: Deployed and running"
+else
+  echo "⏭️  Backend Container App: Skipped"
+fi
+if [[ "$SKIP_FRONTEND" == false && "$SKIP_WORKLOAD" == false ]]; then
   echo "✅ Static Web App: Deployed with backend linking"
   echo "✅ Frontend Static Files: Deployed to production"
 else
@@ -1064,5 +1082,9 @@ else
   echo "⏭️  Frontend Static Files: Skipped"
 fi
 echo ""
-echo "🌐 Your application is ready at: $STATIC_WEB_APP_URL"
+if [[ "$SKIP_WORKLOAD" == false ]]; then
+  echo "🌐 Your application is ready at: $STATIC_WEB_APP_URL"
+else
+  echo "ℹ️  Application deployment was skipped - infrastructure is ready for workload deployment"
+fi
 echo "=============================================="
