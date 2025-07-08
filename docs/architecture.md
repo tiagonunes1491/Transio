@@ -1,4 +1,6 @@
-# Architecture Overv        DB[(Cosmos DB\nTTL auto-cleanup)]ew
+# Architecture Over           DB[(Cosmos DB\nTTL auto-cleanup)]subgraph "Data Layer"
+            CA[Backend API\nAuto-scaling]   DB[(Cosmos DB\nTTL auto-cleanup)]
+    endw
 
 ## System Components & Data Flow
 
