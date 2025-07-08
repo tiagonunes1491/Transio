@@ -1,4 +1,4 @@
-# Transio: Cloud‑Native Security Showcase
+# Transio: Cloud-Native Security Showcase
 
 [![](https://img.shields.io/github/actions/workflow/status/tiagonunes1491/Transio/ci.yml?label=CI%20%F0%9F%9A%80)](https://github.com/tiagonunes1491/Transio/actions)
 [![](https://img.shields.io/badge/coverage-85%25-brightgreen)](https://tiagonunes1491.github.io/Transio/)
@@ -6,20 +6,13 @@
 
 **Secure secret sharing with pass‑phrase end‑to‑end encryption *or* managed‑key encryption, plus self‑destructing links — purpose‑built to eliminate secret sprawl across teams and incident‑response workflows.**
 
-Transio is a production‑grade reference application showcasing **cloud‑native security best practices** and **defense‑in‑depth** on Azure. Deploy on Azure Kubernetes Service (AKS) for full control, or go serverless with Static Web Apps (SWA) + Container Apps. Users create encrypted notes that auto‑erase after a single view.
+Transio is a production‑grade reference application showcasing **cloud‑native security best practices** and **defense‑in‑depth** on Azure. Deploy on Azure Kubernetes Service (AKS) for full control, or go serverless with Static Web Apps (SWA) + Container Apps. Users create encrypted notes that auto‑erase after a single view.
 
 ---
 
 ## 📖 Complete Documentation
 
-Explore every aspect of Transio:
-
-* **[Architecture Overview](architecture/)** — Microservices design, cluster topology, and CI/CD pipelines
-* **[Security Controls](security/)** — OWASP Top 10 mapping, Key Vault integration, automated scans
-* **[Problem & Solution](problem_solution/)** — Threat models, use cases, and mitigations
-* **[Roadmap](roadmap/)** — Upcoming features: HSM support, WebAuthn, SIEM connectors
-
-👉 **[View the full docs](https://tiagonunes1491.github.io/Transio/)**
+👉 **[View the full docs](https://tiagonunes1491.github.io/Transio/)** for architecture overview, security controls, problem & solution details, and roadmap.
 
 ---
 
