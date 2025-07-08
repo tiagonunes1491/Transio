@@ -23,7 +23,6 @@ jobs:
       dockerfile-path: 'src/backend/Dockerfile'
       image-name: 'backend-app'
       build-context: './src/backend'
-      acr-name: ${{ vars.ACR_NAME }}
       environment: dev-swa
     secrets:
       CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}

@@ -21,10 +21,6 @@ on:
         required: true
         type: string
         description: 'Build context for the Docker build (e.g., ./backend)'
-      acr-name:
-        required: true
-        type: string
-        description: 'Name of the Azure Container Registry'
     secrets:
       CLIENTID:
         required: true
@@ -53,7 +49,7 @@ jobs:
       - name: Get ACR access token
         id: acr_token
         run: |
-          ACR_TOKEN=$(az acr login --name ${{ inputs.acr-name }} --expose-token --output tsv --query accessToken)
+          ACR_TOKEN=$(az acr login --name ${{ vars.acr-name }} --expose-token --output tsv --query accessToken)
           echo "token=${ACR_TOKEN}" >> $GITHUB_OUTPUT
 
       - name: Log in to Docker with new token
