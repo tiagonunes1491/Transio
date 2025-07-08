@@ -81,6 +81,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Debug deployment conditions
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Expected refs: refs/heads/main or refs/heads/development"
+          echo "Main condition: ${{ github.event_name == 'push' }}"
+          echo "Branch condition: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development' }}"
+          echo "Full condition result: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development') }}"
+          
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
