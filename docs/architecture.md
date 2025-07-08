@@ -1,4 +1,4 @@
-# Architecture Overview
+# Architecture Overv        DB[(Cosmos DB\nTTL auto-cleanup)]ew
 
 ## System Components & Data Flow
 
