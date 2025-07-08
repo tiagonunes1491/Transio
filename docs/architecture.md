@@ -25,11 +25,11 @@ graph TB
     ENC["Encryption Engine<br/>browser / API"]
   end
 
-  UI -->|"HTTPS + JSON"| API
-  API -->|"NoSQL"| DB
-  API -->|"Key retrieval"| KV
-  UI -.->|"E2EE"| ENC
-  API -.->|"Fernet"| ENC
+  UI -->|HTTPS + JSON| API
+  API -->|NoSQL| DB
+  API -->|Key retrieval| KV
+  UI -.->|E2EE| ENC
+  API -.->|Fernet| ENC
   ```
 
 *Legend –* UI = browser; API = Flask app; DB = Cosmos DB; ENC runs either in the browser (E2EE) or the API (Fernet).
@@ -42,27 +42,27 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Azure Static Web Apps"
-        SWA[Static Frontend\nGlobal CDN + SSL]
-    end
-    subgraph "Azure Container Apps"
-        CA[Backend API\nAuto‑scaling]
-    end
-    subgraph "Shared Services"
-        DB[(Cosmos DB)]
-        KV[Key Vault]
-        ACR[Container Registry]
-    end
-    subgraph "Identity"
-        MI[Managed Identity]
-    end
+  subgraph "Azure Static Web Apps"
+    SWA[Static Frontend<br/>Global CDN + SSL]
+  end
+  subgraph "Azure Container Apps"
+    CA[Backend API<br/>Auto-scaling]
+  end
+  subgraph "Shared Services"
+    DB[(Cosmos DB)]
+    KV[Key Vault]
+    ACR[Container Registry]
+  end
+  subgraph Identity
+    MI[Managed Identity]
+  end
 
-    Users --> SWA
-    SWA -->|/api/*| CA
-    CA --> DB
-    CA --> KV
-    CA --> MI
-    CA --> ACR
+  Users --> SWA
+  SWA -->|/api/*| CA
+  CA --> DB
+  CA --> KV
+  CA --> MI
+  CA --> ACR
 ```
 
 **Why choose it?** Zero servers to patch, pay‑per‑use, and near‑instant scaling.
@@ -71,32 +71,33 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Azure Application Gateway + WAF"
-        AG[App Gateway]
-    end
-    subgraph "AKS Cluster"
-        FE[Frontend Deployment\nNginx]
-        BE[Backend Deployment\nFlask]
-    end
-    subgraph "Azure Services"
-        DB[(Cosmos DB)]
-        KV[Key Vault]
-        ACR[Container Registry]
-    end
-    subgraph "Security"
-        WI[Workload Identity]
-        CSI[CSI Secrets Driver]
-        CNI[Azure CNI NetworkPolicy]
-    end
+  subgraph "Azure Application Gateway + WAF"
+    AG[App Gateway]
+  end
+  subgraph "AKS Cluster"
+    FE["Frontend Deployment<br/>Nginx"]
+    BE["Backend Deployment<br/>Flask"]
+  end
+  subgraph "Azure Services"
+    DB[(Cosmos DB)]
+    KV[Key Vault]
+    ACR[Container Registry]
+  end
+  subgraph Security
+    WI[Workload Identity]
+    CSI["CSI Secrets Driver"]
+    CNI["Azure CNI NetworkPolicy"]
+  end
 
-    Users --> AG
-    AG --> FE
-    FE --> BE
-    BE --> DB
-    BE --> CSI
-    CSI --> KV
-    WI --> KV
-    {FE,BE} --> ACR
+  Users --> AG
+  AG --> FE
+  FE --> BE
+  BE --> DB
+  BE --> CSI
+  CSI --> KV
+  WI --> KV
+  FE --> ACR
+  BE --> ACR
 ```
 
 **Why choose it?** Azure CNI for integrated VNet networking and pod‑level isolation.
