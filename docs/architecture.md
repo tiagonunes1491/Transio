@@ -1,6 +1,4 @@
-# Architecture Over           DB[(Cosmos DB\nTTL auto-cleanup)]subgraph "Data Layer"
-            CA[Backend API\nAuto-scaling]   DB[(Cosmos DB\nTTL auto-cleanup)]
-    endw
+# Architecture Overview
 
 ## System Components & Data Flow
 
@@ -13,26 +11,26 @@ Transio is a **secure secret‑sharing application** with two deployment flavors
 
 ```mermaid
 graph TB
-    subgraph "Client"
-        UI[Web Frontend\nVanilla JS + E2EE]
-    end
-    subgraph "Backend API"
-        API[Flask API\nPython 3.13]
-    end
-    subgraph "Data Layer"
-        DB[(Cosmos DB\nTTL auto‑cleanup)]
-    end
-    subgraph "Security Layer"
-        KV[Azure Key Vault\nMaster keys]
-        ENC[Encryption Engine\n(browser / API)]
-    end
+  subgraph Client
+    UI["Web Frontend<br/>Vanilla JS + E2EE"]
+  end
+  subgraph Backend_API
+    API["Flask API<br/>Python 3.13"]
+  end
+  subgraph Data_Layer
+    DB[(Cosmos DB<br/>TTL auto-cleanup)]
+  end
+  subgraph Security_Layer
+    KV["Azure Key Vault<br/>Master keys"]
+    ENC["Encryption Engine<br/>browser / API"]
+  end
 
-    UI -->|HTTPS + JSON| API
-    API -->|NoSQL| DB
-    API -->|Key retrieval| KV
-    UI -.->|E2EE| ENC
-    API -.->|Fernet| ENC
-```
+  UI -->|"HTTPS + JSON"| API
+  API -->|"NoSQL"| DB
+  API -->|"Key retrieval"| KV
+  UI -.->|"E2EE"| ENC
+  API -.->|"Fernet"| ENC
+  ```
 
 *Legend –* UI = browser; API = Flask app; DB = Cosmos DB; ENC runs either in the browser (E2EE) or the API (Fernet).
 
@@ -98,8 +96,7 @@ graph TB
     BE --> CSI
     CSI --> KV
     WI --> KV
-    FE --> ACR
-    BE --> ACR
+    {FE,BE} --> ACR
 ```
 
 **Why choose it?** Azure CNI for integrated VNet networking and pod‑level isolation.

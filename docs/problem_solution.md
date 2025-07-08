@@ -4,14 +4,14 @@
 
 ```mermaid
 graph TD
-    GA[GitHub Actions] --> ACR[Azure Container Registry]
-    ACR --> AKS[AKS Cluster]
-    AKS --> AGW[App Gateway + WAF]
+  GA["GitHub Actions"] --> ACR["Azure Container Registry"]
+  ACR --> AKS["AKS Cluster"]
+  AKS --> AGW["App Gateway + WAF"]
 
-    KV[Azure Key Vault] -->|Managed Id| AKS
-    COSMOS[Cosmos DB (TTL)] -->|Private Endpoint| AKS
+  KV["Azure Key Vault"] -->|"Managed Id"| AKS
+  COSMOS["Cosmos DB (TTL)"] -->|"Private Endpoint"| AKS
 
-    LOG[Azure Monitor] --> AKS
+  LOG["Azure Monitor"] --> AKS
 ```
 
 ---rise Scale
