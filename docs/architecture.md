@@ -11,25 +11,31 @@ Transio is a **secure secret‑sharing application** with two deployment flavors
 
 ```mermaid
 graph TB
-  subgraph Client
-    UI["Web Frontend<br/>Vanilla JS + E2EE"]
-  end
-  subgraph Backend_API
-    API["Flask API<br/>Python 3.13"]
-  end
-  subgraph Data_Layer
-    DB[(Cosmos DB<br/>TTL auto-cleanup)]
-  end
-  subgraph Security_Layer
-    KV["Azure Key Vault<br/>Master keys"]
-    ENC["Encryption Engine<br/>browser / API"]
+  %% ─── Sub-graphs ──────────────────────────
+  subgraph "Client"
+    UI["Web Frontend<br>Vanilla JS + E2EE"]
   end
 
-  UI -->|HTTPS + JSON| API
+  subgraph "Backend API"
+    API["Flask API<br>Python 3.13"]
+  end
+
+  subgraph "Data Layer"
+    DB[(Cosmos DB<br>TTL auto-cleanup)]
+  end
+
+  subgraph "Security Layer"
+    KV["Azure Key Vault<br>Master keys"]
+    ENC["Encryption Engine<br>Browser / API"]
+  end
+
+  %% ─── Data-flow links ─────────────────────
+  UI  -->|HTTPS + JSON| API
   API -->|NoSQL| DB
   API -->|Key retrieval| KV
-  UI -.->|E2EE| ENC
+  UI  -.->|E2EE| ENC
   API -.->|Fernet| ENC
+
   ```
 
 *Legend –* UI = browser; API = Flask app; DB = Cosmos DB; ENC runs either in the browser (E2EE) or the API (Fernet).
@@ -71,33 +77,32 @@ graph TB
 
 ```mermaid
 graph TB
-  subgraph "Azure Application Gateway + WAF"
-    AG[App Gateway]
-  end
-  subgraph "AKS Cluster"
-    FE["Frontend Deployment<br/>Nginx"]
-    BE["Backend Deployment<br/>Flask"]
-  end
-  subgraph "Azure Services"
-    DB[(Cosmos DB)]
-    KV[Key Vault]
-    ACR[Container Registry]
-  end
-  subgraph Security
-    WI[Workload Identity]
-    CSI["CSI Secrets Driver"]
-    CNI["Azure CNI NetworkPolicy"]
-  end
+    subgraph "Azure Application Gateway + WAF"
+        AG[App Gateway]
+    end
+    subgraph "AKS Cluster"
+        FE[Frontend Deployment\nNginx]
+        BE[Backend Deployment\nFlask]
+    end
+    subgraph "Azure Services"
+        DB[(Cosmos DB)]
+        KV[Key Vault]
+        ACR[Container Registry]
+    end
+    subgraph "Security"
+        WI[Workload Identity]
+        CSI[CSI Secrets Driver]
+        CNI[Azure CNI NetworkPolicy]
+    end
 
-  Users --> AG
-  AG --> FE
-  FE --> BE
-  BE --> DB
-  BE --> CSI
-  CSI --> KV
-  WI --> KV
-  FE --> ACR
-  BE --> ACR
+    Users --> AG
+    AG --> FE
+    FE --> BE
+    BE --> DB
+    BE --> CSI
+    CSI --> KV
+    WI --> KV
+    {FE,BE} --> ACR
 ```
 
 **Why choose it?** Azure CNI for integrated VNet networking and pod‑level isolation.
