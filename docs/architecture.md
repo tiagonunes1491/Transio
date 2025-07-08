@@ -8,6 +8,20 @@ Transio is a **secure secret‑sharing application** with two deployment flavors
 * **Azure Kubernetes Service (AKS ≥ 1.30)** – enterprise‑grade, full Kubernetes ecosystem.
 
 ### Core Application Diagram
+```mermaid
+graph TB
+  UI["Web Frontend\nVanilla JS"]
+  API["Flask API\nPython 3.13"]
+  DB[(Cosmos DB\nTTL auto-cleanup)]
+  KV["Azure Key Vault\nMaster keys"]
+  ENC["Encryption Engine"]
+
+  UI --> API
+  API --> DB
+  API --> KV
+  UI -.-> ENC
+  API -.-> ENC
+```
 
 *Legend –* UI = browser; API = Flask app; DB = Cosmos DB; ENC runs either in the browser (E2EE) or the API (Fernet).
 
