@@ -9,35 +9,6 @@ Transio is a **secure secret‑sharing application** with two deployment flavors
 
 ### Core Application Diagram
 
-```mermaid
-graph TB
-  %% ─── Sub-graphs ──────────────────────────
-  subgraph "Client"
-    UI["Web Frontend<br>Vanilla JS + E2EE"]
-  end
-
-  subgraph "Backend API"
-    API["Flask API<br>Python 3.13"]
-  end
-
-  subgraph "Data Layer"
-    DB[(Cosmos DB<br>TTL auto-cleanup)]
-  end
-
-  subgraph "Security Layer"
-    KV["Azure Key Vault<br>Master keys"]
-    ENC["Encryption Engine<br>Browser / API"]
-  end
-
-  %% ─── Data-flow links ─────────────────────
-  UI  -->|HTTPS + JSON| API
-  API -->|NoSQL| DB
-  API -->|Key retrieval| KV
-  UI  -.->|E2EE| ENC
-  API -.->|Fernet| ENC
-
-  ```
-
 *Legend –* UI = browser; API = Flask app; DB = Cosmos DB; ENC runs either in the browser (E2EE) or the API (Fernet).
 
 ---
