@@ -11,7 +11,7 @@ Transio is a production‑grade reference application showcasing **cloud‑nativ
 
 <div style="text-align: center; padding: 1rem; border: 1px solid #4CAF50; border-radius: 5px; margin-bottom: 1.5rem; background-color: #e8f5e9;"> <strong>👀 See it live! &rarr;</strong> <a href="https://transio.tiagonunes.cloud" target="_blank" rel="noopener"><strong>transio.tiagonunes.cloud</strong></a> </div>
 
-![Demo of Transio](docs/transio.gif)
+![Demo of Transio](docs/demo.gif)
 
 
 ---
