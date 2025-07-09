@@ -6,7 +6,7 @@ Transio is a production‑grade app for sharing sensitive text without leaving a
 
 This project is a live demo of **cloud‑native security best practices** and **defense‑in‑depth** on **Azure Kubernetes Service (AKS)**.
 
-<div style="text-align: center; padding: 1rem; border: 1px solid #4CAF50; border-radius: 5px; margin-bottom: 1.5rem; background-color: #e8f5e9;"> <strong>👀 See it live! &rarr;</strong> <a href="https://transio.tiagonunes.cloud" target="_blank" rel="noopener"><strong>transio.tiagonunes.cloud</strong></a> </div>
+<div style="text-align: center; padding: 1rem; border: 1px solid #388e3c; border-radius: 5px; margin-bottom: 1.5rem; background-color: #dcedc8; color: #1b5e20;"> <strong>👀 See it live! &rarr;</strong> <a href="https://transio.tiagonunes.cloud" target="_blank" rel="noopener" style="color: #1b5e20; text-decoration: underline;"><strong>transio.tiagonunes.cloud</strong></a> </div>
 
 ## ✨ Key Features
 
