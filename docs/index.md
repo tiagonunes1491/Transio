@@ -91,7 +91,10 @@ docker-compose down
 3. **Share** – send it via your weapon of choice (Slack, smoke signal, etc.).
 4. **View & Vaporise** – recipient reads it; Transio erases it.
 
-*Demo GIF coming soon—watch this space.*
+<video controls loop muted autoplay width="480">
+  <source src="./transio.webm" type="video/webm">
+  Sorry, your browser doesn’t support embedded video.
+</video>
 
 ## 🎯 Project Goals
 
