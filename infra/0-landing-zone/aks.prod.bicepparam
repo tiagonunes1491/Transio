@@ -8,7 +8,7 @@
 using 'main.bicep'
 
 // Environment configuration
-param environmentName = 'dev'
+param environmentName = 'prod'
 param location = 'spaincentral'
 
 // Project and service identification
@@ -31,13 +31,13 @@ param gitHubRepositoryName = ''
 param workloadIdentities = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'dev-aks-protected'
+        ENV: 'prod-aks-protected'
         ROLE: 'contributor'
         federationTypes: 'environment'
     }
     push: {
         UAMI: 'uami-ssharer-acr-push'
-        ENV: 'dev-aks'
+        ENV: 'prod-aks'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }

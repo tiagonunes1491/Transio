@@ -19,7 +19,7 @@ set -euo pipefail
 # script may reference old folder paths. If landing zone deployment fails, use --skip-landing-zone
 # and manually deploy the landing zone using the 0-landing-zone/ folder.
 #
-# Usage: ./build_swa-aca.sh [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]
+# Usage: ./build_swa-aca.sh [--env dev|prod] [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]
 
 # =====================
 # Utility Functions
@@ -54,6 +54,10 @@ get_deployment_errors() {
 # Configurable Variables
 # =====================
 BACKEND_TAG="0.3.0"
+
+# Default environment
+ENVIRONMENT="dev"
+
 SKIP_LANDING_ZONE=false
 SKIP_BOOTSTRAP_KV=false
 SKIP_KEY_SEEDING=false
@@ -69,6 +73,13 @@ SKIP_WORKLOAD=false
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --env) 
+      ENVIRONMENT="$2"
+      if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
+        echo "Error: Environment must be 'dev' or 'prod'"
+        exit 1
+      fi
+      shift 2 ;;
     --skip-landing-zone) SKIP_LANDING_ZONE=true; shift ;;
     --skip-bootstrap-kv) SKIP_BOOTSTRAP_KV=true; shift ;;
     --skip-key-seeding) SKIP_KEY_SEEDING=true; shift ;;
@@ -79,11 +90,24 @@ while [[ $# -gt 0 ]]; do
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
     --skip-workload) SKIP_WORKLOAD=true; shift ;;
     -h|--help)
-      echo "Usage: $0 [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"; exit 0 ;;
+      echo "Usage: $0 [--env dev|prod] [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--skip-frontend] [--full-rebuild] [--teardown-only]"
+      echo "OPTIONS:"
+      echo "  --env dev|prod         Deployment environment (default: dev)"
+      echo "  --skip-landing-zone    Skip landing zone deployment (use existing)"
+      echo "  --skip-bootstrap-kv    Skip bootstrap Key Vault deployment (use existing)"
+      echo "  --skip-key-seeding     Skip encryption key generation and seeding"
+      echo "  --skip-infra          Skip platform infrastructure deployment (use existing)"
+      echo "  --skip-containers     Skip container build and push (use existing images)"
+      echo "  --skip-frontend       Skip frontend deployment (use existing)"
+      echo "  --full-rebuild        Perform complete teardown then deploy fresh"
+      echo "  --teardown-only       Perform complete teardown and exit (no deployment)"
+      exit 0 ;;
     *)
       echo "Unknown option: $1"; exit 1 ;;
   esac
   done
+
+log "INFO" "Using environment: $ENVIRONMENT"
 
 # =====================
 # Deployment Names & Paths
@@ -94,17 +118,17 @@ SERVICES=("backend")
 # Bootstrap Key Vault Deployment
 BOOTSTRAP_KV_DEPLOYMENT_NAME="Secure-Sharer-Bootstrap-KV"
 BOOTSTRAP_KV_BICEP_FILE="../infra/10-bootstrap-kv/main.bicep"
-BOOTSTRAP_KV_PARAMS_FILE="../infra/10-bootstrap-kv/swa.dev.bicepparam"
+BOOTSTRAP_KV_PARAMS_FILE="../infra/10-bootstrap-kv/swa.${ENVIRONMENT}.bicepparam"
 
 # Platform Infrastructure Deployment (SWA)
 PLATFORM_DEPLOYMENT_NAME="Secure-Sharer-Platform-SWA"
 PLATFORM_BICEP_FILE="../infra/20-platform-swa/main.bicep"
-PLATFORM_PARAMS_FILE="../infra/20-platform-swa/main.dev.bicepparam"
+PLATFORM_PARAMS_FILE="../infra/20-platform-swa/main.${ENVIRONMENT}.bicepparam"
 
 # Workload Application Deployment (SWA)
 WORKLOAD_DEPLOYMENT_NAME="Secure-Sharer-Workload-SWA"
 WORKLOAD_BICEP_FILE="../infra/30-workload-swa/main.bicep"
-WORKLOAD_PARAMS_FILE="../infra/30-workload-swa/main.dev.bicepparam"
+WORKLOAD_PARAMS_FILE="../infra/30-workload-swa/main.${ENVIRONMENT}.bicepparam"
 
 # =====================
 # Prerequisites
@@ -307,7 +331,7 @@ if [[ "$SKIP_LANDING_ZONE" == false ]]; then
   log "INFO" "Deploying landing zone (shared infrastructure + networking)..."
   log "INFO" "This includes user-assigned managed identities and GitHub federation..."
   log "INFO" "Note: Landing zone now uses 0-landing-zone/ folder structure"
-  ./deploy-landing-zone.sh paas
+  ./deploy-landing-zone.sh paas --env "$ENVIRONMENT"
   log "INFO" "Landing zone deployment completed"
 else
   log "INFO" "Skipping landing zone deployment"

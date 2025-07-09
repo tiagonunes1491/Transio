@@ -20,7 +20,7 @@ set -euo pipefail
 # script may reference old folder paths. If landing zone deployment fails, use --skip-landing-zone
 # and manually deploy the landing zone using the 0-landing-zone/ folder.
 #
-# Usage: ./build_k8s.sh [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
+# Usage: ./build_k8s.sh [--env dev|prod] [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]
 
 # =====================
 # Utility Functions
@@ -57,6 +57,9 @@ get_deployment_errors() {
 BACKEND_TAG="0.3.0"
 FRONTEND_TAG="0.3.0"
 
+# Default environment
+ENVIRONMENT="dev"
+
 SKIP_LANDING_ZONE=false
 SKIP_BOOTSTRAP_KV=false
 SKIP_KEY_SEEDING=false
@@ -68,6 +71,13 @@ TEARDOWN_ONLY=false
 # Parse flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --env) 
+      ENVIRONMENT="$2"
+      if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
+        echo "Error: Environment must be 'dev' or 'prod'"
+        exit 1
+      fi
+      shift 2 ;;
     --skip-landing-zone) SKIP_LANDING_ZONE=true; shift ;;
     --skip-bootstrap-kv) SKIP_BOOTSTRAP_KV=true; shift ;;
     --skip-key-seeding) SKIP_KEY_SEEDING=true; shift ;;
@@ -76,8 +86,9 @@ while [[ $# -gt 0 ]]; do
     --full-rebuild) FULL_REBUILD=true; shift ;;
     --teardown-only) TEARDOWN_ONLY=true; shift ;;
     -h|--help)
-      echo "Usage: $0 [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]"
+      echo "Usage: $0 [--env dev|prod] [--skip-landing-zone] [--skip-bootstrap-kv] [--skip-key-seeding] [--skip-infra] [--skip-containers] [--full-rebuild] [--teardown-only]"
       echo "OPTIONS:"
+      echo "  --env dev|prod        Deployment environment (default: dev)"
       echo "  --skip-landing-zone    Skip landing zone deployment (use existing)"
       echo "  --skip-bootstrap-kv    Skip bootstrap Key Vault deployment (use existing)"
       echo "  --skip-key-seeding     Skip encryption key generation and seeding"
@@ -100,6 +111,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+log "INFO" "Using environment: $ENVIRONMENT"
+
 # =====================
 # Deployment Names & Paths
 # =====================
@@ -109,12 +122,16 @@ SERVICES=("backend" "frontend")
 # Bootstrap Key Vault Deployment
 BOOTSTRAP_KV_DEPLOYMENT_NAME="Secure-Sharer-Bootstrap-KV"
 BOOTSTRAP_KV_BICEP_FILE="../infra/10-bootstrap-kv/main.bicep"
-BOOTSTRAP_KV_PARAMS_FILE="../infra/10-bootstrap-kv/aks.dev.bicepparam"
+BOOTSTRAP_KV_PARAMS_FILE="../infra/10-bootstrap-kv/aks.${ENVIRONMENT}.bicepparam"
 
 # Platform Infrastructure Deployment (AKS)
 PLATFORM_DEPLOYMENT_NAME="Secure-Sharer-Platform-AKS"
 PLATFORM_BICEP_FILE="../infra/20-platform-aks/main.bicep"
-PLATFORM_PARAMS_FILE="../infra/20-platform-aks/main.bicepparam"
+if [[ "$ENVIRONMENT" == "prod" ]]; then
+  PLATFORM_PARAMS_FILE="../infra/20-platform-aks/main.prod.bicepparam"
+else
+  PLATFORM_PARAMS_FILE="../infra/20-platform-aks/main.bicepparam"
+fi
 
 # =====================
 # Prerequisites
@@ -360,7 +377,7 @@ if [[ "$SKIP_LANDING_ZONE" == false ]]; then
   log "INFO" "Deploying landing zone (shared infrastructure + networking)..."
   log "INFO" "This includes user-assigned managed identities and GitHub federation..."
   log "INFO" "Note: Landing zone now uses 0-landing-zone/ folder structure"
-  ./deploy-landing-zone.sh k8s
+  ./deploy-landing-zone.sh k8s --env "$ENVIRONMENT"
   log "INFO" "Landing zone deployment completed"
 else
   log "INFO" "Skipping landing zone deployment"

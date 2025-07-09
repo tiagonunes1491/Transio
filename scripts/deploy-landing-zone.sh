@@ -54,11 +54,10 @@ PAAS_DEPLOYMENT_NAME="landing-zone-paas-$(date +%Y%m%d-%H%M%S)"
 # Bicep template and parameter file paths
 # Note: Using 0-landing-zone for the actual existing structure
 SHARED_BICEP_FILE="../infra/0-landing-zone/main.bicep"
-SHARED_PARAMS_FILE="../infra/0-landing-zone/swa.dev.bicepparam"
 K8S_BICEP_FILE="../infra/0-landing-zone/main.bicep"
-K8S_PARAMS_FILE="../infra/0-landing-zone/aks.dev.bicepparam"
 PAAS_BICEP_FILE="../infra/0-landing-zone/main.bicep"
-PAAS_PARAMS_FILE="../infra/0-landing-zone/swa.dev.bicepparam"
+
+# Parameter files will be set based on environment after argument parsing
 
 # Azure deployment configuration
 SUBSCRIPTION_SCOPE="subscription"
@@ -437,13 +436,46 @@ function run_diagnostics() {
 # Main Script Logic
 # =====================================================
 
-ACTION="$1"
+# Default environment
+ENVIRONMENT="dev"
+
+# Parse arguments
+ACTION=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --env)
+      ENVIRONMENT="$2"
+      if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
+        echo "Error: Environment must be 'dev' or 'prod'"
+        exit 1
+      fi
+      shift 2 ;;
+    shared|k8s|paas|all|teardown|diagnostics)
+      if [[ -z "$ACTION" ]]; then
+        ACTION="$1"
+        shift
+      else
+        echo "Error: Multiple actions specified"
+        exit 1
+      fi ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1 ;;
+  esac
+done
+
+# Update parameter file paths based on environment
+SHARED_PARAMS_FILE="../infra/0-landing-zone/swa.${ENVIRONMENT}.bicepparam"
+K8S_PARAMS_FILE="../infra/0-landing-zone/aks.${ENVIRONMENT}.bicepparam"
+PAAS_PARAMS_FILE="../infra/0-landing-zone/swa.${ENVIRONMENT}.bicepparam"
+
+echo "Using environment: $ENVIRONMENT"
 
 # Display usage information if no action is provided
 if [ -z "$ACTION" ]; then
   echo "❌ Error: No action specified"
   echo ""
-  echo "Usage: $0 [ACTION]"
+  echo "Usage: $0 [ACTION] [--env dev|prod]"
   echo ""
   echo "Available Actions:"
   echo "  teardown     - Delete all landing zone resource groups"
@@ -453,13 +485,16 @@ if [ -z "$ACTION" ]; then
   echo "  all          - Deploy everything (shared + K8S + PaaS)"
   echo "  diagnostics  - Run comprehensive diagnostics for troubleshooting"
   echo ""
+  echo "Options:"
+  echo "  --env dev|prod - Deployment environment (default: dev)"
+  echo ""
   echo "Examples:"
-  echo "  $0 shared       # Deploy shared infrastructure only"
-  echo "  $0 k8s          # Deploy for Kubernetes workloads"
-  echo "  $0 paas         # Deploy for PaaS workloads"
-  echo "  $0 all          # Deploy complete landing zone"
-  echo "  $0 teardown     # Clean up all resources"
-  echo "  $0 diagnostics  # Troubleshoot deployment issues"
+  echo "  $0 shared                    # Deploy shared infrastructure only (dev)"
+  echo "  $0 k8s --env prod           # Deploy for Kubernetes workloads (prod)"
+  echo "  $0 paas --env dev           # Deploy for PaaS workloads (dev)"
+  echo "  $0 all                      # Deploy complete landing zone (dev)"
+  echo "  $0 teardown                 # Clean up all resources"
+  echo "  $0 diagnostics              # Troubleshoot deployment issues"
   echo ""
   exit 1
 fi

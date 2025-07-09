@@ -8,12 +8,12 @@
 using 'main.bicep'
 
 // Environment configuration
-param environmentName = 'dev'
+param environmentName = 'prod'
 param location = 'spaincentral'
 
 // Project and service identification
 param projectCode = 'ts'
-param serviceCode = 'aks'
+param serviceCode = 'swa'
 
 // Tagging information
 param costCenter = '1000'
@@ -23,21 +23,20 @@ param ownerEmail = ''
 
 // GitHub integration configuration
 // Update these values with your actual GitHub organization and repository
-param gitHubOrganizationName = ''
-param gitHubRepositoryName = ''
+param gitHubOrganizationName = 'tiagonunes1491'
+param gitHubRepositoryName = 'Transio'
 
 // PaaS workload identities configuration
 // These UAMIs will be used for PaaS workloads (Container Apps, Static Web Apps, etc.)
 param workloadIdentities = {
-    creator: {
-        UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'dev-aks-protected'
-        ROLE: 'contributor'
-        federationTypes: 'environment'
-    }
-    push: {
-        UAMI: 'uami-ssharer-acr-push'
-        ENV: 'dev-aks'
+  // Main PaaS workload identity with Contributor access to PaaS spoke RG
+  contributor: {
+    ENV: 'prod-swa-protected'
+    ROLE: 'contributor'
+    federationTypes: 'environment'
+  }
+  acrPush: {
+        ENV: 'prod-swa'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
