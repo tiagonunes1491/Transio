@@ -35,4 +35,4 @@ param cosmosDbConfig = [
     ]
   }
 ]
-param cosmosEnableFreeTier = false
+param cosmosEnableFreeTier = true
