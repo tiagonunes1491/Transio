@@ -64,7 +64,7 @@ param environmentVariables = [
   }
   {
     name: 'COSMOS_ENDPOINT'
-    value: 'https://ss-d-swa-cosmos.documents.azure.com:443/'
+    value: 'https://ts-d-swa-cosmos.documents.azure.com:443/'
   }
 ]
 
