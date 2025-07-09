@@ -186,7 +186,7 @@ module uamiNamingModules '../modules/shared/naming.bicep' = [
     scope: subscription()
     params: {
       projectCode: projectCode
-      environment: 'shared'
+      environment: environmentName
       serviceCode: serviceCode
       resourceType: 'id'
       suffix: 'gh-${item.key}'
