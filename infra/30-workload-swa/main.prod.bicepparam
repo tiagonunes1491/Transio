@@ -15,7 +15,7 @@ param ownerEmail = ''
 
 // Existing infrastructure references
 param acrName = 'sspswaacrr'
-param cosmosDbAccountName = 'ss-p-swa-cosmos'
+param cosmosDbAccountName = 'ts-p-swa-cosmos'
 param keyVaultName = 'tspswakv' // Production Key Vault
 
 // Database configuration
@@ -40,11 +40,11 @@ param environmentVariables = [
   }
   {
     name: 'LOG_LEVEL'
-    value: 'INFO'
+    value: 'DEBUG'
   }
   {
     name: 'SECRET_EXPIRY_HOURS'
-    value: '12'
+    value: '24'
   }
   {
     name: 'USE_MANAGED_IDENTITY'
@@ -52,7 +52,7 @@ param environmentVariables = [
   }
   {
     name: 'MAX_SECRET_LENGTH_KB'
-    value: '50'
+    value: '100'
   }
   {
     name: 'COSMOS_DATABASE_NAME'
