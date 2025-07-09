@@ -24,7 +24,7 @@ param cosmosContainerName = 'secrets'
 
 
 param acaEnvironmentResourceGroupName = 'ss-d-swa-rg'
-param acaEnvironmentName = 'ss-d-swa-cae'
+param acaEnvironmentName = 'ts-d-swa-cae'
 // Application configuration
 param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
 
