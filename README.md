@@ -64,7 +64,7 @@ docker-compose down
 
 ### Impact Highlights
 
-* **0 residual secrets** validated by nightly integration tests
+* **Zero residual secrets** guaranteed by a 24-hour Time-to-Live (TTL) on all Cosmos DB records
 * **< 15 min** from `git push` to production via GitHub Actions
 * **99.99 %** uptime target using AZ‑replicated Cosmos DB & AKS node pools
 
