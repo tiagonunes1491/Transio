@@ -56,7 +56,7 @@ This project is a live demo of **cloud‑native security best practices** and **
 
 ```bash
 # Prereqs: Azure CLI, kubectl, Helm
-git clone https://github.com/tiagonunes1491/Transio.git
+git clone https://github.com/tiagonunes1491/Transio-Secrets.git
 cd Transio
 ./scripts/build_k8s.sh   # Provision infra & deploy to AKS
 ```
@@ -65,7 +65,7 @@ cd Transio
 
 ```bash
 # Prereq: Azure CLI
-git clone https://github.com/tiagonunes1491/Transio.git
+git clone https://github.com/tiagonunes1491/Transio-Secrets.git
 cd Transio
 ./scripts/build_swa-aca.sh   # Deploy front‑end to SWA, back‑end to Container Apps
 ```
@@ -120,7 +120,7 @@ docker-compose down
 
 <div class='cta-buttons'>
 <a href='problem_solution/' class='cta-button primary'>Learn More</a>
-<a href='https://github.com/tiagonunes1491/Transio' class='cta-button secondary'>GitHub Repo</a>
+<a href='https://github.com/tiagonunes1491/Transio-Secrets' class='cta-button secondary'>GitHub Repo</a>
 <a href='https://www.linkedin.com/in/tiago-nunes1491/' class='cta-button secondary'>Connect on LinkedIn</a>
 </div>
 

@@ -25,7 +25,7 @@ Spin up Transio and its dependencies locally in your environment using Docker Co
 
 ```bash
 # Prerequisites: Docker, Docker Compose
-git clone https://github.com/tiagonunes1491/Transio.git
+git clone https://github.com/tiagonunes1491/Transio-Secrets.git
 cd Transio
 
 # Build images and bring up all services
