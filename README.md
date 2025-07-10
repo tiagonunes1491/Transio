@@ -66,13 +66,13 @@ cd Transio
 
 | Option                                          | Architecture                                                  | Ideal For                                                    |
 | ----------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
-| **[AKS](deployment/aks/)**                      | Kubernetes + Application Gateway                              | Enterprises needing fine‑grained control & custom networking |
-| **[SWA + Container Apps](deployment/swa-aca/)** | Globally distributed static front‑end + serverless containers | Teams prioritizing minimal ops overhead                      |
+| **[AKS](infra/20-platform-aks/)**                      | Kubernetes + Application Gateway                              | Enterprises needing fine‑grained control & custom networking |
+| **[SWA + Container Apps](infra/20-platform-swa/)** | Globally distributed static front‑end + serverless containers | Teams prioritizing minimal ops overhead                      |
 
 Dive deeper:
 
-* **[AKS Guide](deployment/aks/README.md)** — Bicep modules, Helm charts, CI/CD
-* **[SWA + CA Guide](deployment/swa-aca/README.md)** — Fully serverless Bicep templates & best practices
+* **[AKS Guide](infra/20-platform-aks/README.md)** — Bicep modules, Helm charts, CI/CD
+* **[SWA + CA Guide](infra/20-platform-swa/README.md)** — Fully serverless Bicep templates & best practices
 
 ---
 
