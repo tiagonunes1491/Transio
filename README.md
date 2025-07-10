@@ -1,7 +1,4 @@
 # Transio: Cloud-Native Security Showcase
-
-[![](https://img.shields.io/github/actions/workflow/status/tiagonunes1491/Transio/ci.yml?label=CI%20%F0%9F%9A%80)](https://github.com/tiagonunes1491/Transio/actions)
-[![](https://img.shields.io/badge/coverage-85%25-brightgreen)](https://tiagonunes1491.github.io/Transio/)
 [![](https://img.shields.io/badge/license-MIT-blue)](https://github.com/tiagonunes1491/Transio/blob/main/LICENSE)
 
 **Secure secret sharing with pass‑phrase end‑to‑end encryption *or* managed‑key encryption, plus self‑destructing links — purpose‑built to eliminate secret sprawl across teams and incident‑response workflows.**
@@ -22,27 +19,36 @@ Transio is a production‑grade reference application showcasing **cloud‑nativ
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Quick Start with Docker Compose
 
-Choose the deployment that fits your workload.
-
-### 1. AKS Deployment (all‑in‑one)
+Spin up Transio and its dependencies locally in your environment using Docker Compose:
 
 ```bash
-# Prereqs: Azure CLI, kubectl, Helm
+# Prerequisites: Docker, Docker Compose
 git clone https://github.com/tiagonunes1491/Transio.git
 cd Transio
-./scripts/build_k8s.sh   # Provision infra & deploy to AKS
+
+# Build images and bring up all services
+docker-compose up --build -d
+
+# Tail logs to verify services are running
+docker-compose logs -f
 ```
 
-### 2. Serverless Deployment (SWA + Container Apps)
+Once started, services are available at:
+
+* **Cosmos DB Emulator (HTTPS)**: [https://localhost:8081](https://localhost:8081)
+
+  * Ports mapped: 8081, 10251, 10252, 10253, 10254
+* **Backend API (Flask)**: [http://localhost:5000](http://localhost:5000)
+* **Frontend (Nginx)**: [http://localhost:8080](http://localhost:8080)
+
+When you’re done, shut everything down with:
 
 ```bash
-# Prereq: Azure CLI
-git clone https://github.com/tiagonunes1491/Transio.git
-cd Transio
-./scripts/build_swa-aca.sh   # Deploy front‑end to SWA, back‑end to Container Apps
+docker-compose down
 ```
+
 
 ---
 
