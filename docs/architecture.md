@@ -62,32 +62,36 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Azure Application Gateway + WAF"
-        AG[App Gateway]
-    end
-    subgraph "AKS Cluster"
-        FE[Frontend Deployment\nNginx]
-        BE[Backend Deployment\nFlask]
-    end
-    subgraph "Azure Services"
-        DB[(Cosmos DB)]
-        KV[Key Vault]
-        ACR[Container Registry]
-    end
-    subgraph "Security"
-        WI[Workload Identity]
-        CSI[CSI Secrets Driver]
-        CNI[Azure CNI NetworkPolicy]
-    end
+  subgraph AGW["Azure Application Gateway + WAF"]
+    AG[App Gateway]
+  end
 
-    Users --> AG
-    AG --> FE
-    FE --> BE
-    BE --> DB
-    BE --> CSI
-    CSI --> KV
-    WI --> KV
-    {FE,BE} --> ACR
+  subgraph AKS["AKS Cluster"]
+    FE["Frontend Deployment<br/>Nginx"]
+    BE["Backend Deployment<br/>Flask"]
+  end
+
+  subgraph AZURE["Azure Services"]
+    DB[(Cosmos DB)]
+    KV[Key Vault]
+    ACR[Container Registry]
+  end
+
+  subgraph SEC["Security"]
+    WI[Workload Identity]
+    CSI[CSI Secrets Driver]
+    CNI[Azure CNI NetworkPolicy]
+  end
+
+  Users --> AG
+  AG --> FE
+  FE --> BE
+  BE --> DB
+  BE --> CSI
+  CSI --> KV
+  WI  --> KV
+  FE  --> ACR
+  BE  --> ACR
 ```
 
 **Why choose it?** Azure CNI for integrated VNet networking and pod‑level isolation.
