@@ -13,7 +13,7 @@ Transio delivers a **production‑grade, zero‑knowledge security architecture*
 ### 🛡️ Defence‑in‑Depth Implementation
 
 * Full alignment with **OWASP Top 10 (2021)**
-* 45 dedicated security tests covering crypto, validation, access control, and containers
+* 29 dedicated security tests across backend and frontend covering crypto, validation, access control, and containers
 * Anti‑enumeration padding to neutralise timing‑based reconnaissance
 
 ### ☁️ Cloud‑Native Best Practices
@@ -160,12 +160,12 @@ def encrypt(txt: str) -> bytes:
 ## Security Test Coverage
 
 ```
-📊 45 tests
-├── Crypto: 18
-├── Validation: 15
-├── Access Control: 12
-├── Enumeration: 4
-└── Container: 6
+📊 29 tests
+├── Crypto: 6
+├── Validation: 10
+├── Access Control: 9
+├── Enumeration: 2
+└── Container: 2
 ```
 
 ---
