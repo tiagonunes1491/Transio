@@ -5,8 +5,6 @@
 
 # Transio: Cloud-Native Security Showcase
 
-...
-
 
 [![](https://img.shields.io/badge/license-MIT-blue)](https://github.com/tiagonunes1491/Transio/blob/main/LICENSE)
 
