@@ -34,13 +34,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          
-      - name: Debug Environment Variables
-        run: |
-            echo "Environment name: ${{ github.event.inputs.environment }}-${{ github.event.inputs.platform }}"
-            echo "Client ID set: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR != '' }}"
-            echo "Tenant ID set: ${{ vars.AZURE_TENANT_ID != '' }}"
-            echo "Subscription ID set: ${{ vars.AZURE_SUBSCRIPTION_ID != '' }}"
             
       - name: 'Login to Azure'
         uses: azure/login@v2
@@ -53,13 +46,14 @@ jobs:
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
           PLATFORM: ${{ github.event.inputs.platform }}
+          RG: ${{ vars.RG }}
         run: |
           echo "🚀 Deploying Key Vault bootstrap infrastructure..."
           echo "Environment: $ENVIRONMENT"
           echo "Platform: $PLATFORM"
           
-          # Set resource group name using naming convention
-          RG_NAME="ts-$ENVIRONMENT-$PLATFORM-rg"
+          # Use environment variable for resource group name
+          RG_NAME="$RG"
           
           # Verify resource group exists (fail if it doesn't)
           if ! az group show --name "$RG_NAME" 2>/dev/null; then

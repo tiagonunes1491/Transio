@@ -31,7 +31,7 @@ param gitHubRepositoryName = ''
 param workloadIdentities = {
     creator: {
         UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'prod-aks-protected'
+        ENV: 'prod-aks'
         ROLE: 'contributor'
         federationTypes: 'environment'
     }
