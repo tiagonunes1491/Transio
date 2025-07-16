@@ -82,7 +82,7 @@ jobs:
           RECOVER="false"
           if [ -n "$KEYVAULT" ]; then
             echo "Checking if Key Vault '$KEYVAULT' is in soft-delete state..."
-            SOFT_DELETED=$(az keyvault list-deleted --query "[?name=='$KEYVAULT'].name" --output tsv)
+            SOFT_DELETED=$(az keyvault list-deleted --query "[?name=='${KEYVAULT}'].name" --output tsv)
             if [ "$SOFT_DELETED" = "$KEYVAULT" ]; then
               echo "⚠️ Key Vault '$KEYVAULT' is in soft-delete state. Will attempt recovery."
               RECOVER="true"
@@ -93,17 +93,14 @@ jobs:
             echo "KEYVAULT variable not set. Skipping soft-delete check."
           fi
 
-          # Build parameters string
-          PARAMS=("$PARAM_FILE")
-          if [ -n "$RECOVER_FLAG" ]; then
-            PARAMS+=("$RECOVER_FLAG")
-          fi
-
+          # Deploy with bicepparam file and recovery parameter
+          echo "Deploying with recoverExistingVault=$RECOVER"
+          
           az deployment group create \
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters @"$PARAM_FILE" recoverExistingVault=$RECOVER \
+            --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
             --debug
             
           echo "✅ Key Vault deployment completed successfully!"
