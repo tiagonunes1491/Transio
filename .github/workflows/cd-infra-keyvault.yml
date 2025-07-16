@@ -49,7 +49,7 @@ jobs:
           PLATFORM: ${{ github.event.inputs.platform }}
           RG: ${{ vars.RG }}
           KEYVAULT: ${{ vars.KEYVAULT }}
-          RECOVER: ${{ secrets.KEYVAULT_RECOVER }}
+          RECOVER: ${{ vars.KEYVAULT_RECOVER }}
         run: |
           echo "🚀 Deploying Key Vault bootstrap infrastructure..."
           echo "Environment: $ENVIRONMENT"
