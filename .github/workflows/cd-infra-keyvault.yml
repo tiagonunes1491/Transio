@@ -54,10 +54,8 @@ jobs:
           echo "Environment: $ENVIRONMENT"
           echo "Platform: $PLATFORM"
           echo "Key Vault: $KEYVAULT"
-
           # Use environment variable for resource group name
           RG_NAME="$RG"
-
           # Verify resource group exists (fail if it doesn't)
           if ! az group show --name "$RG_NAME" 2>/dev/null; then
             echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
@@ -104,8 +102,9 @@ jobs:
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters "${PARAMS[@]}" \
-
+            --parameters @"$PARAM_FILE" recoverExistingVault=$RECOVER \
+            --debug
+            
           echo "✅ Key Vault deployment completed successfully!"
 
           # Show deployment outputs
