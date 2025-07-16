@@ -84,8 +84,14 @@ jobs:
             # Store actual value in a temp variable to verify
             VAULT_NAME=${KEYVAULT}
             echo "Checking if Key Vault '${VAULT_NAME}' is in soft-delete state..."
-            # Simple direct grep with forced expansion
-            if az keyvault list-deleted | grep "${VAULT_NAME}"; then
+            
+            # Get deleted vaults as JSON and use grep to check for the specific vault
+            DELETED_VAULTS=$(az keyvault list-deleted -o json)
+            echo "Deleted vaults found:"
+            echo "$DELETED_VAULTS" | grep "name"
+            
+            # Check if our vault name exists in the deleted vaults output
+            if echo "$DELETED_VAULTS" | grep -q "\"name\": \"${VAULT_NAME}\""; then
               echo "⚠️ Key Vault '${VAULT_NAME}' is in soft-delete state. Will attempt recovery."
               RECOVER="true"
             else
@@ -95,23 +101,23 @@ jobs:
             echo "KEYVAULT variable not set. Skipping soft-delete check."
           fi
 
-          # Deploy with bicepparam file and recovery parameter
-          echo "Deploying with recoverExistingVault=$RECOVER"
+        #   # Deploy with bicepparam file and recovery parameter
+        #   echo "Deploying with recoverExistingVault=$RECOVER"
           
-          az deployment group create \
-            --name "$deployment_name" \
-            --resource-group "$RG_NAME" \
-            --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
+        #   az deployment group create \
+        #     --name "$deployment_name" \
+        #     --resource-group "$RG_NAME" \
+        #     --template-file ./infra/10-bootstrap-kv/main.bicep \
+        #     --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
             
-          echo "✅ Key Vault deployment completed successfully!"
+        #   echo "✅ Key Vault deployment completed successfully!"
 
-          # Show deployment outputs
-          echo "Deployment outputs:"
-          az deployment group show \
-            --name "$deployment_name" \
-            --resource-group "$RG_NAME" \
-            --query properties.outputs
+        #   # Show deployment outputs
+        #   echo "Deployment outputs:"
+        #   az deployment group show \
+        #     --name "$deployment_name" \
+        #     --resource-group "$RG_NAME" \
+        #     --query properties.outputs
 
       - name: 'Trigger Key Vault Seeding'
         uses: actions/github-script@v7
