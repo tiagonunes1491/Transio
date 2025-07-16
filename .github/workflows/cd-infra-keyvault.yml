@@ -78,16 +78,18 @@ jobs:
           deployment_name="kv-bootstrap-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
 
 
-          # Check if Key Vault is in soft-delete state (super simple approach)
+          # Check if Key Vault is in soft-delete state (force variable expansion)
           RECOVER="false"
           if [ -n "$KEYVAULT" ]; then
-            echo "Checking if Key Vault '$KEYVAULT' is in soft-delete state..."
-            # Simple direct grep for the vault name
-            if az keyvault list-deleted | grep $KEYVAULT; then
-              echo "⚠️ Key Vault '$KEYVAULT' is in soft-delete state. Will attempt recovery."
+            # Store actual value in a temp variable to verify
+            VAULT_NAME=${KEYVAULT}
+            echo "Checking if Key Vault '${VAULT_NAME}' is in soft-delete state..."
+            # Simple direct grep with forced expansion
+            if az keyvault list-deleted | grep "${VAULT_NAME}"; then
+              echo "⚠️ Key Vault '${VAULT_NAME}' is in soft-delete state. Will attempt recovery."
               RECOVER="true"
             else
-              echo "Key Vault '$KEYVAULT' is not in soft-delete state."
+              echo "Key Vault '${VAULT_NAME}' is not in soft-delete state."
             fi
           else
             echo "KEYVAULT variable not set. Skipping soft-delete check."
@@ -101,7 +103,6 @@ jobs:
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
             --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
-            --debug
             
           echo "✅ Key Vault deployment completed successfully!"
 
