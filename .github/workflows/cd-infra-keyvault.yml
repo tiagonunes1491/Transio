@@ -35,11 +35,18 @@ jobs:
         with:
           fetch-depth: 0
           
+      - name: Debug Environment Variables
+        run: |
+            echo "Environment name: ${{ github.event.inputs.environment }}-${{ github.event.inputs.platform }}"
+            echo "Client ID set: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR != '' }}"
+            echo "Tenant ID set: ${{ vars.AZURE_TENANT_ID != '' }}"
+            echo "Subscription ID set: ${{ vars.AZURE_SUBSCRIPTION_ID != '' }}"
+            
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_CONT }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: 'Deploy Key Vault Infrastructure'
