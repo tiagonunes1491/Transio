@@ -180,7 +180,6 @@ param useExternalIngress bool = true
 // ========== STANDARDIZED TAGGING ==========
 
 module standardTagsModule '../modules/shared/tagging.bicep' = {
-  scope: subscription()
   name: 'standard-tags-swa-app'
   params: {
     environment: environmentName
@@ -196,7 +195,6 @@ module standardTagsModule '../modules/shared/tagging.bicep' = {
 // ========== RESOURCE NAMING ==========
 
 module containerAppNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'container-app-naming'
   params: {
     projectCode: projectCode
@@ -207,7 +205,6 @@ module containerAppNamingModule '../modules/shared/naming.bicep' = {
 }
 
 module swaNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'swa-naming'
   params: {
     projectCode: projectCode
@@ -219,7 +216,6 @@ module swaNamingModule '../modules/shared/naming.bicep' = {
 
 // Generate resource names using naming module
 module uamiNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'uami-naming'
   params: {
     projectCode: projectCode

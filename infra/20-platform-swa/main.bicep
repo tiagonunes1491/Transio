@@ -175,7 +175,6 @@ module network '../modules/networking/network.bicep' = {
 // ========== STANDARDIZED TAGGING ==========
 
 module standardTagsModule '../modules/shared/tagging.bicep' = {
-  scope: subscription()
   name: 'standard-tags-swa-platform'
   params: {
     environment: environmentName
@@ -191,7 +190,6 @@ module standardTagsModule '../modules/shared/tagging.bicep' = {
 // ========== RESOURCE NAMING ==========
 
 module vnetNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'vnet-naming'
   params: {
     projectCode: projectCode
@@ -204,7 +202,6 @@ module vnetNamingModule '../modules/shared/naming.bicep' = {
 
 
 module lawNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'law-naming'
   params: {
     projectCode: projectCode
@@ -215,7 +212,6 @@ module lawNamingModule '../modules/shared/naming.bicep' = {
 }
 
 module acaEnvNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'aca-env-naming'
   params: {    
     projectCode: projectCode
@@ -226,7 +222,6 @@ module acaEnvNamingModule '../modules/shared/naming.bicep' = {
 }
 
 module acaNsgNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'aca-nsg-naming'
   params: {    
     projectCode: projectCode
@@ -238,7 +233,6 @@ module acaNsgNamingModule '../modules/shared/naming.bicep' = {
 }
 
 module peNsgNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'pe-nsg-naming'
   params: {    
     projectCode: projectCode
@@ -251,7 +245,6 @@ module peNsgNamingModule '../modules/shared/naming.bicep' = {
 
 module acrNamingModule '../modules/shared/naming.bicep' = {
   name: 'acr-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -262,7 +255,6 @@ module acrNamingModule '../modules/shared/naming.bicep' = {
 
 module cosmosNamingModule '../modules/shared/naming.bicep' = {
   name: 'cosmos-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
