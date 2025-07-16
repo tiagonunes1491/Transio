@@ -40,4 +40,9 @@ param workloadIdentities = {
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
+  kvSecOfficer: {
+        ENV: 'dev-swa'
+        ROLE: 'SecretsOfficer'
+        federationTypes: 'environment'
+    }    
 }
