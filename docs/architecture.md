@@ -153,6 +153,35 @@ graph TB
 * Build → Trivy v0.50 + CodeQL JavaScript/Python → ACR push
 * Helm/Bicep release gated on 100 % scan pass
 
+### Key Vault Bootstrap & Key Rotation Workflows
+
+The infrastructure deployment includes two critical GitHub Actions workflows for Key Vault management:
+
+#### Key Vault Bootstrap (`cd-infra-keyvault.yml`)
+
+Deploys the platform-specific Key Vault infrastructure:
+
+- **Trigger**: Manual workflow dispatch
+- **Inputs**: Environment (`dev`/`prod`) and Platform (`swa`/`aks`)
+- **Process**:
+  1. Validates resource group existence
+  2. Deploys Key Vault using Bicep with platform-specific parameters
+  3. Supports Key Vault soft-delete recovery via `KEYVAULT_RECOVER` variable
+  4. Automatically triggers key rotation workflow on success
+- **Security**: Uses `CLIENTID_IAC_CONTRIBUTOR` federated identity
+
+#### Key Rotation (`cd-infra-rotate-key.yml`)
+
+Seeds or rotates Fernet encryption keys:
+
+- **Trigger**: Automatic (from Key Vault deployment) or manual dispatch
+- **Process**:
+  1. Generates cryptographically secure Fernet key using Python's `cryptography` library
+  2. Stores key as `encryption-key` secret in Key Vault
+- **Security**: Uses `CLIENTID_IAC_SECRETS` federated identity (least privilege)
+
+**Security Pattern**: Infrastructure deployment (Contributor) and secret management (Secrets User) use separate service principals following the principle of least privilege.
+
 ---
 
 ## Defense‑in‑Depth Matrix
