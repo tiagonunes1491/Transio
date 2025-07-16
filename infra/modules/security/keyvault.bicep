@@ -86,6 +86,10 @@ param softDeleteRetentionInDays int = 90
 @description('Enable purge protection for the keyvault')
 param enablePurgeProtection bool = true
 
+@description('Specifies whether the key vault is created in recovery mode. Use "recover" to recover a soft-deleted vault.')
+@allowed(['default', 'recover'])
+param createMode string = 'default'
+
 @description('Enable public network access for the keyvault')
 param enablePublicNetworkAccess bool = false
 
@@ -102,6 +106,7 @@ resource kv 'Microsoft.KeyVault/vaults@2024-11-01' = {
   location: location
   tags: tags
   properties: {
+    createMode: createMode
     tenantId: tenantId
     enableRbacAuthorization: enableRbac  // Use the enableRbac parameter
     // checkov:skip=CKV_AZURE_42:Risk accepted—recoverability is parameterized for dev; prod enforces soft-delete and retention

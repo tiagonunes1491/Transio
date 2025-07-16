@@ -1,3 +1,4 @@
+
 /*
  * =============================================================================
  * Bootstrap Key Vault for Transio
@@ -54,6 +55,8 @@
  * 3. Deploy platform infrastructure referencing this Key Vault
  * 4. Platform services access secrets via managed identity and RBAC
  */
+
+
 
 targetScope = 'resourceGroup'
 
@@ -114,6 +117,9 @@ param kvEnablePublicNetworkAccess bool = false
 @allowed(['Allow', 'Deny'])
 param kvNetworkAclsDefaultAction string = 'Deny'
 
+@description('Set to true to recover a soft-deleted Key Vault instead of creating a new one. This should be a one-time operation.')
+param recoverExistingVault bool = false
+
 /*
  * =============================================================================
  * RESOURCE NAMING AND TAGGING MODULES
@@ -162,6 +168,7 @@ module kv '../modules/security/keyvault.bicep' = {
     location:                    resourceLocation
     sku:                         kvSku
     tenantId:                    tenantId
+    createMode:                  recoverExistingVault ? 'recover' : 'default'
     enableRbac:                  kvRbac
     enablePurgeProtection:       kvPurgeProtection
     enablePublicNetworkAccess:   kvEnablePublicNetworkAccess

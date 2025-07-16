@@ -42,49 +42,71 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+
       - name: 'Deploy Key Vault Infrastructure'
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
           PLATFORM: ${{ github.event.inputs.platform }}
           RG: ${{ vars.RG }}
+          KEYVAULT: ${{ vars.KEYVAULT }}
         run: |
           echo "🚀 Deploying Key Vault bootstrap infrastructure..."
           echo "Environment: $ENVIRONMENT"
           echo "Platform: $PLATFORM"
-          
+          echo "Key Vault: $KEYVAULT"
           # Use environment variable for resource group name
           RG_NAME="$RG"
-          
           # Verify resource group exists (fail if it doesn't)
           if ! az group show --name "$RG_NAME" 2>/dev/null; then
             echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
             exit 1
           fi
-          
+
           echo "✅ Resource group '$RG_NAME' exists"
-          
+
           # Set parameter file based on platform and environment
           PARAM_FILE="./infra/10-bootstrap-kv/$PLATFORM.$ENVIRONMENT.bicepparam"
-          
+
           if [ ! -f "$PARAM_FILE" ]; then
             echo "❌ Parameter file not found: $PARAM_FILE"
             exit 1
           fi
-          
+
           echo "Using parameter file: $PARAM_FILE"
-          
+
           # Add deployment metadata
           deployment_name="kv-bootstrap-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
-          
+
+          # Check if Key Vault is in soft-delete state
+          RECOVER_FLAG=""
+          if [ -n "$KEYVAULT" ]; then
+            echo "Checking if Key Vault '$KEYVAULT' is in soft-delete state..."
+            SOFT_DELETED=$(az keyvault list-deleted --query "[?name=='$KEYVAULT'] | [0]" --output tsv)
+            if [ -n "$SOFT_DELETED" ]; then
+              echo "⚠️ Key Vault '$KEYVAULT' is in soft-delete state. Will attempt recovery."
+              RECOVER_FLAG="recoverExistingVault=true"
+            else
+              echo "Key Vault '$KEYVAULT' is not in soft-delete state."
+            fi
+          else
+            echo "KEYVAULT variable not set. Skipping soft-delete check."
+          fi
+
+          # Build parameters string
+          PARAMS=("$PARAM_FILE")
+          if [ -n "$RECOVER_FLAG" ]; then
+            PARAMS+=("$RECOVER_FLAG")
+          fi
+
           az deployment group create \
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters "$PARAM_FILE" \
+            --parameters @"$PARAM_FILE" recoverExistingVault=$RECOVER \
             --debug
-          
+            
           echo "✅ Key Vault deployment completed successfully!"
-          
+
           # Show deployment outputs
           echo "Deployment outputs:"
           az deployment group show \

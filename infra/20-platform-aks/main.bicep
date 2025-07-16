@@ -271,7 +271,6 @@ var subnets  = [
 // ========== STANDARDIZED TAGGING ==========
 
 module standardTagsModule '../modules/shared/tagging.bicep' = {
-  scope: subscription()
   name: 'standard-tags-platform'
   params: {
     environment: environmentName
@@ -287,7 +286,6 @@ module standardTagsModule '../modules/shared/tagging.bicep' = {
 // ========== RESOURCE NAMING ========== 
 module appGwNsgNamingModule '../modules/shared/naming.bicep' = {
   name: 'appgw-nsg-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -297,7 +295,6 @@ module appGwNsgNamingModule '../modules/shared/naming.bicep' = {
 }
 
 module vnetNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'vnet-naming'
   params: {
     projectCode: projectCode
@@ -310,7 +307,6 @@ module vnetNamingModule '../modules/shared/naming.bicep' = {
 
 
 module peNsgNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'pe-nsg-naming'
   params: {    
     projectCode: projectCode
@@ -323,7 +319,6 @@ module peNsgNamingModule '../modules/shared/naming.bicep' = {
 
 module acrNamingModule '../modules/shared/naming.bicep' = {
   name: 'acr-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -334,7 +329,6 @@ module acrNamingModule '../modules/shared/naming.bicep' = {
 
 module cosmosNamingModule '../modules/shared/naming.bicep' = {
   name: 'cosmos-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -345,7 +339,6 @@ module cosmosNamingModule '../modules/shared/naming.bicep' = {
 
 module aksNamingModule '../modules/shared/naming.bicep' = {
   name: 'aks-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -356,7 +349,6 @@ module aksNamingModule '../modules/shared/naming.bicep' = {
 
 module appGwNamingModule '../modules/shared/naming.bicep' = {
   name: 'appgw-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -367,7 +359,6 @@ module appGwNamingModule '../modules/shared/naming.bicep' = {
 
 module appGwPipNamingModule '../modules/shared/naming.bicep' = {
   name: 'appgw-pip-naming'
-  scope: subscription()
   params: {
     projectCode: projectCode
     environment: environmentName
@@ -379,7 +370,6 @@ module appGwPipNamingModule '../modules/shared/naming.bicep' = {
 module uamiNamingModules '../modules/shared/naming.bicep' = [
   for (item, i) in managedIdentities: {
     name: 'uami-naming-${item.uamiName}'
-    scope: subscription()
     params: {
       projectCode: projectCode
       environment: environmentName
