@@ -32,12 +32,18 @@ param workloadIdentities = {
   // Main PaaS workload identity with Contributor access to PaaS spoke RG
   contributor: {
     ENV: 'prod-swa'
-    ROLE: 'contributor'
+    ROLE: 'contributor,KeyVault Secrets Officer'
     federationTypes: 'environment'
   }
   acrPush: {
         ENV: 'prod-swa'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
-    }
+  }
+
+  kvSecOfficer: {
+        ENV: 'prod-swa'
+        ROLE: 'SecretsOfficer'
+        federationTypes: 'environment'
+    }    
 }
