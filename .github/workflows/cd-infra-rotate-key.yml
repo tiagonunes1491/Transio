@@ -33,7 +33,7 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          client-id: ${{ secrets.CLIENTID_IAC_SECRETS }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
