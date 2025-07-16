@@ -1,4 +1,11 @@
+[![](https://img.shields.io/badge/status-active--development-orange)](https://github.com/tiagonunes1491/Transio-Secrets)
+
+> ⚠️ **This repository is for active development.**
+> For the stable and production-ready version, please visit: [Transio-Secrets](https://github.com/tiagonunes1491/Transio-Secrets)
+
 # Transio: Cloud-Native Security Showcase
+
+
 [![](https://img.shields.io/badge/license-MIT-blue)](https://github.com/tiagonunes1491/Transio/blob/main/LICENSE)
 
 **Secure secret sharing with pass‑phrase end‑to‑end encryption *or* managed‑key encryption, plus self‑destructing links — purpose‑built to eliminate secret sprawl across teams and incident‑response workflows.**
