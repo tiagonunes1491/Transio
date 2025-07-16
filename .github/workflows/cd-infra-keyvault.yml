@@ -78,12 +78,12 @@ jobs:
           deployment_name="kv-bootstrap-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
 
 
-          # Check if Key Vault is in soft-delete state (robust detection)
+          # Check if Key Vault is in soft-delete state (super simple approach)
           RECOVER="false"
           if [ -n "$KEYVAULT" ]; then
             echo "Checking if Key Vault '$KEYVAULT' is in soft-delete state..."
-            SOFT_DELETED=$(az keyvault list-deleted --query "[?name=='${KEYVAULT}'].name" --output tsv)
-            if [ "$SOFT_DELETED" = "$KEYVAULT" ]; then
+            # Simple direct grep for the vault name
+            if az keyvault list-deleted | grep $KEYVAULT; then
               echo "⚠️ Key Vault '$KEYVAULT' is in soft-delete state. Will attempt recovery."
               RECOVER="true"
             else
