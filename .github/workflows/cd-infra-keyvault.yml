@@ -81,7 +81,7 @@ jobs:
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
             --parameters "$PARAM_FILE" \
-            --verbose
+            --debug
           
           echo "✅ Key Vault deployment completed successfully!"
           
