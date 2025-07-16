@@ -82,10 +82,31 @@ jobs:
           RECOVER="false"
           VAULT_NAME=${KEYVAULT}
           echo "Checking if Key Vault '${VAULT_NAME}' is in soft-delete state..."
-            
-          # Check for soft-deleted state - use || true to prevent failure
-          DELETED_CHECK=$(az keyvault show-deleted --name "${VAULT_NAME}") || true
-            
+          
+          # Create temp files for capturing stdout and stderr
+          STDOUT_FILE=$(mktemp)
+          STDERR_FILE=$(mktemp)
+          
+          # Execute command, redirecting stdout and stderr to separate files
+          az keyvault show-deleted --name "${VAULT_NAME}" > "$STDOUT_FILE" 2> "$STDERR_FILE" || true
+          
+          # Capture exit code
+          CMD_EXIT_CODE=$?
+          
+          # Read the output files
+          STDOUT_CONTENT=$(<"$STDOUT_FILE")
+          STDERR_CONTENT=$(<"$STDERR_FILE")
+          
+          # Show complete debug information
+          echo "Command exit code: $CMD_EXIT_CODE"
+          echo "Standard output:"
+          echo "$STDOUT_CONTENT"
+          echo "Standard error:"
+          echo "$STDERR_CONTENT"
+          
+          # Use stdout for the deleted check
+          DELETED_CHECK="$STDOUT_CONTENT"
+          
           # Log response for debugging
           echo "Response from show-deleted check:"
           echo "$DELETED_CHECK"
