@@ -1,3 +1,4 @@
+
 name: CD - Seed Azure Key Vault
 on:
   workflow_dispatch:
@@ -19,6 +20,10 @@ on:
         - swa
         - aks
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   seed-keyvault:
     runs-on: ubuntu-latest
@@ -37,8 +42,8 @@ jobs:
         id: generate_key
         run: |
           python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" > key.txt
-          echo "::set-output name=fernet_key::$(cat key.txt)"
-      
+          echo "fernet_key=$(cat key.txt)" >> $GITHUB_OUTPUT
+
       - name: Set Key Vault Secret
         run: |
-            az keyvault secret set --vault-name "${{ vars.KEYVAULT }}" --name encryption-key --value "$(cat key.txt)"
+          az keyvault secret set --vault-name "${{ vars.KEYVAULT }}" --name encryption-key --value "$(cat key.txt)"
