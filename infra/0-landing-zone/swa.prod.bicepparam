@@ -31,7 +31,7 @@ param gitHubRepositoryName = 'Transio'
 param workloadIdentities = {
   // Main PaaS workload identity with Contributor access to PaaS spoke RG
   contributor: {
-    ENV: 'prod-swa-protected'
+    ENV: 'prod-swa'
     ROLE: 'contributor'
     federationTypes: 'environment'
   }
