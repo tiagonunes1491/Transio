@@ -183,7 +183,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 module uamiNamingModules '../modules/shared/naming.bicep' = [
   for (item, i) in items(workloadIdentities): {
     name: 'uami-naming-${item.key}'
-    scope: subscription()
+    scope: rg
     params: {
       projectCode: projectCode
       environment: environmentName

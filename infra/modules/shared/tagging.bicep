@@ -51,7 +51,7 @@
  * deployment.
  */
 
-targetScope = 'subscription'
+//targetScope = 'subscription'
 
 // Input Parameters
 @description('Environment name')

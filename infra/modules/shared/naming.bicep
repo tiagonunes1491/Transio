@@ -44,7 +44,7 @@
  * This module operates at subscription scope to support resource group
  * naming and cross-resource naming consistency.
  */
-targetScope = 'subscription'
+//targetScope = 'subscription'
 
 /*
  * =============================================================================
