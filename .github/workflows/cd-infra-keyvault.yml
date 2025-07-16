@@ -78,29 +78,45 @@ jobs:
           deployment_name="kv-bootstrap-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
 
 
-          # Check if Key Vault is in soft-delete state (force variable expansion)
+          # Check if Key Vault is in soft-delete state
           RECOVER="false"
-          if [ -n "$KEYVAULT" ]; then
-            # Store actual value in a temp variable to verify
-            VAULT_NAME=${KEYVAULT}
-            echo "Checking if Key Vault '${VAULT_NAME}' is in soft-delete state..."
+          VAULT_NAME=${KEYVAULT}
+          echo "Checking if Key Vault '${VAULT_NAME}' is in soft-delete state..."
             
-            # Get deleted vaults as JSON and use grep to check for the specific vault
-            DELETED_VAULTS=$(az keyvault list-deleted -o json)
-            echo "Deleted vaults found:"
-            echo "$DELETED_VAULTS" | grep "name"
+          # Check for soft-deleted state - use || true to prevent failure
+          DELETED_CHECK=$(az keyvault show-deleted --name "${VAULT_NAME}") || true
             
-            # Check if our vault name exists in the deleted vaults output
-            if echo "$DELETED_VAULTS" | grep -q "\"name\": \"${VAULT_NAME}\""; then
+          # Log response for debugging
+          echo "Response from show-deleted check:"
+          echo "$DELETED_CHECK"
+            
+          # Set recovery flag if response is non-empty
+          if [[ -n "$DELETED_CHECK" ]]; then
               echo "⚠️ Key Vault '${VAULT_NAME}' is in soft-delete state. Will attempt recovery."
               RECOVER="true"
-            else
-              echo "Key Vault '${VAULT_NAME}' is not in soft-delete state."
-            fi
-          else
-            echo "KEYVAULT variable not set. Skipping soft-delete check."
           fi
 
+          # Log recovery status
+          echo "Recovery status: $RECOVER"
+
+          # Deploy with bicepparam file and recovery parameter
+          echo "Deploying with recoverExistingVault=$RECOVER"
+          
+          az deployment group create \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --template-file ./infra/10-bootstrap-kv/main.bicep \
+            --parameters "@$PARAM_FILE" recoverExistingVault=$RECOVER
+            
+          echo "✅ Key Vault deployment completed successfully!"
+
+          # Show deployment outputs
+          echo "Deployment outputs:"
+          az deployment group show \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --query properties.outputs
+      
         #   # Deploy with bicepparam file and recovery parameter
         #   echo "Deploying with recoverExistingVault=$RECOVER"
           
