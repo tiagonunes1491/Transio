@@ -49,11 +49,15 @@ jobs:
           PLATFORM: ${{ github.event.inputs.platform }}
           RG: ${{ vars.RG }}
           KEYVAULT: ${{ vars.KEYVAULT }}
+          RECOVER: ${{ secrets.KEYVAULT_RECOVER }}
         run: |
           echo "🚀 Deploying Key Vault bootstrap infrastructure..."
           echo "Environment: $ENVIRONMENT"
           echo "Platform: $PLATFORM"
           echo "Key Vault: $KEYVAULT"
+          # Set RECOVER to false if it's not defined
+          RECOVER="${RECOVER:-false}"
+          echo "Key Vault recovery: $RECOVER"
           # Use environment variable for resource group name
           RG_NAME="$RG"
           # Verify resource group exists (fail if it doesn't)
@@ -76,50 +80,7 @@ jobs:
 
           # Add deployment metadata
           deployment_name="kv-bootstrap-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
-
-
-          # Check if Key Vault is in soft-delete state
-          RECOVER="false"
-          VAULT_NAME=${KEYVAULT}
-          echo "Checking if Key Vault '${VAULT_NAME}' is in soft-delete state..."
-          
-          # Create temp files for capturing stdout and stderr
-          STDOUT_FILE=$(mktemp)
-          STDERR_FILE=$(mktemp)
-          
-          # Execute command, redirecting stdout and stderr to separate files
-          az keyvault show-deleted --name "${VAULT_NAME}" > "$STDOUT_FILE" 2> "$STDERR_FILE" || true
-          
-          # Capture exit code
-          CMD_EXIT_CODE=$?
-          
-          # Read the output files
-          STDOUT_CONTENT=$(<"$STDOUT_FILE")
-          STDERR_CONTENT=$(<"$STDERR_FILE")
-          
-          # Show complete debug information
-          echo "Command exit code: $CMD_EXIT_CODE"
-          echo "Standard output:"
-          echo "$STDOUT_CONTENT"
-          echo "Standard error:"
-          echo "$STDERR_CONTENT"
-          
-          # Use stdout for the deleted check
-          DELETED_CHECK="$STDOUT_CONTENT"
-          
-          # Log response for debugging
-          echo "Response from show-deleted check:"
-          echo "$DELETED_CHECK"
-            
-          # Set recovery flag if response is non-empty
-          if [[ -n "$DELETED_CHECK" ]]; then
-              echo "⚠️ Key Vault '${VAULT_NAME}' is in soft-delete state. Will attempt recovery."
-              RECOVER="true"
-          fi
-
-          # Log recovery status
-          echo "Recovery status: $RECOVER"
-
+      
           # Deploy with bicepparam file and recovery parameter
           echo "Deploying with recoverExistingVault=$RECOVER"
           
@@ -127,7 +88,7 @@ jobs:
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters "@$PARAM_FILE" recoverExistingVault=$RECOVER
+            --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
             
           echo "✅ Key Vault deployment completed successfully!"
 
@@ -137,24 +98,6 @@ jobs:
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --query properties.outputs
-      
-        #   # Deploy with bicepparam file and recovery parameter
-        #   echo "Deploying with recoverExistingVault=$RECOVER"
-          
-        #   az deployment group create \
-        #     --name "$deployment_name" \
-        #     --resource-group "$RG_NAME" \
-        #     --template-file ./infra/10-bootstrap-kv/main.bicep \
-        #     --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
-            
-        #   echo "✅ Key Vault deployment completed successfully!"
-
-        #   # Show deployment outputs
-        #   echo "Deployment outputs:"
-        #   az deployment group show \
-        #     --name "$deployment_name" \
-        #     --resource-group "$RG_NAME" \
-        #     --query properties.outputs
 
       - name: 'Trigger Key Vault Seeding'
         uses: actions/github-script@v7
