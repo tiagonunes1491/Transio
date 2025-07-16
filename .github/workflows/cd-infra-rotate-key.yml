@@ -1,5 +1,4 @@
 name: CD - Seed Azure Key Vault
-
 on:
   workflow_dispatch:
     inputs:
