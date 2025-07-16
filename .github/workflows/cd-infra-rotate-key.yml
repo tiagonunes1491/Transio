@@ -1,5 +1,4 @@
-name: Seed Azure Key Vault
-
+name: CD - Seed Azure Key Vault
 on:
   workflow_dispatch:
     inputs:
@@ -29,8 +28,8 @@ jobs:
       - name: 'Login to Azure'
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.CLIENTID_ART_CONT }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
 
@@ -42,4 +41,4 @@ jobs:
       
       - name: Set Key Vault Secret
         run: |
-            az keyvault secret set --vault-name "${{ env.KEYVAULT_NAME }}" --name encryption-key --value "$(cat key.txt)"
+            az keyvault secret set --vault-name "${{ vars.KEYVAULT }}" --name encryption-key --value "$(cat key.txt)"
