@@ -123,7 +123,6 @@ param kvNetworkAclsDefaultAction string = 'Deny'
 // ========== STANDARDIZED TAGGING ==========
 
 module standardTagsModule '../modules/shared/tagging.bicep' = {
-  scope: subscription()
   name: 'standard-tags-bootstrap-kv'
   params: {
     environment: environmentName
@@ -139,7 +138,6 @@ module standardTagsModule '../modules/shared/tagging.bicep' = {
 // ========== RESOURCE NAMING ==========
 
 module kvNamingModule '../modules/shared/naming.bicep' = {
-  scope: subscription()
   name: 'kv-naming'
   params: {
     projectCode: projectCode
