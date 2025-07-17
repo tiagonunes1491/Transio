@@ -1,0 +1,193 @@
+name: 'CD - SWA Container App and Static Web App'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+        
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+jobs:
+  determine-environment:
+    name: 'Determine Environment'
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+    steps:
+      - name: 'Set Environment'
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-workload:
+    name: 'Deploy SWA Container App and Static Web App'
+    runs-on: ubuntu-latest
+    needs: determine-environment
+    environment: ${{ needs.determine-environment.outputs.environment }}-swa
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 'Validate Prerequisites'
+        env:
+          ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          RG: ${{ vars.RG }}
+        run: |
+          echo "🔍 Validating prerequisites..."
+          echo "Environment: $ENVIRONMENT"
+          
+          # Use environment variable for resource group name
+          RG_NAME="$RG"
+          
+          # Verify resource group exists (fail if it doesn't)
+          if ! az group show --name "$RG_NAME" 2>/dev/null; then
+            echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
+            exit 1
+          fi
+
+          echo "✅ Resource group '$RG_NAME' exists"
+
+          # Set parameter file based on environment
+          PARAM_FILE="./infra/30-workload-swa/main.$ENVIRONMENT.bicepparam"
+
+          if [ ! -f "$PARAM_FILE" ]; then
+            echo "❌ Parameter file not found: $PARAM_FILE"
+            exit 1
+          fi
+
+          echo "✅ Parameter file found: $PARAM_FILE"
+
+          # Validate required platform infrastructure exists
+          echo "🔍 Checking platform infrastructure dependencies..."
+          
+          # Check if Container Apps Environment exists
+          CONTAINER_ENV_NAME=$(az bicep build --file ./infra/30-workload-swa/main.bicep --stdout | jq -r '.parameters.containerAppsEnvironmentName.defaultValue // empty')
+          if [ -z "$CONTAINER_ENV_NAME" ]; then
+            echo "⚠️ Container Apps Environment name not found in bicep template"
+          else
+            echo "✅ Container Apps Environment reference found: $CONTAINER_ENV_NAME"
+          fi
+
+      - name: 'Deploy Infrastructure (What-If)'
+        env:
+          ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          RG: ${{ vars.RG }}
+        run: |
+          echo "🔍 Running what-if analysis..."
+          
+          RG_NAME="$RG"
+          PARAM_FILE="./infra/30-workload-swa/main.$ENVIRONMENT.bicepparam"
+          deployment_name="swa-workload-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
+          
+          # Run what-if analysis
+          az deployment group what-if \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --template-file ./infra/30-workload-swa/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --verbose
+
+      - name: 'Deploy SWA Container App and Static Web App'
+        env:
+          ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          RG: ${{ vars.RG }}
+        run: |
+          echo "🚀 Deploying SWA Container App and Static Web App infrastructure..."
+          echo "Environment: $ENVIRONMENT"
+          
+          RG_NAME="$RG"
+          PARAM_FILE="./infra/30-workload-swa/main.$ENVIRONMENT.bicepparam"
+          deployment_name="swa-workload-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
+          
+          echo "Using parameter file: $PARAM_FILE"
+          echo "Deployment name: $deployment_name"
+
+          # Deploy SWA workload infrastructure
+          echo "Deploying SWA workload infrastructure..."
+          
+          az deployment group create \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --template-file ./infra/30-workload-swa/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --verbose
+            
+          echo "✅ SWA workload deployment completed successfully!"
+
+          # Show deployment outputs
+          echo "📊 Deployment outputs:"
+          az deployment group show \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --query properties.outputs \
+            --output table
+
+      - name: 'Validate Deployment'
+        env:
+          ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          RG: ${{ vars.RG }}
+        run: |
+          echo "🔍 Validating deployment..."
+          
+          RG_NAME="$RG"
+          
+          # Check if Static Web App was created
+          echo "Checking Static Web App..."
+          SWA_COUNT=$(az staticwebapp list --resource-group "$RG_NAME" --query "length(@)" --output tsv)
+          if [ "$SWA_COUNT" -gt 0 ]; then
+            echo "✅ Static Web App found"
+            az staticwebapp list --resource-group "$RG_NAME" --query "[].{Name:name,Status:repositoryUrl,DefaultHostname:defaultHostname}" --output table
+          else
+            echo "⚠️ No Static Web App found"
+          fi
+          
+          # Check if Container App was created
+          echo "Checking Container App..."
+          CA_COUNT=$(az containerapp list --resource-group "$RG_NAME" --query "length(@)" --output tsv)
+          if [ "$CA_COUNT" -gt 0 ]; then
+            echo "✅ Container App found"
+            az containerapp list --resource-group "$RG_NAME" --query "[].{Name:name,Status:properties.provisioningState,FQDN:properties.configuration.ingress.fqdn}" --output table
+          else
+            echo "⚠️ No Container App found"
+          fi
+
+      - name: 'Generate Deployment Summary'
+        env:
+          ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
+          RG: ${{ vars.RG }}
+        run: |
+          echo "📋 Deployment Summary"
+          echo "===================="
+          echo "Environment: $ENVIRONMENT"
+          echo "Resource Group: $RG"
+          echo "Deployment Time: $(date)"
+          echo "GitHub Run ID: ${{ github.run_id }}"
+          echo "GitHub SHA: ${{ github.sha }}"
+          echo ""
+          echo "🎯 Deployed Resources:"
+          az resource list --resource-group "$RG" --query "[?contains(type, 'Microsoft.Web/staticSites') || contains(type, 'Microsoft.App/containerApps')].{Name:name,Type:type,Status:properties.provisioningState}" --output table
