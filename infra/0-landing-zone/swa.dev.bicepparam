@@ -29,7 +29,6 @@ param gitHubRepositoryName = 'Transio'
 // PaaS workload identities configuration
 // These UAMIs will be used for PaaS workloads (Container Apps, Static Web Apps, etc.)
 param workloadIdentities = {
-  // Main PaaS workload identity with Contributor access to PaaS spoke RG
   contributor: {
     ENV: 'dev-swa'
     ROLE: 'contributor'
@@ -46,3 +45,10 @@ param workloadIdentities = {
         federationTypes: 'environment'
     }    
 }
+param platformIdentities = {
+  cabackend: {
+    ENV: 'dev-swa'
+    ROLES: ['AcrPull', 'SecretsUser', 'CosmosDbDataContributor']
+  }
+}
+

@@ -42,22 +42,22 @@
 @description('Object ID of the principal (UAMI, SP, AKS, etc.)')
 param principalId string
 
-@description('Full roleDefinitionId path or built-in GUID')
-param roleDefinitionId string
+@description('Array of full roleDefinitionId paths or built-in GUIDs')
+param roleDefinitionId array
 
-resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for roleId in roleDefinitionId: {
   // Generate deterministic GUID based on principal, role, and subscription for idempotent deployments
-  name: guid(principalId, roleDefinitionId, subscription().id)
+  name: guid(principalId, roleId, subscription().id)
   properties: {
     principalId: principalId
     // Handle both full resource IDs and role GUIDs
     // If the roleDefinitionId contains '/providers/', treat it as a full resource ID
     // Otherwise, convert the GUID to a subscription-scoped role definition resource ID
-    roleDefinitionId: contains(roleDefinitionId, '/providers/') ? roleDefinitionId : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleDefinitionId)
+    roleDefinitionId: contains(roleId, '/providers/') ? roleId : subscriptionResourceId('Microsoft.Authorization/roleDefinitions', roleId)
     // Principal type is set to ServicePrincipal for UAMIs and Service Principals
     // Note: This works for User Assigned Managed Identities despite the name
     principalType: 'ServicePrincipal'
   }
-}
+}]
 
-output assignmentId string = assignment.id
+output assignmentId array = [for i in range(0, length(roleDefinitionId)): assignment[i].id]

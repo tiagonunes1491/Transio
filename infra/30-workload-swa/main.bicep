@@ -33,7 +33,7 @@
  * │                                                                         │
  * │  Integration Points:                                                    │
  * │  • Container Apps Environment (existing platform infrastructure)       │
- * │  • User-Assigned Managed Identity (from identity deployment)           │
+ * │  • User-Assigned Managed Identity (existing, with pre-configured RBAC) │
  * │  • Key Vault secrets injection for secure configuration                │
  * │  • Container Registry for backend image deployment                     │
  * └─────────────────────────────────────────────────────────────────────────┘
@@ -60,7 +60,8 @@
  * DEPLOYMENT SCOPE:
  * This template operates at resource group scope to deploy application
  * components that utilize existing platform infrastructure including
- * Container Apps Environment, networking, and identity management.
+ * Container Apps Environment, networking, identity management, and RBAC
+ * role assignments which are assumed to be already configured.
  */
 targetScope = 'resourceGroup'
 
@@ -113,14 +114,8 @@ param acaEnvironmentResourceGroupName string
 @description('Name of existing Container Apps Environment for backend deployment')
 param acaEnvironmentName string
 
-@description('Name of existing Azure Container Registry for pull permissions')
-param acrName string
-
-@description('Name of existing Cosmos DB account for data access permissions')
-param cosmosDbAccountName string
-
-@description('Name of existing Key Vault for secrets management')
-param keyVaultName string
+@description('Name of existing User Assigned Managed Identity')
+param uamiName string
 
 @description('Cosmos DB database name for scoped RBAC assignment')
 param cosmosDatabaseName string = 'dev-swa'
@@ -130,24 +125,15 @@ param cosmosContainerName string = 'secrets'
 
 // ========== EXISTING RESOURCE REFERENCES ==========
 
-// Reference existing shared resources
-resource sssplatacr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
-  name: acrName
-}
-
-resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
-  name: cosmosDbAccountName
-}
-
-// Reference existing Key Vault resource
-resource kv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
-  name: keyVaultName
-}
-
 // Reference existing infrastructure
 resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
   name: acaEnvironmentName
   scope: resourceGroup(subscription().subscriptionId, acaEnvironmentResourceGroupName)
+}
+
+// Reference existing User Assigned Managed Identity
+resource existingUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: uamiName
 }
 
 /*
@@ -214,72 +200,11 @@ module swaNamingModule '../modules/shared/naming.bicep' = {
   }
 }
 
-// Generate resource names using naming module
-module uamiNamingModule '../modules/shared/naming.bicep' = {
-  name: 'uami-naming'
-  params: {
-    projectCode: projectCode
-    environment: environmentName
-    serviceCode: serviceCode
-    resourceType: 'id'
-    suffix: 'ca-backend'
-  }
-}
-
 /*
  * =============================================================================
  * APPLICATION DEPLOYMENT MODULES
  * =============================================================================
  */
-
-
-
-
-// ========== USER ASSIGNED MANAGED IDENTITY ==========
-
-module uami '../modules/identity/uami.bicep' = {
-  name: 'uami'
-  params: {
-    uamiLocation: resourceLocation
-    uamiNames: [uamiNamingModule.outputs.resourceName]
-    tags: standardTagsModule.outputs.tags
-  }
-}
-
-// ========== RBAC ASSIGNMENTS ==========
-
-// Deploy ACR RBAC at the ACR scope
-module acrRbac '../modules/identity/rbacAcr.bicep' = {
-  name: 'acrRbac'
-  params: {
-    registryId: sssplatacr.id
-    principalId: uami.outputs.uamis[0].principalId
-    roleDefinitionId: '7f951dda-4ed3-4680-a7ca-43fe172d538d' // AcrPull role
-  }
-}
-
-// Deploy Key Vault RBAC at the Key Vault scope
-module keyVaultRbac '../modules/identity/rbacKv.bicep' = {
-  name: 'keyVaultRbac'
-  params: {
-    keyVaultId: kv.id
-    principalId: uami.outputs.uamis[0].principalId
-    roleDefinitionId: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
-  }
-}
-
-// Deploy Cosmos DB RBAC in the shared resource group
-module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
-  name: 'cosmosRbac'
-  params: {
-    accountName: sssplatcosmos.name
-    principalId: uami.outputs.uamis[0].principalId
-    roleDefinitionId: '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor role
-    databaseName: cosmosDatabaseName
-  }
-}
-
-
 
 // ========== CONTAINER APP DEPLOYMENT ==========
 
@@ -287,7 +212,7 @@ module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'AZURE_CLIENT_ID'
-    value: uami.outputs.uamis[0].clientId
+    value: existingUami.properties.clientId
   }
   {
     name: 'COSMOS_DATABASE_NAME'
@@ -318,25 +243,25 @@ module containerApp '../modules/container/container-app.bicep' = {
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: {
-        '${uami.outputs.uamis[0].id}': {}
+        '${existingUami.id}': {}
       }
     }
     secrets: [
       {
         name: 'encryption-key'
         keyVaultUrl: encryptionKeyUri
-        identity: uami.outputs.uamis[0].id
+        identity: existingUami.id
       }
       {
         name: 'encryption-key-previous'
         keyVaultUrl: encryptionKeyPreviousUri
-        identity: uami.outputs.uamis[0].id
+        identity: existingUami.id
       }
     ]
     registries: [
       {
         server: split(containerImage, '/')[0] // Extract ACR server from image
-        identity: uami.outputs.uamis[0].id
+        identity: existingUami.id
       }
     ]
     environmentVariables: containerAppEnvironmentVariables

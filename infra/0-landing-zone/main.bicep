@@ -21,12 +21,14 @@
  * │  │  │                     │  │                                     │  ││
  * │  │  │ • Creator Identity  │  │ • Environment-based                 │  ││
  * │  │  │ • ACR Push Identity │  │ • Passwordless Authentication       │  ││
+ * │  │  │ • Platform Identities │  │ • (Only for GitHub workflow IDs)    │  ││
  * │  │  └─────────────────────┘  └─────────────────────────────────────┘  ││
  * │  │                                                                     ││
  * │  │  ┌─────────────────────────────────────────────────────────────────┐││
  * │  │  │ RBAC Role Assignments                                          │││
  * │  │  │ • Contributor permissions for infrastructure creation          │││
  * │  │  │ • AcrPush permissions for container registry operations        │││
+ * │  │  │ • Platform-specific permissions for workload resources         │││
  * │  │  └─────────────────────────────────────────────────────────────────┘││
  * │  └─────────────────────────────────────────────────────────────────────┘│
  * └─────────────────────────────────────────────────────────────────────────┘
@@ -35,6 +37,7 @@
  * • Single Resource Group: Centralized organization for SWA workload resources
  * • Managed Identities: Secure, keyless authentication for Azure services
  * • GitHub Federation: Passwordless CI/CD authentication from GitHub Actions
+ * • Platform Identities: Dedicated identities for platform workloads without federation
  * • RBAC: Principle of least privilege access control
  * • Naming Convention: Consistent, predictable resource naming
  * • Tagging Strategy: Comprehensive metadata for governance and cost tracking
@@ -115,6 +118,14 @@ param workloadIdentities object = {
     }
 }
 
+@description('Platform managed identities for workload resources - each entry defines UAMI name suffix and RBAC roles without GitHub federation')
+param platformIdentities object = {
+    caBackend: {
+        ROLES: ['AcrPull', 'SecretsUser', 'CosmosDbDataContributor']
+        suffix: 'ca-backend'
+    }
+}
+
 
 /*
  * =============================================================================
@@ -154,6 +165,9 @@ var standardTags = {
 var roleIdMap = {
   contributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c'
   AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'
+  AcrPull: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d'
+  SecretsUser: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6'
+  CosmosDbDataContributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/00000000-0000-0000-0000-000000000002'
   SecretsOfficer: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 }
 
@@ -195,6 +209,20 @@ module uamiNamingModules '../modules/shared/naming.bicep' = [
   }
 ]
 
+module platUamiNamingModules '../modules/shared/naming.bicep' = [
+  for (item, i) in items(platformIdentities): {
+    name: 'plat-uami-naming-${item.key}'
+    scope: rg
+    params: {
+      projectCode: projectCode
+      environment: environmentName
+      serviceCode: serviceCode
+      resourceType: 'id'
+      suffix: 'plat-${item.key}'
+    }
+  }
+]
+
 // ========== USER-ASSIGNED MANAGED IDENTITIES ===========
 
 module uamiModules '../modules/identity/uami.bicep' = [for (item, i) in items(workloadIdentities): {
@@ -203,6 +231,16 @@ module uamiModules '../modules/identity/uami.bicep' = [for (item, i) in items(wo
   params: {
     uamiLocation: location
     uamiNames: [uamiNamingModules[i].outputs.resourceName]
+    tags: standardTags
+  }
+}]
+
+module platUamiModules '../modules/identity/uami.bicep' = [for (item, i) in items(platformIdentities): {
+  name: 'deploy-plat-uami-${item.key}'
+  scope: rg
+  params: {
+    uamiLocation: location
+    uamiNames: [platUamiNamingModules[i].outputs.resourceName]
     tags: standardTags
   }
 }]
@@ -241,6 +279,16 @@ module rbacAssignments '../modules/identity/rbacRg.bicep' = [for (item, i) in it
   dependsOn: [uamiModules[i]]
 }]
 
+module platRbacAssignments '../modules/identity/rbacRg.bicep' = [for (item, i) in items(platformIdentities): {
+  name: 'deploy-plat-rbac-${item.key}'
+  scope: rg
+  params: {
+    principalId: platUamiModules[i].outputs.uamis[0].principalId
+    roleDefinitionId: [for role in item.value.ROLES: roleIdMap[role]]
+  }
+  dependsOn: [platUamiModules[i]]
+}]
+
 /*
  * =============================================================================
  * OUTPUTS
@@ -262,6 +310,16 @@ output uamiPrincipalIds array = [
 @description('Array of federated credential names for GitHub Actions integration')
 output federatedCredentialNames array = [
   for (item, i) in items(workloadIdentities): contains(split(item.value.federationTypes, ','), 'environment') ? 'gh-env-${item.value.ENV}-${item.key}' : ''
+]
+
+@description('Array of all platform User-Assigned Managed Identity names for platform workloads')
+output platUamiNames array = [
+  for (item, i) in items(platformIdentities): platUamiModules[i].outputs.uamis[0].name
+]
+
+@description('Array of all platform User-Assigned Managed Identity principal IDs for RBAC role assignments')
+output platUamiPrincipalIds array = [
+  for (item, i) in items(platformIdentities): platUamiModules[i].outputs.uamis[0].principalId
 ]
 
 // ========== RESOURCE GROUP OUTPUTS ==========
