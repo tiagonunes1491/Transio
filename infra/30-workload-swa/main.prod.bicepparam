@@ -14,7 +14,7 @@ param ownerEmail = ''
 
 
 // Existing infrastructure references
-param acrName = 'sspswaacrr'
+param acrName = 'tspswaacr'
 param cosmosDbAccountName = 'ts-p-swa-cosmos'
 param keyVaultName = 'tspswakv' // Production Key Vault
 

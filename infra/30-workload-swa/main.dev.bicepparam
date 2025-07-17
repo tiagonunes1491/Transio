@@ -14,7 +14,7 @@ param ownerEmail = ''
 
 
 // Existing infrastructure references
-param acrName = 'ssdswaacr'
+param acrName = 'tsdswaacr'
 param cosmosDbAccountName = 'ts-d-swa-cosmos'
 param keyVaultName = 'tsdswakv' // Note: In future deployments, this should be renamed to 'tsdswakv' to remove 'akv' reference
 
