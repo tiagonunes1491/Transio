@@ -15,7 +15,7 @@ param ownerEmail = ''
 
 // Existing infrastructure references
 param acrName = 'ssdswaacr'
-param cosmosDbAccountName = 'ss-d-swa-cosmos'
+param cosmosDbAccountName = 'ts-d-swa-cosmos'
 param keyVaultName = 'tsdswakv' // Note: In future deployments, this should be renamed to 'tsdswakv' to remove 'akv' reference
 
 // Database configuration
@@ -23,7 +23,7 @@ param cosmosDatabaseName = 'dev-swa'
 param cosmosContainerName = 'secrets'
 
 
-param acaEnvironmentResourceGroupName = 'ss-d-swa-rg'
+param acaEnvironmentResourceGroupName = 'ts-d-swa-rg'
 param acaEnvironmentName = 'ts-d-swa-cae'
 // Application configuration
 param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
