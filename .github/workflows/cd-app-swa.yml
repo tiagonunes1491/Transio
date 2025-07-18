@@ -62,5 +62,4 @@ jobs:
           swa deploy \
             --app-location "./src/frontend/static" \
             --deployment-token "${{ secrets.SWA_DEPLOYMENT_TOKEN }}" \
-            --env "${{ env.ENVIRONMENT }}" \
             --verbose
