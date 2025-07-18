@@ -17,7 +17,7 @@ param ownerEmail = ''
 param cosmosDbAccountName = 'ts-d-swa-cosmos'
 
 // Existing User-Assigned Managed Identity configuration
-param existingUamiName = 'ts-d-swa-id-ca-backend'
+param existingUamiName = 'ts-d-swa-id-plat-ca-backend'
 param uamiResourceGroupName = 'ts-d-swa-rg'
 
 // Database configuration
