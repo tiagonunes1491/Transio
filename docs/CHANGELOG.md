@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.0] - 2025-July Security Automation Enhancement
+
+### Added
+- **SWA Deployment Token Management**: Automated monthly rotation via GitHub Actions with Key Vault storage
+- **Automated Rotation**: `cd-rotate-deployment-token.yml` workflow for monthly token refresh
+- **Credential Management**: SWA deployment tokens stored securely in Azure Key Vault
+- **Federated Identity**: Separate service principals for token generation and Key Vault access
+- **Audit Trail**: Complete logging of token rotation events via Azure Key Vault logs
+
+### Security
+- **Token Rotation**: Automated SWA deployment token rotation on 1st day of every month
+- **Security Automation**: Monthly credential rotation with audit trails
+- **Enhanced Documentation**: Comprehensive documentation of token management workflows
+
+---
+
 ## [0.5.0] - 2025-July Foundation Release
 
 ### Added

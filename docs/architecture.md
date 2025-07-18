@@ -180,6 +180,19 @@ Seeds or rotates Fernet encryption keys:
   2. Stores key as `encryption-key` secret in Key Vault
 - **Security**: Uses `CLIENTID_IAC_SECRETS` federated identity (least privilege)
 
+#### SWA Deployment Token Rotation (`cd-rotate-deployment-token.yml`)
+
+Rotates Static Web App deployment tokens for secure CI/CD:
+
+- **Trigger**: 
+  - **Automatic**: Monthly rotation (1st day of month at 02:00 UTC)
+  - **Manual**: Workflow dispatch for immediate rotation
+- **Process**:
+  1. Generates new SWA deployment token via Azure CLI
+  2. Stores token as `SWA-DEPLOYMENT-TOKEN` secret in Key Vault
+  3. Updates token for both dev and prod environments when scheduled
+- **Security**: Uses separate federated identities for SWA management (`CLIENTID_IAC_CONTRIBUTOR`) and Key Vault access (`CLIENTID_IAC_SECRETS`)
+
 **Security Pattern**: Infrastructure deployment (Contributor) and secret management (Secrets User) use separate service principals following the principle of least privilege.
 
 ---

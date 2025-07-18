@@ -107,6 +107,24 @@ Application resources follow Transio naming convention:
 - Container image built and pushed to Container Registry
 - Application secrets configured in Key Vault
 - GitHub repository configured for Static Web Apps
+- **SWA Deployment Token**: Stored in Key Vault and rotated monthly via GitHub Actions
+
+### SWA Deployment Token Management
+
+The SWA deployment is secured using deployment tokens that are:
+
+- **Stored Securely**: Token stored as `SWA-DEPLOYMENT-TOKEN` secret in Azure Key Vault
+- **Automatically Rotated**: Monthly rotation via `cd-rotate-deployment-token.yml` workflow
+- **Schedule**: Runs on the 1st day of every month at 02:00 UTC
+- **Manual Rotation**: Can be triggered manually via GitHub Actions workflow dispatch
+- **Multi-Environment**: Supports both dev and prod environments with separate tokens
+- **CI/CD Integration**: GitHub Actions workflows retrieve fresh tokens from Key Vault for deployments
+
+The rotation workflow:
+1. Generates new deployment token for the Static Web App
+2. Updates the `SWA-DEPLOYMENT-TOKEN` secret in Key Vault
+3. Uses separate federated identities for SWA management and Key Vault access
+4. Provides audit trail via Azure Key Vault logs
 
 ### Parameters
 

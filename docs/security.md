@@ -2,7 +2,30 @@
 
 ## Executive Summary
 
-Transio delivers a **production‑grade, zero‑knowledge security architecture** built for cloud‑native, enterprise workloads on Azure. The design merges modern cryptography with layered cloud controls to ensure that even an infrastructure compromise cannot expose user secrets.
+Transio delivers a **pr### Infrastructure (Azure)
+
+| Layer      | Control                 | Monitoring               |
+| ---------- | ----------------------- | ------------------------ |
+| Containers | Distroless, UID 101     | Trivy scans              |
+| Network    | Azure CNI NetworkPolicy | NSG + Container Insights |
+| Identity   | Workload Identity (AAD) | AAD logs                 |
+| Secrets    | Key Vault CSI driver    | KV audit logs            |
+| IaC        | Bicep security baseline | Drift detection          |
+
+### Secret Management & Token Rotation
+
+| Component             | Storage         | Rotation Schedule | Automation                    |
+| --------------------- | --------------- | ----------------- | ----------------------------- |
+| Fernet Encryption     | Azure Key Vault | On-demand         | `cd-infra-rotate-key.yml`     |
+| SWA Deployment Token  | Azure Key Vault | Monthly (1st day) | `cd-rotate-deployment-token.yml` |
+| Container Registry    | Managed Identity| N/A (no tokens)   | Azure RBAC                    |
+| Database Access       | Managed Identity| N/A (no tokens)   | Azure RBAC                    |
+
+**SWA Token Security Model**: 
+- Deployment tokens stored securely in Key Vault as `SWA-DEPLOYMENT-TOKEN`
+- Monthly automatic rotation prevents long-lived credential exposure
+- Separate federated identities for token generation vs. Key Vault storage
+- CI/CD workflows retrieve fresh tokens from Key Vault for each deploymentgrade, zero‑knowledge security architecture** built for cloud‑native, enterprise workloads on Azure. The design merges modern cryptography with layered cloud controls to ensure that even an infrastructure compromise cannot expose user secrets.
 
 ### 🔒 Advanced Cryptographic Engineering
 

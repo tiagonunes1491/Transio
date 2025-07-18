@@ -197,7 +197,30 @@ az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "cosmos-endpoin
 az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "encryption-key" --value "base64-encoded-key"
 az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "cosmos-database-name" --value "ssdb"
 az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "cosmos-container-name" --value "secrets"
+
+# SWA deployment token (automatically managed by GitHub Actions)
+az keyvault secret set --vault-name "ts-dev-bootstrap-kv" --name "SWA-DEPLOYMENT-TOKEN" --value "swa-token-value"
 ```
+
+### Automated Secret Management
+
+#### SWA Deployment Token Rotation
+The **SWA deployment token** is automatically managed via GitHub Actions:
+
+- **Secret Name**: `SWA-DEPLOYMENT-TOKEN`
+- **Storage**: Azure Key Vault (environment-specific)
+- **Rotation**: Monthly automated rotation (1st day of month at 02:00 UTC)
+- **Workflow**: `cd-rotate-deployment-token.yml`
+- **Manual Trigger**: Available via GitHub Actions workflow dispatch
+- **Security**: Uses separate federated identities for token generation and Key Vault access
+
+#### Fernet Encryption Keys
+Application encryption keys are automatically generated and rotated:
+
+- **Secret Name**: `encryption-key` 
+- **Generation**: Via `cd-infra-rotate-key.yml` workflow
+- **Trigger**: Automatic (after Key Vault deployment) or manual dispatch
+- **Rotation**: On-demand via GitHub Actions
 
 ## Platform Integration
 
