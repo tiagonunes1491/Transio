@@ -82,37 +82,13 @@ jobs:
         run: |
           echo "🔄 Generating new deployment token for Static Web App..."
           
-          # First check if we can access the SWA
-          echo "🔍 Checking SWA access..."
-          az staticwebapp show \
-            --name "${{ vars.SWA_NAME }}" \
-            --resource-group "${{ vars.RG_NAME }}" \
-            --query "name" \
-            --output tsv
-          
           # Reset/regenerate the deployment token for the SWA
           echo "🔄 Resetting deployment token..."
-          echo "Command: az staticwebapp secrets reset-api-key --name ${{ vars.SWA_NAME }} --resource-group ${{ vars.RG_NAME }}"
-          
-          # Run with verbose output to see what's happening
-          if az staticwebapp secrets reset-api-key \
+          az staticwebapp secrets reset-api-key \
             --name "${{ vars.SWA_NAME }}" \
-            --resource-group "${{ vars.RG_NAME }}" \
-            --verbose \
-            --debug; then
-            echo "✅ Token reset command completed successfully"
-          else
-            echo "❌ Token reset command failed"
-            echo "Let's check the current user and permissions:"
-            az account show --query "{subscriptionId: id, tenantId: tenantId, user: user}" --output table
-            echo "Let's check SWA details:"
-            az staticwebapp show --name "${{ vars.SWA_NAME }}" --resource-group "${{ vars.RG_NAME }}" --output json
-            echo "Let's try to list current secrets to see if we have read access:"
-            az staticwebapp secrets list --name "${{ vars.SWA_NAME }}" --resource-group "${{ vars.RG_NAME }}" --output json || echo "Failed to list secrets"
-            exit 1
-          fi
+            --resource-group "${{ vars.RG_NAME }}"
           
-          # Now retrieve the new token
+          # Retrieve the new token
           echo "🔄 Retrieving new deployment token..."
           NEW_TOKEN=$(az staticwebapp secrets list \
             --name "${{ vars.SWA_NAME }}" \
@@ -137,7 +113,7 @@ jobs:
           # Set the new token in Key Vault
           az keyvault secret set \
             --vault-name "${{ vars.KEYVAULT }}" \
-            --name "SWA_DEPLOYMENT_TOKEN" \
+            --name "SWA-DEPLOYMENT-TOKEN" \
             --value "${{ steps.get-new-token.outputs.deployment_token }}" \
             --description "SWA deployment token for ${{ vars.SWA_NAME }} (Environment: ${{ env.ENVIRONMENT }}, Rotated: $(date -u +%Y-%m-%dT%H:%M:%SZ))" \
             > /dev/null
@@ -156,4 +132,4 @@ jobs:
           echo "Status: ✅ Successfully completed"
           echo ""
           echo "The deployment token has been rotated and stored securely in Key Vault."
-          echo "Applications using the 'SWA_DEPLOYMENT_TOKEN' secret will automatically use the new token."
+          echo "Future deployments using the 'SWA-DEPLOYMENT-TOKEN' secret will use the new token."
