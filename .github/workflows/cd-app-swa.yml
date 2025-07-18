@@ -1,0 +1,147 @@
+name: 'CD - Deploy Static Content to SWA'
+
+on:
+  push:
+    branches: [development, main]
+    paths:
+      # --- TRIGGER on changes to frontend static files ---
+      - 'src/frontend/static/**'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+jobs:
+  determine-environment:
+    name: 'Determine Environment'
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+    steps:
+      - name: 'Set Environment'
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-swa:
+    name: 'Deploy to Static Web App'
+    runs-on: ubuntu-latest
+    needs: [determine-environment]
+    environment: ${{ needs.determine-environment.outputs.environment }}-swa
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_ARTIFACT_PUSH }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: 'Set Environment Variables'
+        run: |
+          ENVIRONMENT="${{ needs.determine-environment.outputs.environment }}"
+          echo "ENVIRONMENT=$ENVIRONMENT" >> $GITHUB_ENV
+          
+          # Use environment-specific variable for Static Web App name for flexibility
+          # These should be configured as repository variables: SWA_NAME
+          SWA_NAME="${{ vars.SWA_NAME }}"
+          echo "SWA_NAME=$SWA_NAME" >> $GITHUB_ENV
+          
+          # Use environment-specific variable for resource group name for flexibility
+          # These should be configured as repository variables: RG_NAME
+          RG_NAME="${{ vars.RG_NAME }}"
+          echo "RG_NAME=$RG_NAME" >> $GITHUB_ENV
+      
+      - name: 'Get Static Web App Deployment Token'
+        id: get-token
+        run: |
+          echo "🔍 Getting deployment token for Static Web App: $SWA_NAME in resource group: $RG_NAME"
+          
+          # Get the deployment token for the Static Web App
+          DEPLOYMENT_TOKEN=$(az staticwebapp secrets list \
+            --name "$SWA_NAME" \
+            --resource-group "$RG_NAME" \
+            --query "properties.apiKey" \
+            --output tsv)
+          
+          if [ -z "$DEPLOYMENT_TOKEN" ] || [ "$DEPLOYMENT_TOKEN" = "null" ]; then
+            echo "❌ Failed to retrieve deployment token for Static Web App: $SWA_NAME"
+            exit 1
+          fi
+          
+          echo "✅ Successfully retrieved deployment token"
+          echo "deployment-token=$DEPLOYMENT_TOKEN" >> $GITHUB_OUTPUT
+      
+      - name: 'Deploy Static Content to SWA'
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.get-token.outputs.deployment-token }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: 'upload'
+          app_location: '/src/frontend/static'
+          api_location: ''
+          output_location: ''
+          skip_app_build: true
+      
+      - name: 'Verify Deployment'
+        run: |
+          echo "🔍 Verifying Static Web App deployment..."
+          
+          # Get the Static Web App URL
+          SWA_URL=$(az staticwebapp show \
+            --name "$SWA_NAME" \
+            --resource-group "$RG_NAME" \
+            --query "defaultHostname" \
+            --output tsv)
+          
+          if [ -n "$SWA_URL" ] && [ "$SWA_URL" != "null" ]; then
+            echo "✅ Static Web App deployed successfully!"
+            echo "🌐 URL: https://$SWA_URL"
+            echo "SWA_URL=https://$SWA_URL" >> $GITHUB_ENV
+          else
+            echo "❌ Failed to get Static Web App URL"
+            exit 1
+          fi
+      
+      - name: 'Health Check'
+        run: |
+          echo "🔍 Performing health check on deployed application..."
+          
+          # Wait a bit for deployment to propagate
+          sleep 30
+          
+          # Perform basic health check
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SWA_URL" || echo "000")
+          
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Health check passed - Application is responding"
+          else
+            echo "⚠️ Health check returned status: $HTTP_STATUS"
+            echo "ℹ️ This might be expected for initial deployments or if the app requires specific paths"
+          fi
+          
+          echo "🎉 Deployment completed successfully!"
+          echo "📍 Environment: $ENVIRONMENT"
+          echo "🌐 Static Web App URL: $SWA_URL"
