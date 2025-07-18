@@ -1,13 +1,16 @@
-name: Deploy to Azure Static Web App
+name: 'CD - Deploy Static Content to SWA'
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, development]
+    paths:
+      - 'src/frontend/static/**'
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy to'
+        description: 'Target environment'
         required: true
+        default: 'dev'
         type: choice
         options:
           - dev
@@ -53,19 +56,11 @@ jobs:
       - name: Install SWA CLI
         run: npm install -g @azure/static-web-apps-cli
 
-      - name: Login to Azure via OIDC
-        uses: azure/login@v2
-        with:
-          client-id:       ${{ secrets.CLIENTID_ARTIFACT_PUSH }}
-          tenant-id:       ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-
-      - name: Deploy via SWA CLI
+      - name: Deploy via SWA CLI with deployment token
         run: |
-          echo "🚀 Deploying [${{ env.ENVIRONMENT }}] to ${{ vars.SWA_NAME }} in RG ${{ vars.RG_NAME }}"
+          echo "🚀 Deploying [${{ env.ENVIRONMENT }}] to Static Web App"
           swa deploy \
             --app-location "./src/frontend/static" \
-            --resource-group "${{ vars.RG_NAME }}" \
-            --app-name "${{ vars.SWA_NAME }}" \
+            --deployment-token "${{ secrets.SWA_DEPLOYMENT_TOKEN }}" \
             --env "${{ env.ENVIRONMENT }}" \
             --verbose
