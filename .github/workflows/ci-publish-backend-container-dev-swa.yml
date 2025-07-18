@@ -25,6 +25,6 @@ jobs:
       build-context: './src/backend'
       environment: dev-swa
     secrets:
-      CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}
+      CLIENTID: ${{ secrets.CLIENTID_ART_PUSH }}
       TENANTID: ${{ vars.AZURE_TENANT_ID }}
       SUBSCRIPTIONID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
