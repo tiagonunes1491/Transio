@@ -82,11 +82,35 @@ jobs:
         run: |
           echo "🔄 Generating new deployment token for Static Web App..."
           
+          # First check if we can access the SWA
+          echo "🔍 Checking SWA access..."
+          az staticwebapp show \
+            --name "${{ vars.SWA_NAME }}" \
+            --resource-group "${{ vars.RG_NAME }}" \
+            --query "name" \
+            --output tsv
+          
           # Reset/regenerate the deployment token for the SWA
           echo "🔄 Resetting deployment token..."
-          az staticwebapp secrets reset-api-key \
+          echo "Command: az staticwebapp secrets reset-api-key --name ${{ vars.SWA_NAME }} --resource-group ${{ vars.RG_NAME }}"
+          
+          # Run with verbose output to see what's happening
+          if az staticwebapp secrets reset-api-key \
             --name "${{ vars.SWA_NAME }}" \
-            --resource-group "${{ vars.RG_NAME }}"
+            --resource-group "${{ vars.RG_NAME }}" \
+            --verbose \
+            --debug; then
+            echo "✅ Token reset command completed successfully"
+          else
+            echo "❌ Token reset command failed"
+            echo "Let's check the current user and permissions:"
+            az account show --query "{subscriptionId: id, tenantId: tenantId, user: user}" --output table
+            echo "Let's check SWA details:"
+            az staticwebapp show --name "${{ vars.SWA_NAME }}" --resource-group "${{ vars.RG_NAME }}" --output json
+            echo "Let's try to list current secrets to see if we have read access:"
+            az staticwebapp secrets list --name "${{ vars.SWA_NAME }}" --resource-group "${{ vars.RG_NAME }}" --output json || echo "Failed to list secrets"
+            exit 1
+          fi
           
           # Now retrieve the new token
           echo "🔄 Retrieving new deployment token..."
