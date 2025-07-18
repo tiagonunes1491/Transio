@@ -28,7 +28,7 @@ param cosmosContainerName = 'secrets'
 param acaEnvironmentResourceGroupName = 'ts-d-swa-rg'
 param acaEnvironmentName = 'ts-d-swa-cae'
 // Application configuration
-param containerImage = 'tsdswacr.azurecr.io/secure-secret-sharer:dev'
+param containerImage = 'tsdswaacr.azurecr.io/secure-secret-sharer:dev'
 
 // Key Vault secrets configuration (simplified approach with direct secret URIs)
 param encryptionKeyUri = 'https://tsdswakv.vault.azure.net/secrets/encryption-key'
