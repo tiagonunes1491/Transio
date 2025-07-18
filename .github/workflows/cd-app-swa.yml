@@ -74,36 +74,27 @@ jobs:
           RG_NAME="${{ vars.RG_NAME }}"
           echo "RG_NAME=$RG_NAME" >> $GITHUB_ENV
       
-      - name: 'Get Static Web App Deployment Token'
-        id: get-token
-        run: |
-          echo "🔍 Getting deployment token for Static Web App: $SWA_NAME in resource group: $RG_NAME"
-          
-          # Get the deployment token for the Static Web App
-          DEPLOYMENT_TOKEN=$(az staticwebapp secrets list \
-            --name "$SWA_NAME" \
-            --resource-group "$RG_NAME" \
-            --query "properties.apiKey" \
-            --output tsv)
-          
-          if [ -z "$DEPLOYMENT_TOKEN" ] || [ "$DEPLOYMENT_TOKEN" = "null" ]; then
-            echo "❌ Failed to retrieve deployment token for Static Web App: $SWA_NAME"
-            exit 1
-          fi
-          
-          echo "✅ Successfully retrieved deployment token"
-          echo "deployment-token=$DEPLOYMENT_TOKEN" >> $GITHUB_OUTPUT
-      
-      - name: 'Deploy Static Content to SWA'
-        uses: Azure/static-web-apps-deploy@v1
+      - name: 'Setup Node.js for SWA CLI'
+        uses: actions/setup-node@v4
         with:
-          azure_static_web_apps_api_token: ${{ steps.get-token.outputs.deployment-token }}
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          action: 'upload'
-          app_location: '/src/frontend/static'
-          api_location: ''
-          output_location: ''
-          skip_app_build: true
+          node-version: '18'
+      
+      - name: 'Install Static Web Apps CLI'
+        run: |
+          npm install -g @azure/static-web-apps-cli
+      
+      - name: 'Deploy to Static Web App'
+        run: |
+          echo "🚀 Deploying to Static Web App: $SWA_NAME in resource group: $RG_NAME"
+          
+          # Deploy using SWA CLI with Azure credentials
+          swa deploy ./src/frontend/static \
+            --resource-group "$RG_NAME" \
+            --app-name "$SWA_NAME" \
+            --env production \
+            --verbose
+          
+          echo "✅ Deployment completed successfully!"
       
       - name: 'Verify Deployment'
         run: |
