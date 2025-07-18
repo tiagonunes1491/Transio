@@ -83,7 +83,7 @@ jobs:
           echo "🔄 Generating new deployment token for Static Web App..."
           
           # Reset/regenerate the deployment token for the SWA
-          NEW_TOKEN=$(az staticwebapp secrets reset \
+          NEW_TOKEN=$(az staticwebapp secrets reset-api-key \
             --name "${{ vars.SWA_NAME }}" \
             --resource-group "${{ vars.RG_NAME }}"
           
