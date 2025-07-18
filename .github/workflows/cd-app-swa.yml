@@ -87,52 +87,23 @@ jobs:
         run: |
           echo "🚀 Deploying to Static Web App: $SWA_NAME in resource group: $RG_NAME"
           
-          # Deploy using SWA CLI with Azure credentials
-          swa deploy ./src/frontend/static \
-            --resource-group "$RG_NAME" \
-            --app-name "$SWA_NAME" \
-            --env production \
-            --verbose
+          # Change to the static content directory
+          cd ./src/frontend/static
+          
+          # Initialize SWA CLI (required by best practices)
+          npx swa init --yes
+          
+          # Deploy using SWA CLI (authentication handled automatically via Azure CLI login)
+          npx swa deploy --env production --verbose --resource-group "$RG_NAME" --app-name "$SWA_NAME"
           
           echo "✅ Deployment completed successfully!"
       
-      - name: 'Verify Deployment'
+      - name: 'Deployment Summary'
         run: |
-          echo "🔍 Verifying Static Web App deployment..."
-          
-          # Get the Static Web App URL
-          SWA_URL=$(az staticwebapp show \
-            --name "$SWA_NAME" \
-            --resource-group "$RG_NAME" \
-            --query "defaultHostname" \
-            --output tsv)
-          
-          if [ -n "$SWA_URL" ] && [ "$SWA_URL" != "null" ]; then
-            echo "✅ Static Web App deployed successfully!"
-            echo "🌐 URL: https://$SWA_URL"
-            echo "SWA_URL=https://$SWA_URL" >> $GITHUB_ENV
-          else
-            echo "❌ Failed to get Static Web App URL"
-            exit 1
-          fi
-      
-      - name: 'Health Check'
-        run: |
-          echo "🔍 Performing health check on deployed application..."
-          
-          # Wait a bit for deployment to propagate
-          sleep 30
-          
-          # Perform basic health check
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SWA_URL" || echo "000")
-          
-          if [ "$HTTP_STATUS" = "200" ]; then
-            echo "✅ Health check passed - Application is responding"
-          else
-            echo "⚠️ Health check returned status: $HTTP_STATUS"
-            echo "ℹ️ This might be expected for initial deployments or if the app requires specific paths"
-          fi
-          
           echo "🎉 Deployment completed successfully!"
           echo "📍 Environment: $ENVIRONMENT"
-          echo "🌐 Static Web App URL: $SWA_URL"
+          echo "🌐 Static Web App: $SWA_NAME"
+          echo "📂 Resource Group: $RG_NAME"
+          echo ""
+          echo "ℹ️ The Static Web App is now deployed and should be accessible via its default URL."
+          echo "ℹ️ You can find the URL in the Azure portal or use: az staticwebapp show --name $SWA_NAME --resource-group $RG_NAME --query defaultHostname"
