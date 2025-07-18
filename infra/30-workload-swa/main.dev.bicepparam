@@ -14,9 +14,11 @@ param ownerEmail = ''
 
 
 // Existing infrastructure references
-param acrName = 'tsdswaacr'
 param cosmosDbAccountName = 'ts-d-swa-cosmos'
-param keyVaultName = 'tsdswakv' // Note: In future deployments, this should be renamed to 'tsdswakv' to remove 'akv' reference
+
+// Existing User-Assigned Managed Identity configuration
+param existingUamiName = 'ts-d-swa-id-ca-backend'
+param uamiResourceGroupName = 'ts-d-swa-rg'
 
 // Database configuration
 param cosmosDatabaseName = 'dev-swa'
@@ -26,7 +28,7 @@ param cosmosContainerName = 'secrets'
 param acaEnvironmentResourceGroupName = 'ts-d-swa-rg'
 param acaEnvironmentName = 'ts-d-swa-cae'
 // Application configuration
-param containerImage = 'ssdswaacr.azurecr.io/secure-secret-sharer:dev'
+param containerImage = 'tsdswacr.azurecr.io/secure-secret-sharer:dev'
 
 // Key Vault secrets configuration (simplified approach with direct secret URIs)
 param encryptionKeyUri = 'https://tsdswakv.vault.azure.net/secrets/encryption-key'

@@ -46,9 +46,9 @@ param workloadIdentities = {
     }    
 }
 param platformIdentities = {
-  cabackend: {
+  'ca-backend': {
     ENV: 'dev-swa'
-    ROLES: ['AcrPull', 'SecretsUser', 'CosmosDbDataContributor']
+    ROLES: ['AcrPull', 'SecretsUser']
   }
 }
 

@@ -14,19 +14,21 @@ param ownerEmail = ''
 
 
 // Existing infrastructure references
-param acrName = 'tspswaacr'
 param cosmosDbAccountName = 'ts-p-swa-cosmos'
-param keyVaultName = 'tspswakv' // Production Key Vault
+
+// Existing User-Assigned Managed Identity configuration
+param existingUamiName = 'ts-p-swa-id-ca-backend'
+param uamiResourceGroupName = 'ts-p-swa-rg'
 
 // Database configuration
 param cosmosDatabaseName = 'prod-swa'
 param cosmosContainerName = 'secrets'
 
 
-param acaEnvironmentResourceGroupName = 'ss-p-swa-rg'
-param acaEnvironmentName = 'ss-p-swa-cae'
+param acaEnvironmentResourceGroupName = 'ts-p-swa-rg'
+param acaEnvironmentName = 'ts-p-swa-cae'
 // Application configuration
-param containerImage = 'sspswaacrr.azurecr.io/secure-secret-sharer:prod'
+param containerImage = 'tspswacr.azurecr.io/secure-secret-sharer:prod'
 
 // Key Vault secrets configuration (simplified approach with direct secret URIs)
 param encryptionKeyUri = 'https://tspswakv.vault.azure.net/secrets/encryption-key'

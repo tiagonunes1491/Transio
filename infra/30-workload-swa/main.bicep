@@ -33,7 +33,7 @@
  * │                                                                         │
  * │  Integration Points:                                                    │
  * │  • Container Apps Environment (existing platform infrastructure)       │
- * │  • User-Assigned Managed Identity (existing, with pre-configured RBAC) │
+ * │  • User-Assigned Managed Identity (from identity deployment)           │
  * │  • Key Vault secrets injection for secure configuration                │
  * │  • Container Registry for backend image deployment                     │
  * └─────────────────────────────────────────────────────────────────────────┘
@@ -60,8 +60,7 @@
  * DEPLOYMENT SCOPE:
  * This template operates at resource group scope to deploy application
  * components that utilize existing platform infrastructure including
- * Container Apps Environment, networking, identity management, and RBAC
- * role assignments which are assumed to be already configured.
+ * Container Apps Environment, networking, and identity management.
  */
 targetScope = 'resourceGroup'
 
@@ -114,8 +113,8 @@ param acaEnvironmentResourceGroupName string
 @description('Name of existing Container Apps Environment for backend deployment')
 param acaEnvironmentName string
 
-@description('Name of existing User Assigned Managed Identity')
-param uamiName string
+@description('Name of existing Cosmos DB account for data access permissions')
+param cosmosDbAccountName string
 
 @description('Cosmos DB database name for scoped RBAC assignment')
 param cosmosDatabaseName string = 'dev-swa'
@@ -123,17 +122,31 @@ param cosmosDatabaseName string = 'dev-swa'
 @description('Cosmos DB container name for application configuration')
 param cosmosContainerName string = 'secrets'
 
+// ========== EXISTING MANAGED IDENTITY REFERENCE ==========
+
+@description('Name of existing User-Assigned Managed Identity for Container App authentication')
+param existingUamiName string
+
+@description('Resource group name containing the existing UAMI')
+param uamiResourceGroupName string = resourceGroup().name
+
 // ========== EXISTING RESOURCE REFERENCES ==========
+
+// Reference existing shared resources
+resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+  name: cosmosDbAccountName
+}
+
+// Reference existing User-Assigned Managed Identity
+resource existingUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: existingUamiName
+  scope: resourceGroup(subscription().subscriptionId, uamiResourceGroupName)
+}
 
 // Reference existing infrastructure
 resource acaEnv 'Microsoft.App/managedEnvironments@2025-01-01' existing = {
   name: acaEnvironmentName
   scope: resourceGroup(subscription().subscriptionId, acaEnvironmentResourceGroupName)
-}
-
-// Reference existing User Assigned Managed Identity
-resource existingUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: uamiName
 }
 
 /*
@@ -205,6 +218,21 @@ module swaNamingModule '../modules/shared/naming.bicep' = {
  * APPLICATION DEPLOYMENT MODULES
  * =============================================================================
  */
+
+// ========== COSMOS DB DATA PLANE RBAC ASSIGNMENT ==========
+
+// Deploy Cosmos DB data plane RBAC assignment only
+module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
+  name: 'cosmosRbac'
+  params: {
+    accountName: sssplatcosmos.name
+    principalId: existingUami.properties.principalId
+    roleDefinitionId: '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor role
+    databaseName: cosmosDatabaseName
+  }
+}
+
+
 
 // ========== CONTAINER APP DEPLOYMENT ==========
 

@@ -121,7 +121,7 @@ param workloadIdentities object = {
 @description('Platform managed identities for workload resources - each entry defines UAMI name suffix and RBAC roles without GitHub federation')
 param platformIdentities object = {
     caBackend: {
-        ROLES: ['AcrPull', 'SecretsUser', 'CosmosDbDataContributor']
+        ROLES: ['AcrPull', 'SecretsUser']
         suffix: 'ca-backend'
     }
 }
@@ -167,7 +167,6 @@ var roleIdMap = {
   AcrPush: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/8311e382-0749-4cb8-b61a-304f252e45ec'
   AcrPull: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d'
   SecretsUser: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6'
-  CosmosDbDataContributor: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/00000000-0000-0000-0000-000000000002'
   SecretsOfficer: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
 }
 
@@ -274,7 +273,7 @@ module rbacAssignments '../modules/identity/rbacRg.bicep' = [for (item, i) in it
   scope: rg
   params: {
     principalId: uamiModules[i].outputs.uamis[0].principalId
-    roleDefinitionId: roleIdMap[item.value.ROLE]
+    roleDefinitionId: [roleIdMap[item.value.ROLE]]
   }
   dependsOn: [uamiModules[i]]
 }]
