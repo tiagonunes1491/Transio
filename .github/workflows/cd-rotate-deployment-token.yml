@@ -106,6 +106,13 @@ jobs:
           echo "::add-mask::$NEW_TOKEN"
           echo "deployment_token=$NEW_TOKEN" >> $GITHUB_OUTPUT
 
+      - name: 'Login to Azure for Key Vault'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_SECRETS }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
       - name: 'Update Token in Key Vault'
         run: |
           echo "🔑 Updating deployment token in Key Vault..."
