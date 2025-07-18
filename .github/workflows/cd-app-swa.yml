@@ -56,7 +56,7 @@ jobs:
           echo "🔑 Retrieving SWA deployment token from Key Vault..."
           DEPLOYMENT_TOKEN=$(az keyvault secret show \
             --vault-name "${{ vars.KEYVAULT }}" \
-            --name "SWA_DEPLOYMENT_TOKEN" \
+            --name "SWA-DEPLOYMENT-TOKEN" \
             --query value \
             --output tsv)
           echo "deployment_token=$DEPLOYMENT_TOKEN" >> $GITHUB_OUTPUT
