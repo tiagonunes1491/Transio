@@ -83,9 +83,18 @@ jobs:
           echo "🔄 Generating new deployment token for Static Web App..."
           
           # Reset/regenerate the deployment token for the SWA
-          NEW_TOKEN=$(az staticwebapp secrets reset-api-key \
+          echo "🔄 Resetting deployment token..."
+          az staticwebapp secrets reset-api-key \
             --name "${{ vars.SWA_NAME }}" \
             --resource-group "${{ vars.RG_NAME }}"
+          
+          # Now retrieve the new token
+          echo "🔄 Retrieving new deployment token..."
+          NEW_TOKEN=$(az staticwebapp secrets list \
+            --name "${{ vars.SWA_NAME }}" \
+            --resource-group "${{ vars.RG_NAME }}" \
+            --query "properties.apiKey" \
+            --output tsv)
           
           if [[ -z "$NEW_TOKEN" || "$NEW_TOKEN" == "null" ]]; then
             echo "❌ Error: Failed to retrieve deployment token from Static Web App"
