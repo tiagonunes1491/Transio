@@ -1,16 +1,13 @@
-name: 'CD – Deploy Static Content to SWA'
+name: Deploy to Azure Static Web App
 
 on:
   push:
-    branches: [development, main]
-    paths:
-      - 'src/frontend/static/**'
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Target environment'
+        description: 'Environment to deploy to'
         required: true
-        default: 'dev'
         type: choice
         options:
           - dev
@@ -18,18 +15,30 @@ on:
 
 permissions:
   contents: read
-  id-token: write   # for OIDC login
-
-env:
-  # Branch or dispatch input → chosen environment
-  ENVIRONMENT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
-  SWA_NAME:      ${{ vars.SWA_NAME }}    # your repo-level var per env SWA
-  RG_NAME:       ${{ vars.RG_NAME }}     # your repo-level var per env RG
+  id-token: write
 
 jobs:
-  deploy:
+  determine-environment:
     runs-on: ubuntu-latest
-    environment: ${{ env.ENVIRONMENT }}-swa
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+    steps:
+      - id: set-env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+  deploy:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}-swa
+    env:
+      ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,10 +54,10 @@ jobs:
 
       - name: Deploy via SWA CLI
         run: |
-          echo "🚀 Deploying [$ENVIRONMENT] to $SWA_NAME in RG $RG_NAME"
+          echo "🚀 Deploying [${{ env.ENVIRONMENT }}] to ${{ vars.SWA_NAME }} in RG ${{ vars.RG_NAME }}"
           swa deploy \
             --app-location "./src/frontend/static" \
-            --resource-group "$RG_NAME" \
-            --app-name "$SWA_NAME" \
-            --env "$ENVIRONMENT" \
+            --resource-group "${{ vars.RG_NAME }}" \
+            --app-name "${{ vars.SWA_NAME }}" \
+            --env "${{ env.ENVIRONMENT }}" \
             --verbose
