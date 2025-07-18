@@ -1,0 +1,128 @@
+name: 'CD - Rotate SWA Deployment Token'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+  schedule:
+    # Run on the first day of every month at 02:00 UTC
+    - cron: '0 2 1 * *'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  determine-strategy:
+    runs-on: ubuntu-latest
+    outputs:
+      environments: ${{ steps.set-strategy.outputs.environments }}
+    steps:
+      - id: set-strategy
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger: use selected environment only
+            echo "environments=[\"${{ github.event.inputs.environment }}\"]" >> $GITHUB_OUTPUT
+          else
+            # Scheduled trigger: run on both environments
+            echo "environments=[\"dev\", \"prod\"]" >> $GITHUB_OUTPUT
+          fi
+
+  rotate-token:
+    needs: determine-strategy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: ${{ fromJson(needs.determine-strategy.outputs.environments) }}
+    environment: ${{ matrix.environment }}-swa
+    env:
+      ENVIRONMENT: ${{ matrix.environment }}
+    steps:
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 'Validate Required Variables'
+        run: |
+          echo "🔍 Validating required environment variables..."
+          
+          if [[ -z "${{ vars.SWA_NAME }}" ]]; then
+            echo "❌ Error: SWA_NAME variable is not set"
+            exit 1
+          fi
+          
+          if [[ -z "${{ vars.RG_NAME }}" ]]; then
+            echo "❌ Error: RG_NAME variable is not set"
+            exit 1
+          fi
+          
+          if [[ -z "${{ vars.KEYVAULT }}" ]]; then
+            echo "❌ Error: KEYVAULT variable is not set"
+            exit 1
+          fi
+          
+          echo "✅ All required variables are set"
+          echo "   - SWA Name: ${{ vars.SWA_NAME }}"
+          echo "   - Resource Group: ${{ vars.RG_NAME }}"
+          echo "   - Key Vault: ${{ vars.KEYVAULT }}"
+          echo "   - Environment: ${{ env.ENVIRONMENT }}"
+
+      - name: 'Get New Deployment Token'
+        id: get-new-token
+        run: |
+          echo "🔄 Generating new deployment token for Static Web App..."
+          
+          # Reset/regenerate the deployment token for the SWA
+          NEW_TOKEN=$(az staticwebapp secrets reset-api-key \
+            --name "${{ vars.SWA_NAME }}" \
+            --resource-group "${{ vars.RG_NAME }}" \
+            --query "properties.apiKey" \
+            --output tsv)
+          
+          if [[ -z "$NEW_TOKEN" || "$NEW_TOKEN" == "null" ]]; then
+            echo "❌ Error: Failed to retrieve deployment token from Static Web App"
+            exit 1
+          fi
+          
+          echo "✅ Successfully retrieved new deployment token"
+          # Mask the token in logs for security
+          echo "::add-mask::$NEW_TOKEN"
+          echo "deployment_token=$NEW_TOKEN" >> $GITHUB_OUTPUT
+
+      - name: 'Update Token in Key Vault'
+        run: |
+          echo "🔑 Updating deployment token in Key Vault..."
+          
+          # Set the new token in Key Vault
+          az keyvault secret set \
+            --vault-name "${{ vars.KEYVAULT }}" \
+            --name "SWA-DEPLOYMENT-TOKEN" \
+            --value "${{ steps.get-new-token.outputs.deployment_token }}" \
+            --description "SWA deployment token for ${{ vars.SWA_NAME }} (Environment: ${{ env.ENVIRONMENT }}, Rotated: $(date -u +%Y-%m-%dT%H:%M:%SZ))" \
+            > /dev/null
+          
+          echo "✅ Deployment token successfully updated in Key Vault"
+
+      - name: 'Summary'
+        run: |
+          echo "📋 Token Rotation Summary"
+          echo "========================"
+          echo "Environment: ${{ env.ENVIRONMENT }}"
+          echo "Static Web App: ${{ vars.SWA_NAME }}"
+          echo "Resource Group: ${{ vars.RG_NAME }}"
+          echo "Key Vault: ${{ vars.KEYVAULT }}"
+          echo "Rotation Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "Status: ✅ Successfully completed"
+          echo ""
+          echo "The deployment token has been rotated and stored securely in Key Vault."
+          echo "Applications using the 'SWA-DEPLOYMENT-TOKEN' secret will automatically use the new token."

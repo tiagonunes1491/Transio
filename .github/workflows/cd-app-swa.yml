@@ -36,8 +36,34 @@ jobs:
             echo "environment=dev" >> $GITHUB_OUTPUT
           fi
 
-  deploy:
+  get_deployment_token:
     needs: determine-environment
+    runs-on: ubuntu-latest
+    environment: ${{ needs.determine-environment.outputs.environment }}-swa
+    outputs:
+      deployment_token: ${{ steps.get-token.outputs.deployment_token }}
+    steps:
+      - name: Azure CLI Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_SECRETS }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get SWA Deployment Token from Key Vault
+        id: get-token
+        run: |
+          echo "🔑 Retrieving SWA deployment token from Key Vault..."
+          DEPLOYMENT_TOKEN=$(az keyvault secret show \
+            --vault-name "${{ vars.KEYVAULT }}" \
+            --name "SWA_DEPLOYMENT_TOKEN" \
+            --query value \
+            --output tsv)
+          echo "deployment_token=$DEPLOYMENT_TOKEN" >> $GITHUB_OUTPUT
+          echo "✅ Successfully retrieved deployment token"
+
+  deploy:
+    needs: [determine-environment, get_deployment_token]
     runs-on: ubuntu-latest
     environment: ${{ needs.determine-environment.outputs.environment }}-swa
     env:
@@ -61,6 +87,6 @@ jobs:
           echo "🚀 Deploying [${{ env.ENVIRONMENT }}] to Static Web App"
           swa deploy \
             --app-location "./src/frontend/static" \
-            --deployment-token "${{ secrets.SWA_DEPLOYMENT_TOKEN }}" \
+            --deployment-token "${{ needs.get_deployment_token.outputs.deployment_token }}" \
             --env production \
             --verbose
