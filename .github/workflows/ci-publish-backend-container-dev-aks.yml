@@ -26,6 +26,6 @@ jobs:
       acr-name: ${{ vars.ACR_NAME }}
       environment: dev-aks
     secrets:
-      CLIENTID: ${{ vars.CLIENTID_ART_PUSH }}
+      CLIENTID: ${{ vars.CLIENTID_ARTIFACT_PUSH }}
       TENANTID: ${{ vars.AZURE_TENANT_ID }}
       SUBSCRIPTIONID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
