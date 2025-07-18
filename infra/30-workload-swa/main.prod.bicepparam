@@ -21,7 +21,7 @@ param existingUamiName = 'ts-p-swa-id-plat-ca-backend'
 param uamiResourceGroupName = 'ts-p-swa-rg'
 
 // Database configuration
-param cosmosDatabaseName = 'prod-swa'
+param cosmosDatabaseName = 'tsdb'
 param cosmosContainerName = 'secrets'
 
 
@@ -58,7 +58,7 @@ param environmentVariables = [
   }
   {
     name: 'COSMOS_DATABASE_NAME'
-    value: 'prod-swa'
+    value: 'tsdb'
   }
   {
     name: 'COSMOS_CONTAINER_NAME'

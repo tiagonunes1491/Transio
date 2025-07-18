@@ -24,7 +24,7 @@ param acrEnableAdminUser = false
 // Cosmos DB configuration
 param cosmosDbConfig = [
   {
-    name: 'ssdb'
+    name: 'tsdb'
     containers: [
       {
         name: 'secrets'
