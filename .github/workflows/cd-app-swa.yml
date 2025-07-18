@@ -87,14 +87,26 @@ jobs:
         run: |
           echo "🚀 Deploying to Static Web App: $SWA_NAME in resource group: $RG_NAME"
           
-          # Change to the static content directory
-          cd ./src/frontend/static
+          # Get deployment token using Azure CLI (exactly like build script)
+          echo "🔍 Retrieving deployment token..."
+          DEPLOYMENT_TOKEN=$(az staticwebapp secrets list \
+            --name "$SWA_NAME" \
+            --resource-group "$RG_NAME" \
+            --query properties.apiKey -o tsv)
           
-          # Initialize SWA CLI (required by best practices)
-          npx swa init --yes
+          if [ -z "$DEPLOYMENT_TOKEN" ] || [ "$DEPLOYMENT_TOKEN" = "null" ]; then
+            echo "❌ Failed to retrieve deployment token"
+            exit 1
+          fi
           
-          # Deploy using SWA CLI (authentication handled automatically via Azure CLI login)
-          npx swa deploy --env production --verbose --resource-group "$RG_NAME" --app-name "$SWA_NAME"
+          echo "✅ Deployment token retrieved successfully"
+          echo "🚀 Deploying static files from src/frontend/static to production environment..."
+          
+          # Deploy static files using SWA CLI (exactly like build script)
+          swa deploy \
+            --app-location "./src/frontend/static" \
+            --deployment-token "$DEPLOYMENT_TOKEN" \
+            --env "production"
           
           echo "✅ Deployment completed successfully!"
       
