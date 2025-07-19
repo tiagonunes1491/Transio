@@ -19,15 +19,37 @@ on:
         options:
         - swa
         - aks
+  schedule:
+    # Run at 2 AM UTC on the first day of every month
+    - cron: '0 2 1 * *'
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
-  seed-keyvault:
+  determine-matrix:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}-${{ github.event.inputs.platform }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Set matrix based on trigger type
+        id: set-matrix
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            # For scheduled runs, run all combinations
+            echo 'matrix={"include":[{"environment":"dev","platform":"aks"},{"environment":"dev","platform":"swa"},{"environment":"prod","platform":"aks"},{"environment":"prod","platform":"swa"}]}' >> $GITHUB_OUTPUT
+          else
+            # For manual dispatch, run only the selected combination
+            echo 'matrix={"include":[{"environment":"${{ github.event.inputs.environment }}","platform":"${{ github.event.inputs.platform }}"}]}' >> $GITHUB_OUTPUT
+          fi
+
+  seed-keyvault:
+    needs: determine-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
+    environment: ${{ matrix.environment }}-${{ matrix.platform }}
 
     steps:
       - name: 'Login to Azure'
@@ -37,7 +59,6 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-
       - name: Generate Fernet Key
         id: generate_key
         run: |
@@ -46,4 +67,41 @@ jobs:
 
       - name: Set Key Vault Secret
         run: |
-          az keyvault secret set --vault-name "${{ vars.KEYVAULT }}" --name encryption-key --value "$(cat key.txt)"
+          # Get Key Vault name from environment variables
+          KV_NAME="${{ vars.KV_NAME }}"
+          
+          if [[ -z "$KV_NAME" ]]; then
+            echo "ERROR: KV_NAME variable not set for environment ${{ matrix.environment }}-${{ matrix.platform }}"
+            exit 1
+          fi
+          
+          echo "Setting encryption key in Key Vault: $KV_NAME"
+          az keyvault secret set --vault-name "$KV_NAME" --name encryption-key --value "$(cat key.txt)"
+
+      - name: Signal Container Restart
+        run: |
+          # Get resource group name from environment variables
+          RG_NAME="${{ vars.RG_NAME }}"
+          
+          case "${{ matrix.platform }}" in
+            "aks")
+              echo "Signaling AKS deployment restart for ${{ matrix.environment }} environment"
+              echo "Resource Group: $RG_NAME"
+              # Mock AKS restart command - replace with actual kubectl rollout restart
+              echo "kubectl rollout restart deployment/backend-deployment -n transio-${{ matrix.environment }}"
+              ;;
+            "swa")
+              # Get Container App name from environment variables
+              CA_BACKEND_NAME="${{ vars.CA_BACKEND_NAME }}"
+              
+              if [[ -z "$CA_BACKEND_NAME" ]]; then
+                echo "ERROR: CA_BACKEND_NAME variable not set for environment ${{ matrix.environment }}-${{ matrix.platform }}"
+                exit 1
+              fi
+              
+              echo "Signaling Container Apps restart for ${{ matrix.environment }} environment"
+              echo "Resource Group: $RG_NAME"
+              echo "Container App: $CA_BACKEND_NAME"
+              az containerapp revision restart --resource-group "$RG_NAME" --name "$CA_BACKEND_NAME"
+              ;;
+          esac
