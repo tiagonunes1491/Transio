@@ -19,6 +19,11 @@ on:
         options:
         - swa
         - aks
+      recover_keyvault:
+        description: 'Recover existing Key Vault from soft delete'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: write
@@ -49,7 +54,7 @@ jobs:
           PLATFORM: ${{ github.event.inputs.platform }}
           RG: ${{ vars.RG }}
           KEYVAULT: ${{ vars.KEYVAULT }}
-          RECOVER: ${{ vars.KEYVAULT_RECOVER }}
+          RECOVER: ${{ github.event.inputs.recover_keyvault }}
         run: |
           echo "🚀 Deploying Key Vault bootstrap infrastructure..."
           echo "Environment: $ENVIRONMENT"
