@@ -117,9 +117,29 @@ jobs:
                 exit 1
               fi
               
-              echo "Signaling Container Apps restart for ${{ matrix.environment }} environment"
-              echo "Resource Group: $RG_NAME"
-              echo "Container App: $CA_BACKEND_NAME"
-              az containerapp revision restart --resource-group "$RG_NAME" --name "$CA_BACKEND_NAME"
+              echo "Restarting Container App: $CA_BACKEND_NAME in Resource Group: $RG_NAME"
+              
+              # Get the active revision name
+              echo "Getting active revision..."
+              ACTIVE_REVISION=$(az containerapp revision list \
+                --resource-group "$RG_NAME" \
+                --name "$CA_BACKEND_NAME" \
+                --query '[?properties.active].name' \
+                --output tsv)
+              
+              if [[ -z "$ACTIVE_REVISION" ]]; then
+                echo "ERROR: Could not find active revision for Container App: $CA_BACKEND_NAME"
+                exit 1
+              fi
+              
+              echo "Active revision: $ACTIVE_REVISION"
+              
+              # Restart the active revision
+              az containerapp revision restart \
+                --resource-group "$RG_NAME" \
+                --name "$CA_BACKEND_NAME" \
+                --revision "$ACTIVE_REVISION"
+              
+              echo "✅ Container App revision restart completed successfully"
               ;;
           esac
