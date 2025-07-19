@@ -1,5 +1,5 @@
 
-name: CD - Seed Azure Key Vault
+name: CD - Rotate Fernet Key in Azure Key Vault
 on:
   workflow_dispatch:
     inputs:
@@ -82,6 +82,14 @@ jobs:
           
           echo "Setting encryption key in Key Vault: $KV_NAME"
           az keyvault secret set --vault-name "$KV_NAME" --name encryption-key --value "$(cat key.txt)"
+
+      - name: 'Login to Azure for Container Operations'
+        if: matrix.platform == 'swa'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       - name: Signal Container Restart
         run: |
