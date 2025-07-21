@@ -113,17 +113,21 @@ jobs:
           echo "Captured Key Vault Name: $KV_NAME"
           echo "KV_NAME=$KV_NAME" >> $GITHUB_ENV
 
-      - name: 'Update GitHub Environment Variable KV_NAME'
+      - name: 'Tag Resource Group with Key Vault Name'
         if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ENV_NAME="${{ github.event.inputs.environment }}-${{ github.event.inputs.platform }}"
+          echo "🏷️ Tagging resource group with Key Vault deployment information..."
+          
           if [ -n "$KV_NAME" ]; then
-            gh variable set KV_NAME --env "$ENV_NAME" --body "$KV_NAME" --repo ${{ github.repository }}
-            echo "✅ Updated KV_NAME environment variable in environment $ENV_NAME"
+            az tag create --resource-id "/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/$RG_NAME" \
+              --tags "KV_NAME=$KV_NAME"
+            
+            echo "✅ Successfully tagged resource group '$RG_NAME' with Key Vault name"
+            echo "📋 Key Vault Name: $KV_NAME"
+            echo "💡 To retrieve later, use:"
+            echo "   az tag list --resource-id \"/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/$RG_NAME\" --query 'properties.tags.KV_NAME' -o tsv"
           else
-            echo "❌ KV_NAME is empty, not updating environment variable."
+            echo "❌ KV_NAME is empty, not tagging resource group."
           fi
 
       - name: 'Trigger Key Vault Seeding'
