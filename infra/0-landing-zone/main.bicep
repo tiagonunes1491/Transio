@@ -103,10 +103,10 @@ param gitHubRepositoryName string
 // ========== WORKLOAD IDENTITY CONFIGURATION ==========
 
 @description('GitHub workload identities for shared resource infrastructure - each entry defines UAMI, environment, RBAC role, and federation types')
-param workloadIdentities object
+param workloadIdentities object = {}
 
 @description('Platform managed identities for workload resources - each entry defines UAMI name suffix and RBAC roles without GitHub federation')
-param platformIdentities object
+param platformIdentities object = {}
 
 
 /*

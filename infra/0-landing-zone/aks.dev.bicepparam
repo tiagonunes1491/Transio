@@ -23,8 +23,8 @@ param ownerEmail = ''
 
 // GitHub integration configuration
 // Update these values with your actual GitHub organization and repository
-param gitHubOrganizationName = ''
-param gitHubRepositoryName = ''
+param gitHubOrganizationName = 'tiagonunes1491'
+param gitHubRepositoryName = 'Transio'
 
 // PaaS workload identities configuration
 // These UAMIs will be used for PaaS workloads (Container Apps, Static Web Apps, etc.)
