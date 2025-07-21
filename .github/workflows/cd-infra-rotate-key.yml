@@ -1,5 +1,5 @@
-name: 'CD - Bootstrap Key Vault'
 
+name: CD - Rotate Fernet Key in Azure Key Vault
 on:
   workflow_dispatch:
     inputs:
@@ -19,106 +19,135 @@ on:
         options:
         - swa
         - aks
-      recover_keyvault:
-        description: 'Recover existing Key Vault from soft delete'
+      skip_container_restart:
+        description: 'Skip container restart (key rotation only)'
         required: false
         default: false
         type: boolean
+  schedule:
+    # Run at 2 AM UTC on the first day of every month
+    - cron: '0 2 1 * *'
 
 permissions:
-  actions: write
-  contents: read
   id-token: write
+  contents: read
 
 jobs:
-  deploy:
-    name: 'Deploy Bootstrap Key Vault'
+  determine-matrix:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}-${{ github.event.inputs.platform }}
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - name: 'Checkout Code'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - name: Set matrix based on trigger type
+        id: set-matrix
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            # For scheduled runs, run all combinations
+            echo 'matrix={"include":[{"environment":"dev","platform":"aks"},{"environment":"dev","platform":"swa"},{"environment":"prod","platform":"aks"},{"environment":"prod","platform":"swa"}]}' >> $GITHUB_OUTPUT
+          else
+            # For manual dispatch, run only the selected combination
+            echo 'matrix={"include":[{"environment":"${{ github.event.inputs.environment }}","platform":"${{ github.event.inputs.platform }}"}]}' >> $GITHUB_OUTPUT
+          fi
+
+  seed-keyvault:
+    needs: determine-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: ${{ fromJson(needs.determine-matrix.outputs.matrix) }}
+    environment: ${{ matrix.environment }}-${{ matrix.platform }}
+
+    steps:
       - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_SECRETS }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Generate Fernet Key
+        id: generate_key
+        run: |
+          python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())" > key.txt
+          echo "fernet_key=$(cat key.txt)" >> $GITHUB_OUTPUT
+
+      - name: Set Key Vault Secret
+        run: |
+          # Get Key Vault name from environment variables
+          KV_NAME="${{ vars.KV_NAME }}"
+          
+          if [[ -z "$KV_NAME" ]]; then
+            echo "ERROR: KV_NAME variable not set for environment ${{ matrix.environment }}-${{ matrix.platform }}"
+            exit 1
+          fi
+          
+          echo "Setting encryption key in Key Vault: $KV_NAME"
+          az keyvault secret set --vault-name "$KV_NAME" --name encryption-key --value "$(cat key.txt)"
+
+      - name: 'Login to Azure for Container Operations'
+        if: matrix.platform == 'swa'
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-
-      - name: 'Deploy Key Vault Infrastructure'
-        env:
-          ENVIRONMENT: ${{ github.event.inputs.environment }}
-          PLATFORM: ${{ github.event.inputs.platform }}
-          RG: ${{ vars.RG }}
-          KEYVAULT: ${{ vars.KEYVAULT }}
-          RECOVER: ${{ github.event.inputs.recover_keyvault }}
+      - name: Signal Container Restart
         run: |
-          echo "🚀 Deploying Key Vault bootstrap infrastructure..."
-          echo "Environment: $ENVIRONMENT"
-          echo "Platform: $PLATFORM"
-          echo "Key Vault: $KEYVAULT"
-          # Set RECOVER to false if it's not defined
-          RECOVER="${RECOVER:-false}"
-          echo "Key Vault recovery: $RECOVER"
-          # Use environment variable for resource group name
-          RG_NAME="$RG"
-          # Verify resource group exists (fail if it doesn't)
-          if ! az group show --name "$RG_NAME" 2>/dev/null; then
-            echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
-            exit 1
+          # Determine if container restart should be skipped
+          # Always restart for scheduled runs, check flag for manual runs
+          SKIP_RESTART="false"
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.skip_container_restart }}" == "true" ]]; then
+            SKIP_RESTART="true"
           fi
-
-          echo "✅ Resource group '$RG_NAME' exists"
-
-          # Set parameter file based on platform and environment
-          PARAM_FILE="./infra/10-bootstrap-kv/$PLATFORM.$ENVIRONMENT.bicepparam"
-
-          if [ ! -f "$PARAM_FILE" ]; then
-            echo "❌ Parameter file not found: $PARAM_FILE"
-            exit 1
-          fi
-
-          echo "Using parameter file: $PARAM_FILE"
-
-          # Add deployment metadata
-          deployment_name="kv-bootstrap-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
-      
-          # Deploy with bicepparam file and recovery parameter
-          echo "Deploying with recoverExistingVault=$RECOVER"
           
-          az deployment group create \
-            --name "$deployment_name" \
-            --resource-group "$RG_NAME" \
-            --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
-            
-          echo "✅ Key Vault deployment completed successfully!"
-
-          # Show deployment outputs
-          echo "Deployment outputs:"
-          az deployment group show \
-            --name "$deployment_name" \
-            --resource-group "$RG_NAME" \
-            --query properties.outputs
-
-      - name: 'Trigger Key Vault Seeding'
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const result = await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'cd-infra-rotate-key.yml',
-              ref: 'development',
-              inputs: {
-                environment: '${{ github.event.inputs.environment }}',
-                platform: '${{ github.event.inputs.platform }}'
-              }
-            });
-            console.log('🔑 Triggered Key Vault seeding workflow');
-            console.log('Environment:', '${{ github.event.inputs.environment }}');
-            console.log('Platform:', '${{ github.event.inputs.platform }}');
+          if [[ "$SKIP_RESTART" == "true" ]]; then
+            echo "🚫 Container restart skipped (manual trigger with skip_container_restart=true)"
+            echo "⚠️  Note: Applications will need manual restart to use the new encryption key"
+            exit 0
+          fi
+          
+          # Get resource group name from environment variables
+          RG_NAME="${{ vars.RG_NAME }}"
+          
+          case "${{ matrix.platform }}" in
+            "aks")
+              echo "Signaling AKS deployment restart for ${{ matrix.environment }} environment"
+              echo "Resource Group: $RG_NAME"
+              # Mock AKS restart command - replace with actual kubectl rollout restart
+              echo "kubectl rollout restart deployment/backend-deployment -n transio-${{ matrix.environment }}"
+              ;;
+            "swa")
+              # Get Container App name from environment variables
+              CA_BACKEND_NAME="${{ vars.CA_BACKEND_NAME }}"
+              
+              if [[ -z "$CA_BACKEND_NAME" ]]; then
+                echo "ERROR: CA_BACKEND_NAME variable not set for environment ${{ matrix.environment }}-${{ matrix.platform }}"
+                exit 1
+              fi
+              
+              echo "Restarting Container App: $CA_BACKEND_NAME in Resource Group: $RG_NAME"
+              
+              # Get the active revision name
+              echo "Getting active revision..."
+              ACTIVE_REVISION=$(az containerapp revision list \
+                --resource-group "$RG_NAME" \
+                --name "$CA_BACKEND_NAME" \
+                --query '[?properties.active].name' \
+                --output tsv)
+              
+              if [[ -z "$ACTIVE_REVISION" ]]; then
+                echo "ERROR: Could not find active revision for Container App: $CA_BACKEND_NAME"
+                exit 1
+              fi
+              
+              echo "Active revision: $ACTIVE_REVISION"
+              
+              # Restart the active revision
+              az containerapp revision restart \
+                --resource-group "$RG_NAME" \
+                --name "$CA_BACKEND_NAME" \
+                --revision "$ACTIVE_REVISION"
+              
+              echo "✅ Container App revision restart completed successfully"
+              ;;
+          esac

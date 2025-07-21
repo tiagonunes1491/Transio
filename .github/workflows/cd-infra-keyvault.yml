@@ -49,11 +49,10 @@ jobs:
 
 
       - name: 'Deploy Key Vault Infrastructure'
-        id: deploy_kv
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
           PLATFORM: ${{ github.event.inputs.platform }}
-          RG_NAME: ${{ vars.RG_NAME }}
+          RG: ${{ vars.RG }}
           KEYVAULT: ${{ vars.KEYVAULT }}
           RECOVER: ${{ github.event.inputs.recover_keyvault }}
         run: |
@@ -64,10 +63,10 @@ jobs:
           # Set RECOVER to false if it's not defined
           RECOVER="${RECOVER:-false}"
           echo "Key Vault recovery: $RECOVER"
-          echo "Using resource group: $RG_NAME"
-          
+          # Use environment variable for resource group name
+          RG_NAME="$RG"
           # Verify resource group exists (fail if it doesn't)
-          if ! az group show --name "$RG_NAME" --output none 2>/dev/null; then
+          if ! az group show --name "$RG_NAME" 2>/dev/null; then
             echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
             exit 1
           fi
@@ -95,7 +94,6 @@ jobs:
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
             --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
-            --output json
             
           echo "✅ Key Vault deployment completed successfully!"
 
@@ -104,37 +102,7 @@ jobs:
           az deployment group show \
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
-            --query properties.outputs \
-            --output json
-          
-          # Capture Key Vault name output (assumes output is named 'keyVaultName')
-          KV_NAME=$(az deployment group show \
-            --name "$deployment_name" \
-            --resource-group "$RG_NAME" \
-            --query properties.outputs.keyVaultName.value \
-            --output tsv)
-          echo "Captured Key Vault Name: $KV_NAME"
-          echo "KV_NAME=$KV_NAME" >> $GITHUB_ENV
-
-      - name: 'Tag Resource Group with Key Vault Name'
-        if: success()
-        env:
-          RG_NAME: ${{ vars.RG_NAME }}
-          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          echo "🏷️ Tagging resource group with Key Vault deployment information..."
-          
-          if [ -n "$KV_NAME" ]; then
-            az tag create --resource-id "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RG_NAME" \
-              --tags "KV_NAME=$KV_NAME"
-            
-            echo "✅ Successfully tagged resource group '$RG_NAME' with Key Vault name"
-            echo "📋 Key Vault Name: $KV_NAME"
-            echo "💡 To retrieve later, use:"
-            echo "   az tag list --resource-id \"/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RG_NAME\" --query 'properties.tags.KV_NAME' -o tsv"
-          else
-            echo "❌ KV_NAME is empty, not tagging resource group."
-          fi
+            --query properties.outputs
 
       - name: 'Trigger Key Vault Seeding'
         uses: actions/github-script@v7
