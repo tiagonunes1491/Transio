@@ -1,0 +1,118 @@
+name: 'CD - AKS Platform Infrastructure'
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - prod
+
+permissions:
+  actions: write
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    name: 'Deploy AKS Platform Infrastructure'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}-aks
+    steps:
+      - name: 'Checkout Code'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: 'Login to Azure'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CLIENTID_IAC_CONTRIBUTOR }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 'Deploy AKS Platform Infrastructure'
+        env:
+          ENVIRONMENT: ${{ github.event.inputs.environment }}
+          RG: ${{ vars.RG }}
+        run: |
+          echo "🚀 Deploying AKS platform infrastructure..."
+          echo "Environment: $ENVIRONMENT"
+          
+          # Use environment variable for resource group name
+          RG_NAME="$RG"
+          
+          # Verify resource group exists (fail if it doesn't)
+          if ! az group show --name "$RG_NAME" 2>/dev/null; then
+            echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
+            exit 1
+          fi
+
+          echo "✅ Resource group '$RG_NAME' exists"
+
+          # Set parameter file based on environment
+          if [ "$ENVIRONMENT" == "dev" ]; then
+            PARAM_FILE="./infra/20-platform-aks/main.bicepparam"
+          else
+            PARAM_FILE="./infra/20-platform-aks/main.$ENVIRONMENT.bicepparam"
+          fi
+
+          if [ ! -f "$PARAM_FILE" ]; then
+            echo "❌ Parameter file not found: $PARAM_FILE"
+            exit 1
+          fi
+
+          echo "Using parameter file: $PARAM_FILE"
+
+          # Add deployment metadata
+          deployment_name="aks-platform-$(date +%Y%m%d%H%M%S)-${{ github.run_id }}"
+      
+          # Validate deployment first (what-if analysis)
+          echo "🔍 Validating AKS platform deployment (what-if analysis)..."
+          
+          az deployment group what-if \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --template-file ./infra/20-platform-aks/main.bicep \
+            --parameters "$PARAM_FILE"
+            
+          # Deploy AKS platform infrastructure
+          echo "Deploying AKS platform infrastructure..."
+          
+          az deployment group create \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --template-file ./infra/20-platform-aks/main.bicep \
+            --parameters "$PARAM_FILE" \
+            --verbose
+            
+          echo "✅ AKS platform deployment completed successfully!"
+
+          # Show deployment outputs
+          echo "Deployment outputs:"
+          az deployment group show \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --query properties.outputs
+          
+          # Additional validation for AKS cluster
+          echo "🔍 Validating AKS cluster deployment..."
+          
+          # Get AKS cluster name from deployment outputs (adjust based on your Bicep outputs)
+          AKS_NAME=$(az deployment group show \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --query 'properties.outputs.aksClusterName.value' \
+            --output tsv 2>/dev/null || echo "")
+          
+          if [ -n "$AKS_NAME" ] && [ "$AKS_NAME" != "null" ]; then
+            echo "Verifying AKS cluster: $AKS_NAME"
+            az aks show --name "$AKS_NAME" --resource-group "$RG_NAME" --query "powerState.code" --output tsv
+            echo "✅ AKS cluster validation completed"
+          else
+            echo "⚠️ Could not retrieve AKS cluster name from deployment outputs"
+          fi
