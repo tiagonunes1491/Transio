@@ -118,17 +118,20 @@ jobs:
 
       - name: 'Tag Resource Group with Key Vault Name'
         if: success()
+        env:
+          RG_NAME: ${{ vars.RG_NAME }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
         run: |
           echo "🏷️ Tagging resource group with Key Vault deployment information..."
           
           if [ -n "$KV_NAME" ]; then
-            az tag create --resource-id "/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.RG_NAME }}" \
+            az tag create --resource-id "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RG_NAME" \
               --tags "KV_NAME=$KV_NAME"
             
-            echo "✅ Successfully tagged resource group '${{ vars.RG_NAME }}' with Key Vault name"
+            echo "✅ Successfully tagged resource group '$RG_NAME' with Key Vault name"
             echo "📋 Key Vault Name: $KV_NAME"
             echo "💡 To retrieve later, use:"
-            echo "   az tag list --resource-id \"/subscriptions/${{ vars.AZURE_SUBSCRIPTION_ID }}/resourceGroups/${{ vars.RG_NAME }}\" --query 'properties.tags.KV_NAME' -o tsv"
+            echo "   az tag list --resource-id \"/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RG_NAME\" --query 'properties.tags.KV_NAME' -o tsv"
           else
             echo "❌ KV_NAME is empty, not tagging resource group."
           fi
