@@ -49,6 +49,7 @@ jobs:
 
 
       - name: 'Deploy Key Vault Infrastructure'
+        id: deploy_kv
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
           PLATFORM: ${{ github.event.inputs.platform }}
@@ -103,6 +104,27 @@ jobs:
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --query properties.outputs
+          
+          # Capture Key Vault name output (assumes output is named 'keyVaultName')
+          KV_NAME=$(az deployment group show \
+            --name "$deployment_name" \
+            --resource-group "$RG_NAME" \
+            --query properties.outputs.keyVaultName.value -o tsv)
+          echo "Captured Key Vault Name: $KV_NAME"
+          echo "KV_NAME=$KV_NAME" >> $GITHUB_ENV
+
+      - name: 'Update GitHub Environment Variable KV_NAME'
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ENV_NAME="${{ github.event.inputs.environment }}-${{ github.event.inputs.platform }}"
+          if [ -n "$KV_NAME" ]; then
+            gh variable set KV_NAME --env "$ENV_NAME" --body "$KV_NAME" --repo ${{ github.repository }}
+            echo "✅ Updated KV_NAME environment variable in environment $ENV_NAME"
+          else
+            echo "❌ KV_NAME is empty, not updating environment variable."
+          fi
 
       - name: 'Trigger Key Vault Seeding'
         uses: actions/github-script@v7
