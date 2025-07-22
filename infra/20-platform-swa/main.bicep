@@ -91,10 +91,10 @@ param costCenter string = '1000'
 param createdBy string = 'bicep-deployment'
 
 @description('Resource owner identifier for accountability and governance')
-param owner string 
+param owner string = ''
 
 @description('Resource owner email for notifications and governance contacts')
-param ownerEmail string 
+param ownerEmail string = ''
 
 // ========== AZURE CONTAINER REGISTRY PARAMETERS ==========
 
@@ -129,6 +129,53 @@ param existingKeyVaultName string
  * VARIABLES
  * =============================================================================
  */
+
+// ========== NSG RULES DEFINITIONS ==========
+
+var acaAllowRules = [
+  {
+    name: 'AllowStaticWebAppsInbound'
+    properties: {
+      priority: 100
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourceAddressPrefix: 'AzureCloud'
+      sourcePortRange: '*'
+      destinationAddressPrefix: '10.0.10.0/23'
+      destinationPortRange: '443'
+    }
+  }
+  {
+    name: 'AllowPrivateEndpointsOutbound'
+    properties: {
+      priority: 100
+      direction: 'Outbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourceAddressPrefix: '10.0.10.0/23'
+      sourcePortRange: '*'
+      destinationAddressPrefix: '10.0.30.0/24'
+      destinationPortRange: '443'
+    }
+  }
+]
+
+var peAllowRules = [
+  {
+    name: 'AllowFromContainerApps'
+    properties: {
+      priority: 100
+      direction: 'Inbound'
+      access: 'Allow'
+      protocol: 'Tcp'
+      sourceAddressPrefix: '10.0.10.0/23'
+      sourcePortRange: '*'
+      destinationAddressPrefix: '10.0.30.0/24'
+      destinationPortRange: '443'
+    }
+  }
+]
 
 // ========== NETWORK CONFIGURATION ==========
 
@@ -260,6 +307,40 @@ module cosmosNamingModule '../modules/shared/naming.bicep' = {
     environment: environmentName
     serviceCode: serviceCode
     resourceType: 'cosmos'
+  }
+}
+
+/*
+ * =============================================================================
+ * NETWORK SECURITY GROUPS (CREATED EARLY TO RESOLVE DEPENDENCIES)
+ * =============================================================================
+ */
+
+// ========== CONTAINER APPS SUBNET NSG ==========
+
+module acaNsg '../modules/networking/nsg.bicep' = {
+  name: 'acaNsg'
+  params: {
+    nsgName: acaNsgNamingModule.outputs.resourceName
+    location: resourceLocation
+    allowRules: acaAllowRules
+    denyRules: []
+    tags: standardTagsModule.outputs.tags
+    includeDefaultDenyRule: true
+  }
+}
+
+// ========== PRIVATE ENDPOINTS SUBNET NSG ==========
+
+module peNsg '../modules/networking/nsg.bicep' = {
+  name: 'peNsg'
+  params: {
+    nsgName: peNsgNamingModule.outputs.resourceName
+    location: resourceLocation
+    allowRules: peAllowRules
+    denyRules: []
+    tags: standardTagsModule.outputs.tags
+    includeDefaultDenyRule: true
   }
 }
 
@@ -397,85 +478,6 @@ module acaEnv '../modules/container/aca-environment.bicep' = {
     workspaceId: workspace.outputs.workspaceId
     acaEnvironmentSubnetId: network.outputs.subnetIds[0]
     isInternal: false // Set to external for Static Web App backend linking
-  }
-}
-
-/*
- * =============================================================================
- * NETWORK SECURITY GROUPS
- * =============================================================================
- */
-
-// ========== CONTAINER APPS SUBNET NSG ==========
-
-var acaAllowRules = [
-  {
-    name: 'AllowStaticWebAppsInbound'
-    properties: {
-      priority: 100
-      direction: 'Inbound'
-      access: 'Allow'
-      protocol: 'Tcp'
-      sourceAddressPrefix: 'AzureCloud'
-      sourcePortRange: '*'
-      destinationAddressPrefix: '10.0.10.0/23'
-      destinationPortRange: '443'
-    }
-  }
-  {
-    name: 'AllowPrivateEndpointsOutbound'
-    properties: {
-      priority: 100
-      direction: 'Outbound'
-      access: 'Allow'
-      protocol: 'Tcp'
-      sourceAddressPrefix: '10.0.10.0/23'
-      sourcePortRange: '*'
-      destinationAddressPrefix: '10.0.30.0/24'
-      destinationPortRange: '443'
-    }
-  }
-]
-
-module acaNsg '../modules/networking/nsg.bicep' = {
-  name: 'acaNsg'
-  params: {
-    nsgName: acaNsgNamingModule.outputs.resourceName
-    location: resourceLocation
-    allowRules: acaAllowRules
-    denyRules: []
-    tags: standardTagsModule.outputs.tags
-    includeDefaultDenyRule: true
-  }
-}
-
-// ========== PRIVATE ENDPOINTS SUBNET NSG ==========
-
-var peAllowRules = [
-  {
-    name: 'AllowFromContainerApps'
-    properties: {
-      priority: 100
-      direction: 'Inbound'
-      access: 'Allow'
-      protocol: 'Tcp'
-      sourceAddressPrefix: '10.0.10.0/23'
-      sourcePortRange: '*'
-      destinationAddressPrefix: '10.0.30.0/24'
-      destinationPortRange: '443'
-    }
-  }
-]
-
-module peNsg '../modules/networking/nsg.bicep' = {
-  name: 'peNsg'
-  params: {
-    nsgName: peNsgNamingModule.outputs.resourceName
-    location: resourceLocation
-    allowRules: peAllowRules
-    denyRules: []
-    tags: standardTagsModule.outputs.tags
-    includeDefaultDenyRule: true
   }
 }
 
