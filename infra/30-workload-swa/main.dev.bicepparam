@@ -16,9 +16,11 @@ param ownerEmail = ''
 // Existing infrastructure references
 param cosmosDbAccountName = 'ts-d-swa-cosmos'
 
-// Existing User-Assigned Managed Identity configuration
-param existingUamiName = 'ts-d-swa-id-plat-ca-backend'
-param uamiResourceGroupName = 'ts-d-swa-rg'
+// Container App identity configuration
+param containerAppIdentity = {
+  name: 'ca-backend'
+  roles: ['AcrPull', 'SecretsUser']
+}
 
 // Database configuration
 param cosmosDatabaseName = 'tsdb'

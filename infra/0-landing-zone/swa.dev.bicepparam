@@ -31,24 +31,17 @@ param gitHubRepositoryName = 'Transio'
 param workloadIdentities = {
   contributor: {
     ENV: 'dev-swa'
-    ROLE: 'contributor'
+    ROLES: ['contributor']
     federationTypes: 'environment'
   }
   acrPush: {
         ENV: 'dev-swa'
-        ROLE: 'AcrPush'
+        ROLES: ['AcrPush']
         federationTypes: 'environment'
     }
   kvSecOfficer: {
         ENV: 'dev-swa'
-        ROLE: 'SecretsOfficer'
+        ROLES: ['SecretsOfficer']
         federationTypes: 'environment'
     }    
 }
-param platformIdentities = {
-  'ca-backend': {
-    ENV: 'dev-swa'
-    ROLES: ['AcrPull', 'SecretsUser']
-  }
-}
-

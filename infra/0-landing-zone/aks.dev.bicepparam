@@ -31,17 +31,18 @@ param gitHubRepositoryName = 'Transio'
 param workloadIdentities = {
   contributor: {
     ENV: 'dev-aks'
-    ROLE: 'contributor'
+    ROLES: ['contributor','UserAccessAdministrator']
     federationTypes: 'environment'
   }
   acrPush: {
         ENV: 'dev-aks'
-        ROLE: 'AcrPush'
+        ROLES: ['AcrPush']
         federationTypes: 'environment'
     }
   kvSecOfficer: {
         ENV: 'dev-aks'
-        ROLE: 'SecretsOfficer'
+        ROLES: ['SecretsOfficer']
         federationTypes: 'environment'
-    }    
+    }
+
 }

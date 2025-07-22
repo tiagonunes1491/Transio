@@ -150,6 +150,7 @@ var roleIdMap = {
   AcrPull: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d'
   SecretsUser: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6'
   SecretsOfficer: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/b86a8fe4-44ce-4948-aee5-eccb2c155cd7'
+  UserAccessAdministrator: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/18d7d88d-d35e-4fb5-a5c3-7773c20a72d9'
 }
 
 
@@ -255,7 +256,7 @@ module rbacAssignments '../modules/identity/rbacRg.bicep' = [for (item, i) in it
   scope: rg
   params: {
     principalId: uamiModules[i].outputs.uamis[0].principalId
-    roleDefinitionId: [roleIdMap[item.value.ROLE]]
+    roleDefinitionId: [for role in item.value.ROLES: roleIdMap[role]]
   }
   dependsOn: [uamiModules[i]]
 }]

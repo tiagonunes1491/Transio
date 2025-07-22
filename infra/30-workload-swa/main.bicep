@@ -122,25 +122,37 @@ param cosmosDatabaseName string = 'dev-swa'
 @description('Cosmos DB container name for application configuration')
 param cosmosContainerName string = 'secrets'
 
+// ========== CONTAINER APP IDENTITY PARAMETERS ==========
+
+@description('Container App managed identity configuration')
+param containerAppIdentity object = {
+  name: 'ca-backend'
+  roles: ['AcrPull', 'SecretsUser']
+}
+
 // ========== EXISTING MANAGED IDENTITY REFERENCE ==========
 
-@description('Name of existing User-Assigned Managed Identity for Container App authentication')
-param existingUamiName string
+// Container App identity will be created in this deployment 
 
-@description('Resource group name containing the existing UAMI')
-param uamiResourceGroupName string = resourceGroup().name
+
+/*
+ * =============================================================================
+ * VARIABLES
+ * =============================================================================
+ */
+
+// ========== RBAC ROLE MAPPING ==========
+
+var roleIdMap = {
+  AcrPull: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/7f951dda-4ed3-4680-a7ca-43fe172d538d'
+  SecretsUser: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6'
+}
 
 // ========== EXISTING RESOURCE REFERENCES ==========
 
 // Reference existing shared resources
 resource sssplatcosmos 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: cosmosDbAccountName
-}
-
-// Reference existing User-Assigned Managed Identity
-resource existingUami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
-  name: existingUamiName
-  scope: resourceGroup(subscription().subscriptionId, uamiResourceGroupName)
 }
 
 // Reference existing infrastructure
@@ -215,6 +227,46 @@ module swaNamingModule '../modules/shared/naming.bicep' = {
 
 /*
  * =============================================================================
+ * CONTAINER APP IDENTITY MODULES
+ * =============================================================================
+ */
+
+// ========== CONTAINER APP MANAGED IDENTITY NAMING ==========
+
+module caUamiNamingModule '../modules/shared/naming.bicep' = {
+  name: 'ca-uami-naming'
+  params: {
+    projectCode: projectCode
+    environment: environmentName
+    serviceCode: serviceCode
+    resourceType: 'id'
+    suffix: containerAppIdentity.name
+  }
+}
+
+// ========== USER-ASSIGNED MANAGED IDENTITY ==========
+
+module caUamiModule '../modules/identity/uami.bicep' = {
+  name: 'deploy-ca-uami'
+  params: {
+    uamiLocation: resourceLocation
+    uamiNames: [caUamiNamingModule.outputs.resourceName]
+    tags: standardTagsModule.outputs.tags
+  }
+}
+
+// ========== RBAC ROLE ASSIGNMENTS ==========
+
+module caRbacAssignments '../modules/identity/rbacRg.bicep' = {
+  name: 'deploy-ca-rbac'
+  params: {
+    principalId: caUamiModule.outputs.uamis[0].principalId
+    roleDefinitionId: [for role in containerAppIdentity.roles: roleIdMap[role]]
+  }
+}
+
+/*
+ * =============================================================================
  * APPLICATION DEPLOYMENT MODULES
  * =============================================================================
  */
@@ -226,7 +278,7 @@ module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
   name: 'cosmosRbac'
   params: {
     accountName: sssplatcosmos.name
-    principalId: existingUami.properties.principalId
+    principalId: caUamiModule.outputs.uamis[0].principalId
     roleDefinitionId: '00000000-0000-0000-0000-000000000002' // Cosmos DB Built-in Data Contributor role
     databaseName: cosmosDatabaseName
   }
@@ -240,7 +292,7 @@ module cosmosRbac '../modules/identity/rbacCosmos.bicep' = {
 var containerAppEnvironmentVariables = union(environmentVariables, [
   {
     name: 'AZURE_CLIENT_ID'
-    value: existingUami.properties.clientId
+    value: caUamiModule.outputs.uamis[0].clientId
   }
   {
     name: 'COSMOS_DATABASE_NAME'
@@ -271,25 +323,25 @@ module containerApp '../modules/container/container-app.bicep' = {
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: {
-        '${existingUami.id}': {}
+        '${caUamiModule.outputs.uamis[0].id}': {}
       }
     }
     secrets: [
       {
         name: 'encryption-key'
         keyVaultUrl: encryptionKeyUri
-        identity: existingUami.id
+        identity: caUamiModule.outputs.uamis[0].id
       }
       {
         name: 'encryption-key-previous'
         keyVaultUrl: encryptionKeyPreviousUri
-        identity: existingUami.id
+        identity: caUamiModule.outputs.uamis[0].id
       }
     ]
     registries: [
       {
         server: split(containerImage, '/')[0] // Extract ACR server from image
-        identity: existingUami.id
+        identity: caUamiModule.outputs.uamis[0].id
       }
     ]
     environmentVariables: containerAppEnvironmentVariables
@@ -340,3 +392,14 @@ output staticWebAppName string = swaNamingModule.outputs.resourceName
 
 @description('Static Web App default hostname for DNS configuration and access')
 output staticWebAppHostname string = staticWebApp.outputs.staticWebAppHostname
+
+// ========== CONTAINER APP IDENTITY OUTPUTS ==========
+
+@description('Container App User-Assigned Managed Identity name')
+output containerAppUamiName string = caUamiModule.outputs.uamis[0].name
+
+@description('Container App User-Assigned Managed Identity principal ID')
+output containerAppUamiPrincipalId string = caUamiModule.outputs.uamis[0].principalId
+
+@description('Container App User-Assigned Managed Identity client ID')
+output containerAppUamiClientId string = caUamiModule.outputs.uamis[0].clientId
