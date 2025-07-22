@@ -52,19 +52,24 @@ jobs:
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
           PLATFORM: ${{ github.event.inputs.platform }}
-          RG: ${{ vars.RG }}
-          KEYVAULT: ${{ vars.KEYVAULT }}
+          RG_NAME: ${{ vars.RG_NAME }}
           RECOVER: ${{ github.event.inputs.recover_keyvault }}
         run: |
           echo "🚀 Deploying Key Vault bootstrap infrastructure..."
           echo "Environment: $ENVIRONMENT"
           echo "Platform: $PLATFORM"
-          echo "Key Vault: $KEYVAULT"
           # Set RECOVER to false if it's not defined
           RECOVER="${RECOVER:-false}"
           echo "Key Vault recovery: $RECOVER"
-          # Use environment variable for resource group name
-          RG_NAME="$RG"
+          # Use RG_NAME environment variable - fail if not provided
+          if [ -z "$RG_NAME" ]; then
+            echo "❌ RG_NAME environment variable is not set"
+            echo "Please configure the RG_NAME repository variable in GitHub"
+            exit 1
+          fi
+          
+          echo "ℹ️ Using resource group: $RG_NAME"
+          
           # Verify resource group exists (fail if it doesn't)
           if ! az group show --name "$RG_NAME" 2>/dev/null; then
             echo "❌ Resource group '$RG_NAME' does not exist. Please create it first."
@@ -89,20 +94,31 @@ jobs:
           # Deploy with bicepparam file and recovery parameter
           echo "Deploying with recoverExistingVault=$RECOVER"
           
-          az deployment group create \
+          if az deployment group create \
             --name "$deployment_name" \
             --resource-group "$RG_NAME" \
             --template-file ./infra/10-bootstrap-kv/main.bicep \
-            --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER \
+            --parameters "$PARAM_FILE" recoverExistingVault=$RECOVER; then
             
-          echo "✅ Key Vault deployment completed successfully!"
+            echo "✅ Key Vault deployment completed successfully!"
 
-          # Show deployment outputs
-          echo "Deployment outputs:"
-          az deployment group show \
-            --name "$deployment_name" \
-            --resource-group "$RG_NAME" \
-            --query properties.outputs
+            # Show deployment outputs
+            echo "Deployment outputs:"
+            az deployment group show \
+              --name "$deployment_name" \
+              --resource-group "$RG_NAME" \
+              --query properties.outputs
+          else
+            echo "❌ Key Vault deployment failed!"
+            # Show deployment details for troubleshooting
+            echo "Deployment details:"
+            az deployment group show \
+              --name "$deployment_name" \
+              --resource-group "$RG_NAME" \
+              --query "{provisioningState:properties.provisioningState,error:properties.error}" \
+              --output table || true
+            exit 1
+          fi
 
       - name: 'Trigger Key Vault Seeding'
         uses: actions/github-script@v7
