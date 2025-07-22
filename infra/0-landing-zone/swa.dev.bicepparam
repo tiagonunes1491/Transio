@@ -31,7 +31,7 @@ param gitHubRepositoryName = 'Transio'
 param workloadIdentities = {
   contributor: {
     ENV: 'dev-swa'
-    ROLES: ['contributor']
+    ROLES: ['contributor','UserAccessAdministrator']
     federationTypes: 'environment'
   }
   acrPush: {
