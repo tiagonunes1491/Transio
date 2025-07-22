@@ -723,7 +723,7 @@ module rbacRgAgic '../modules/identity/rbacRg.bicep' = {
   scope: resourceGroup()
   params: {
     principalId: aks.outputs.agicIdentityPrincipalId // Auto-created AGIC identity
-    roleDefinitionId: 'acdd72a7-3385-48ef-bd42-f606fba81ae7' // Reader
+    roleDefinitionId: ['acdd72a7-3385-48ef-bd42-f606fba81ae7'] // Reader
   }
 }
 

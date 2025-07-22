@@ -29,16 +29,19 @@ param gitHubRepositoryName = 'Transio'
 // PaaS workload identities configuration
 // These UAMIs will be used for PaaS workloads (Container Apps, Static Web Apps, etc.)
 param workloadIdentities = {
-    creator: {
-        UAMI: 'uami-ssharer-shared-infra-creator'
-        ENV: 'prod-aks'
-        ROLE: 'contributor'
-        federationTypes: 'environment'
-    }
-    push: {
-        UAMI: 'uami-ssharer-acr-push'
+  contributor: {
+    ENV: 'prod-aks'
+    ROLE: 'contributor'
+    federationTypes: 'environment'
+  }
+  acrPush: {
         ENV: 'prod-aks'
         ROLE: 'AcrPush'
         federationTypes: 'environment'
     }
+  kvSecOfficer: {
+        ENV: 'prod-aks'
+        ROLE: 'SecretsOfficer'
+        federationTypes: 'environment'
+    }    
 }
