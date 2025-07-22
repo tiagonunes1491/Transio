@@ -38,13 +38,13 @@ jobs:
       - name: 'Deploy AKS Platform Infrastructure'
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-          RG: ${{ vars.RG }}
+          RG_NAME: ${{ vars.RG_NAME }}
         run: |
           echo "🚀 Deploying AKS platform infrastructure..."
           echo "Environment: $ENVIRONMENT"
           
           # Use environment variable for resource group name
-          RG_NAME="$RG"
+          RG_NAME="$RG_NAME"
           
           # Verify resource group exists (fail if it doesn't)
           if ! az group show --name "$RG_NAME" 2>/dev/null; then
