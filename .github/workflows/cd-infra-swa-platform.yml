@@ -37,7 +37,7 @@ jobs:
       - name: 'Deploy SWA Platform Infrastructure'
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment }}
-          RG: ${{ vars.RG }}
+          RG: ${{ vars.RG_NAME }}
         run: |
           echo "🚀 Deploying SWA platform infrastructure..."
           echo "Environment: $ENVIRONMENT"
