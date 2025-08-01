@@ -17,6 +17,7 @@ jobs:
   build_and_push_image:
     name: Build and Push Image to ACR
     strategy:
+      fail-fast: false
       matrix:
         include:
           - environment: dev-aks
