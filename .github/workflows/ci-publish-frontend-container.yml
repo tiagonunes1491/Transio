@@ -1,5 +1,5 @@
 # CI workflow for Dev AKS environment
-name: 'CI - Publish frontend container to Dev AKS ACR'
+name: 'CI - Publish frontend container to ACR'
 on:
     push:
         branches: [development]

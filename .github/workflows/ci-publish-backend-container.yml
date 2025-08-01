@@ -1,5 +1,5 @@
 # CI workflow for multi-environment backend container publishing
-name: 'CI - Publish backend container to ACR v2'
+name: 'CI - Publish backend container to ACR'
 on:
     push:
         branches: [development, main]
