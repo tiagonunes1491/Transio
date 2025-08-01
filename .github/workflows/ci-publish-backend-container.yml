@@ -31,6 +31,6 @@ jobs:
       build-context: './src/backend'
       environment: ${{ matrix.environment }}
     secrets:
-      CLIENTID: ${{ vars.CLIENTID_ARTIFACT_PUSH }}
+      CLIENTID: ${{ secrets.CLIENTID_ARTIFACT_PUSH }}
       TENANTID: ${{ vars.AZURE_TENANT_ID }}
       SUBSCRIPTIONID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
