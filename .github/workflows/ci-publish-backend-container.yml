@@ -29,7 +29,6 @@ jobs:
       dockerfile-path: 'src/backend/Dockerfile'
       image-name: 'backend-app'
       build-context: './src/backend'
-      acr-name: ${{ vars.ACR_NAME }}
       environment: ${{ matrix.environment }}
     secrets:
       CLIENTID: ${{ vars.CLIENTID_ARTIFACT_PUSH }}
